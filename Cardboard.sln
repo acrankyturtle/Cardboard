@@ -12,6 +12,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.Mocks", "Cardboar
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.Controller", "Cardboard.Controller\Cardboard.Controller.csproj", "{FBC417DD-53D2-4C4E-B0B9-D9476CABE2FE}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.Controller.Abstractions", "Cardboard.Controller.Abstractions\Cardboard.Controller.Abstractions.csproj", "{C9BEB197-00EE-4CE4-A4E4-175D33F5C252}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.Services", "Cardboard.Services\Cardboard.Services.csproj", "{3DCA6651-95F2-41C7-840F-0DD74568A91B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.Device.Modules", "Cardboard.Device.Modules\Cardboard.Device.Modules.csproj", "{33F4316E-5CAF-4C1D-95DE-243B92FA08F5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -42,6 +48,18 @@ Global
 		{FBC417DD-53D2-4C4E-B0B9-D9476CABE2FE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FBC417DD-53D2-4C4E-B0B9-D9476CABE2FE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FBC417DD-53D2-4C4E-B0B9-D9476CABE2FE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C9BEB197-00EE-4CE4-A4E4-175D33F5C252}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C9BEB197-00EE-4CE4-A4E4-175D33F5C252}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C9BEB197-00EE-4CE4-A4E4-175D33F5C252}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C9BEB197-00EE-4CE4-A4E4-175D33F5C252}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3DCA6651-95F2-41C7-840F-0DD74568A91B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3DCA6651-95F2-41C7-840F-0DD74568A91B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3DCA6651-95F2-41C7-840F-0DD74568A91B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3DCA6651-95F2-41C7-840F-0DD74568A91B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{33F4316E-5CAF-4C1D-95DE-243B92FA08F5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{33F4316E-5CAF-4C1D-95DE-243B92FA08F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{33F4316E-5CAF-4C1D-95DE-243B92FA08F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{33F4316E-5CAF-4C1D-95DE-243B92FA08F5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 	EndGlobalSection
