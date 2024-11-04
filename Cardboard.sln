@@ -16,7 +16,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.Controller.Abstra
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.Services", "Cardboard.Services\Cardboard.Services.csproj", "{3DCA6651-95F2-41C7-840F-0DD74568A91B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.Device.Modules", "Cardboard.Device.Modules\Cardboard.Device.Modules.csproj", "{33F4316E-5CAF-4C1D-95DE-243B92FA08F5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.Device.Commands", "Cardboard.Device.Commands\Cardboard.Device.Commands.csproj", "{33F4316E-5CAF-4C1D-95DE-243B92FA08F5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.SerialDebugger", "Cardboard.SerialDebugger\Cardboard.SerialDebugger.csproj", "{07436E1A-6699-4D6F-912B-EE3236ECA0C5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -60,6 +62,10 @@ Global
 		{33F4316E-5CAF-4C1D-95DE-243B92FA08F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{33F4316E-5CAF-4C1D-95DE-243B92FA08F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{33F4316E-5CAF-4C1D-95DE-243B92FA08F5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{07436E1A-6699-4D6F-912B-EE3236ECA0C5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{07436E1A-6699-4D6F-912B-EE3236ECA0C5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{07436E1A-6699-4D6F-912B-EE3236ECA0C5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{07436E1A-6699-4D6F-912B-EE3236ECA0C5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 	EndGlobalSection

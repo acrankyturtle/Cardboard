@@ -1,15 +1,19 @@
-using Cardboard.Configuration;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Cardboard.Serial;
 
-public class SerialDeviceConfiguration
+public class SerialDeviceOptions
 {
-	public IReadOnlyCollection<string> ActivePorts { get; init; } = [];
+	internal const string SectionName = "SerialDevices";
+
+	public IReadOnlyCollection<string> Ports { get; init; } = [];
 }
 
 public static partial class Services
 {
-	private static IServiceCollection AddSerialDeviceConfiguration(this IServiceCollection services) =>
-		services.AddFileConfiguration<SerialDeviceConfiguration>("serial-ports");
+	private static IServiceCollection AddSerialDeviceConfiguration(
+		this IServiceCollection services,
+		IConfiguration configuration
+	) => services.Configure<SerialDeviceOptions>(configuration.GetSection(SerialDeviceOptions.SectionName));
 }

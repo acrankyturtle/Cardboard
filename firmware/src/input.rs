@@ -6,71 +6,119 @@ use rp2040_hal::gpio::{DynPinId, FunctionSioInput, FunctionSioOutput, Pin, PullD
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-pub struct InputKeyManager<const RS: usize, const CS: usize> {
-	map: InputKeyMap<RS, CS>,
-	matrix: InputKeyMatrix<RS, CS>,
-	prev_state: [[bool; CS]; RS],
+pub struct KeyMatrix<const ROWS: usize, const COLS: usize, const KEY_COUNT: usize> {
+	rows: [Pin<DynPinId, FunctionSioOutput, PullNone>; ROWS],
+	cols: [Pin<DynPinId, FunctionSioInput, PullDown>; COLS],
+	keys: [InputKey; KEY_COUNT],
 	debounce_time: u32,
 }
 
-impl<const RS: usize, const CS: usize> InputKeyManager<RS, CS> {
+impl<const ROWS: usize, const COLS: usize, const KEY_COUNT: usize>
+	KeyMatrix<ROWS, COLS, KEY_COUNT>
+{
 	pub fn new(
-		map: InputKeyMap<RS, CS>,
-		matrix: InputKeyMatrix<RS, CS>,
-		debounce_time: u8,
+		key_ids: [KeyId; KEY_COUNT],
+		rows: [Pin<DynPinId, FunctionSioOutput, PullNone>; ROWS],
+		cols: [Pin<DynPinId, FunctionSioInput, PullDown>; COLS],
+		debounce_time: u32,
 	) -> Self {
+		assert_eq!(key_ids.len(), ROWS * COLS);
 		Self {
-			map,
-			matrix,
-			prev_state: [[false; CS]; RS],
-			debounce_time: debounce_time as u32 * 1000,
+			rows,
+			cols,
+			keys: Self::from_key_ids(key_ids),
+			debounce_time: debounce_time * 1000,
 		}
+	}
+
+	fn from_key_ids<const N: usize>(key_ids: [KeyId; N]) -> [InputKey; N] {
+		let mut keys = [InputKey {
+			id: KeyId(Uuid::nil()),
+			state: KeyState::Released,
+			report: KeyState::Released,
+			keydown_timestamp: 0,
+		}; N];
+
+		for (k, id) in keys.iter_mut().zip(key_ids) {
+			*k = InputKey {
+				id,
+				state: KeyState::Released,
+				report: KeyState::Released,
+				keydown_timestamp: 0,
+			};
+		}
+
+		keys
 	}
 
 	pub fn read_into(&mut self, out: &mut Vec<KeyboardAction>, time: u32) {
-		let key_states = self.matrix.read();
+		self.scan(time);
 
-		key_states
-			.iter()
-			// map jagged array into (current, previous, input key)
-			.zip(self.prev_state.iter())
-			.zip(self.map.keys.iter())
-			.flat_map(|((curr_row, prev_row), key_row)| {
-				curr_row.iter().zip(prev_row.iter()).zip(key_row.iter())
-			})
-			// remove unchanged keys
-			.filter(|((curr, prev), key)| {
-				**curr != **prev && (!(**curr))
-					|| time.wrapping_sub(key.last_press) > self.debounce_time
-			})
-			// map into KeyboardAction
-			.map(|((curr, prev), key)| match (curr, prev) {
-				(true, false) => KeyboardAction::pressed(key.id),
-				(false, true) => KeyboardAction::released(key.id),
-				_ => unreachable!(),
-			})
-			// push actions to output
-			.for_each(|action| out.push(action));
+		for k in self.keys.iter_mut() {
+			let prev_report = k.report;
+			k.update_report(time, self.debounce_time);
 
-		self.prev_state = key_states;
+			if prev_report != k.report {
+				out.push(KeyboardAction {
+					action: k.report,
+					key_id: k.id,
+				});
+			}
+		}
 	}
-}
 
-pub struct InputKeyMap<const RS: usize, const CS: usize> {
-	keys: [[InputKey; CS]; RS],
-}
+	fn scan(&mut self, time: u32) {
+		for (r, row_pin) in self.rows.iter_mut().enumerate() {
+			row_pin.set_high().unwrap();
 
-impl<const RS: usize, const CS: usize> InputKeyMap<RS, CS> {
-	pub fn new(keys: [[KeyId; CS]; RS]) -> Self {
-		Self {
-			keys: keys.map(|row| row.map(|id| InputKey { id, last_press: 0 })),
+			for (c, col_pin) in self.cols.iter_mut().enumerate() {
+				let i = r * ROWS + c;
+				if col_pin.is_high().unwrap() {
+					self.keys[i].down(time)
+				} else {
+					self.keys[i].up()
+				}
+			}
+
+			row_pin.set_low().unwrap();
 		}
 	}
 }
 
+#[derive(Clone, Copy)]
 struct InputKey {
 	id: KeyId,
-	last_press: u32,
+	state: KeyState,
+	report: KeyState,
+	keydown_timestamp: u32,
+}
+
+impl InputKey {
+	pub fn down(&mut self, time: u32) {
+		if self.state == KeyState::Pressed {
+			return;
+		}
+		self.keydown_timestamp = time;
+		self.state = KeyState::Pressed;
+	}
+
+	pub fn up(&mut self) {
+		self.state = KeyState::Released;
+	}
+
+	pub fn update_report(&mut self, time: u32, debounce: u32) {
+		self.report = match (self.report, self.state) {
+			(KeyState::Pressed, KeyState::Released) => {
+				if time.wrapping_sub(self.keydown_timestamp) < debounce {
+					// debounce
+					KeyState::Pressed
+				} else {
+					KeyState::Released
+				}
+			}
+			_ => self.state,
+		};
+	}
 }
 
 #[derive(Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -89,57 +137,28 @@ impl Format for KeyId {
 }
 
 pub struct KeyboardAction {
-	pub action: KeyboardActionType,
+	pub action: KeyState,
 	pub key_id: KeyId,
 }
 
 impl KeyboardAction {
 	pub fn pressed(key_id: KeyId) -> Self {
 		Self {
-			action: KeyboardActionType::Pressed,
+			action: KeyState::Pressed,
 			key_id,
 		}
 	}
 
 	pub fn released(key_id: KeyId) -> Self {
 		Self {
-			action: KeyboardActionType::Released,
+			action: KeyState::Released,
 			key_id,
 		}
 	}
 }
 
-pub enum KeyboardActionType {
+#[derive(Clone, Copy, PartialEq, Format)]
+pub enum KeyState {
 	Pressed,
 	Released,
-}
-
-pub struct InputKeyMatrix<const RS: usize, const CS: usize> {
-	rows: [Pin<DynPinId, FunctionSioOutput, PullNone>; RS],
-	cols: [Pin<DynPinId, FunctionSioInput, PullDown>; CS],
-}
-
-impl<const RS: usize, const CS: usize> InputKeyMatrix<RS, CS> {
-	pub fn new(
-		rows: [Pin<DynPinId, FunctionSioOutput, PullNone>; RS],
-		cols: [Pin<DynPinId, FunctionSioInput, PullDown>; CS],
-	) -> Self {
-		Self { rows, cols }
-	}
-
-	pub fn read(&mut self) -> [[bool; CS]; RS] {
-		let mut results = [[false; CS]; RS];
-
-		for (row_pin, row_results) in self.rows.iter_mut().zip(results.iter_mut()) {
-			row_pin.set_high().unwrap();
-
-			for (col_pin, result) in self.cols.iter_mut().zip(row_results.iter_mut()) {
-				*result = col_pin.is_high().unwrap();
-			}
-
-			row_pin.set_low().unwrap();
-		}
-
-		results
-	}
 }

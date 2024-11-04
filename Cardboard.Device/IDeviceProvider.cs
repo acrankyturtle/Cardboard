@@ -1,5 +1,4 @@
 using Cranky;
-using StronglyTypedIds;
 
 namespace Cardboard.Device;
 
@@ -7,12 +6,12 @@ public interface IDeviceProvider
 {
 	Task<IReadOnlyCollection<DeviceInfo>> GetDevices();
 
-	Task Broadcast(ModuleMessage message, Predicate<DeviceInfo>? predicate);
+	Task Broadcast(DeviceCommand message, Predicate<DeviceInfo>? predicate = null);
 
 	Task<IEnumerable<KeyValuePair<DeviceInfo, Result<T>>>> BroadcastWithResponse<T>(
-		ModuleMessage message,
+		DeviceCommand message,
 		DeserializeFunc<T> deserializeResponse,
-		Predicate<DeviceInfo> predicate
+		Predicate<DeviceInfo>? predicate = null
 	);
 }
 
@@ -21,7 +20,7 @@ public static class Extensions_DeviceProvider
 	public static Task<Result<T>> SendWithResponse<T>(
 		this IDeviceProvider provider,
 		DeviceId deviceId,
-		ModuleMessage message,
+		DeviceCommand message,
 		DeserializeFunc<T> deserializeResponse
 	) => First(provider.BroadcastWithResponse(message, deserializeResponse, x => x.Id == deviceId));
 

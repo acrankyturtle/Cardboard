@@ -25,9 +25,9 @@ internal class MockSerialPortProvider(IReadOnlyDictionary<string, SerialPortMock
 
 internal class MockSerialPort(SerialPortMockConfiguration configuration) : ISerialPort
 {
-	private readonly ModuleMessageMap _map = new(configuration.DeviceInfo.Modules);
+	private readonly CommandMap _map = new(configuration.DeviceInfo.Commands);
 
-	public Task<Result<ReadOnlyRentedMemory>> SendRequireResponse(SerialMessage msg) =>
+	public Task<Result<ReadOnlyRentedMemory>> SendWithResponse(SerialMessage msg) =>
 		msg switch
 		{
 			SerialIdentifyMessage => Task.FromResult<Result<ReadOnlyRentedMemory>>(GetIdentityResponse()),
@@ -38,10 +38,10 @@ internal class MockSerialPort(SerialPortMockConfiguration configuration) : ISeri
 
 	private ReadOnlyRentedMemory GetIdentityResponse()
 	{
-		var identityResponse = new DeviceIdentityResponse { DeviceInfo = configuration.DeviceInfo };
+		var identityResponse = new DeviceIdentityResponse { Info = configuration.DeviceInfo };
 
 		var memoryStream = new MemoryStream();
-		JsonHelpers.WriteObject(identityResponse, memoryStream);
+		BinaryHelpers.WriteJson(identityResponse, memoryStream);
 		var memory = memoryStream.GetBuffer().AsMemory()[..(int)memoryStream.Length];
 
 		return new(memory, () => memoryStream.Dispose());
@@ -53,7 +53,7 @@ internal class MockSerialPort(SerialPortMockConfiguration configuration) : ISeri
 			throw new InvalidOperationException("Module not found.");
 
 		var module = configuration.Modules[key];
-		var moduleMessage = new ModuleMessage(key.Id, key.Version, message.Data);
+		var moduleMessage = new DeviceCommand(key.Id, key.Version, message.Data);
 		var buffer = module.ProcessMessage(moduleMessage).Result;
 
 		return buffer;
@@ -85,16 +85,16 @@ public static partial class Services
 public record SerialPortMockConfiguration(
 	DeviceId Id,
 	string Name,
-	IReadOnlyDictionary<(ModuleId Id, ModuleVersion Version), IMockDeviceModule> Modules
+	IReadOnlyDictionary<(CommandId Id, ModuleVersion Version), IMockDeviceModule> Modules
 )
 {
 	public DeviceInfo DeviceInfo { get; } =
-		new(Id, Name, Modules.Select(x => new ModuleInfo(x.Key.Id, x.Key.Version, x.Value.Name)).ToList());
+		new(Id, Name, Modules.Select(x => new CommandInfo(x.Key.Id, x.Key.Version, x.Value.Name)).ToList());
 }
 
 public interface IMockDeviceModule
 {
 	string Name { get; }
 
-	Task<RentedMemory> ProcessMessage(ModuleMessage message);
+	Task<RentedMemory> ProcessMessage(DeviceCommand message);
 }

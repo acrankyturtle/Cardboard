@@ -1,47 +1,28 @@
 using System.IO.Ports;
+using System.Runtime.Serialization;
 using Cardboard.Device;
 using Cranky;
-using Cranky.Events;
 
 namespace Cardboard.Serial;
 
-internal sealed class SystemSerialPort : ISerialPort, IDisposable
+internal sealed class SystemSerialPort(SerialPort serialPort) : ISerialPort, IDisposable
 {
-	private readonly AsyncEvent<ReadOnlyRentedMemory> _received = new();
+	private static readonly TimeSpan timeOut = TimeSpan.FromSeconds(1);
 
-	private readonly CancellationTokenSource _cts;
-	private readonly SerialPort _serialPort;
-	private readonly ResponseTracker _responseTracker;
-	private readonly Task _readTask;
-	private readonly ThreadQueue<SerialMessage> _sendQueue;
+	private readonly SemaphoreSlim _lock = new(1, 1);
 
-	public bool IsRunning => _readTask.Status == TaskStatus.Running && !_cts.IsCancellationRequested;
+	private static readonly ReadOnlyMemory<byte> _deviceIdentityCmdId = new byte[] { 0x00 };
 
-	public bool IsOpen => _serialPort.IsOpen;
+	// public bool IsBusy => _lock.CurrentCount < 1;
 
-	public IAsyncEvent<ReadOnlyRentedMemory> Received => _received;
+	public bool IsOpen => serialPort.IsOpen;
 
-	private SystemSerialPort(
-		CancellationTokenSource cts,
-		SerialPort serialPort,
-		ResponseTracker responseTracker,
-		Task readTask,
-		ThreadQueue<SerialMessage> sendQueue
-	)
-	{
-		_cts = cts;
-		_serialPort = serialPort;
-		_responseTracker = responseTracker;
-		_readTask = readTask;
-		_sendQueue = sendQueue;
-	}
-
-	public static Result<SystemSerialPort> Create(string portName)
+	public static Result<SystemSerialPort, Exception> Create(string portName)
 	{
 		var serialPort = new SerialPort(portName)
 		{
 			BaudRate = 115200,
-			DtrEnable = true, // required for CircuitPython data serial connection
+			DtrEnable = true, // required for CircuitPython data serial connections... todo: is this required with Rust?
 			Handshake = Handshake.None,
 			ReadTimeout = 1000,
 			WriteTimeout = 100,
@@ -51,87 +32,151 @@ internal sealed class SystemSerialPort : ISerialPort, IDisposable
 		{
 			serialPort.Open();
 		}
-		catch
+		catch (Exception ex)
 		{
-			// todo: log
-			return Result.Fail();
+			return Result.Fail(ex);
 		}
 
-		var cts = new CancellationTokenSource();
-		var responseTracker = new ResponseTracker();
-		var readThread = SerialPortReader.Run(serialPort, responseTracker, cts.Token);
+		return new SystemSerialPort(serialPort);
+	}
 
-		var sendQueue = new ThreadQueue<SerialMessage>(
-			msg =>
+	public async Task<Result<T>> SendWithResponse<T>(
+		ReadOnlyMemory<byte> msg,
+		DeserializeFunc<T> deserializeResponse,
+		CancellationToken cancellationToken = default
+	)
+	{
+		await _lock.WaitAsync(cancellationToken);
+
+		try
+		{
+			var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+			linkedCts.CancelAfter(timeOut);
+
+			serialPort.BaseStream.Write(msg.Span);
+
+			try
 			{
-				while (!TryWrite(serialPort, msg))
-					Thread.Sleep(1000); // todo: better timeout options
-			},
-			cts.Token
-		);
-
-		return new SystemSerialPort(cts, serialPort, responseTracker, readThread, sendQueue);
+				return await Read(deserializeResponse, linkedCts.Token);
+			}
+			catch (OperationCanceledException)
+			{
+				return Result.Fail();
+			}
+		}
+		finally
+		{
+			_lock.Release();
+		}
 	}
 
-	public async Task<Result<ReadOnlyRentedMemory>> SendRequireResponse(SerialMessage msg)
+	public async Task Send(ReadOnlyMemory<byte> msg, CancellationToken cancellationToken = default)
 	{
-		if (msg.Token is not { } token)
-			throw new ArgumentException("Message must have a token to track response.");
-
-		using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-		var responseTask = _responseTracker.Track(token, timeoutCts.Token);
-		_sendQueue.Enqueue(msg);
+		await _lock.WaitAsync(cancellationToken);
 
 		try
 		{
-			var responseMessage = await responseTask;
-			return responseMessage.Data;
+			serialPort.BaseStream.Write(msg.Span);
 		}
-		catch (TaskCanceledException)
+		finally
 		{
-			// todo: log timeout!
-			return Result.Fail();
+			_lock.Release();
 		}
 	}
 
-	public async Task Send(SerialMessage msg)
-	{
-		await _sendQueue.EnqueueAwait(msg);
-	}
-
-	public async Task<Result<DeviceInfo>> GetDeviceInfo() =>
-		(await SendRequireResponse(new SerialIdentifyMessage(0))).Select(
-			x => JsonHelpers.ReadObject<DeviceIdentityResponse>(x.ToStream()).DeviceInfo
-		);
-
-	private static bool TryWrite(SerialPort serialPort, SerialMessage msg)
-	{
-		if (!serialPort.IsOpen)
-			return false;
-
-		using var writer = serialPort.CreateWriter();
-		try
-		{
-			msg.WriteTo(writer);
-		}
-		catch (Exception)
-		{
-			// todo: log
-			return false;
-		}
-
-		return true;
-	}
+	public async Task<Result<DeviceInfo>> GetDeviceInfo(CancellationToken cancellationToken = default) =>
+		(
+			await SendWithResponse<DeviceIdentityResponse>(
+				_deviceIdentityCmdId,
+				m =>
+				{
+					var span = m.Span;
+					return BinaryHelpers.ReadJson<DeviceIdentityResponse>(ref span);
+				},
+				cancellationToken
+			)
+		).Select(x => x.Info);
 
 	public void Dispose()
 	{
-		_cts.Cancel();
-		_cts.Dispose();
-		_serialPort.Dispose();
+		serialPort.Close();
+	}
+
+	// we only expect to call this while lock is held
+	private async Task<Result<T>> Read<T>(
+		DeserializeFunc<T> deserialize,
+		CancellationToken cancellationToken = default
+	)
+	{
+		using var reader = serialPort.BaseStream.CreateDeviceReader(true);
+		using var semaphore = new SemaphoreSlim(0);
+
+		if (serialPort.BytesToRead < 1)
+		{
+			serialPort.DataReceived += OnDataReceived;
+			try
+			{
+				await semaphore.WaitAsync(cancellationToken);
+			}
+			finally
+			{
+				serialPort.DataReceived -= OnDataReceived;
+			}
+		}
+
+		if (!serialPort.IsOpen)
+			return Result.Fail();
+
+		var bytesAvailable = serialPort.BytesToRead;
+
+		using var memory = ReadMessageData(reader);
+
+		if (memory is null)
+			return Result.Fail();
+
+		var buffer = memory.Value.Data;
+
+		var deserialized = deserialize(buffer);
+		return Result.Success(deserialized);
+
+		static RentedMemory? ReadMessageData(BinaryReader reader)
+		{
+			try
+			{
+				var numBytes = reader.ReadInt32();
+
+				var rented = RentedMemory.Rent(numBytes);
+				var buffer = rented.Data[..numBytes];
+				// var numBytesRead = reader.Read(buffer.Span);
+
+				reader.BaseStream.ReadExactly(buffer.Span);
+				// if (numBytes != numBytesRead)
+				// {
+				// 	// TODO: log
+				// 	rented.Dispose();
+				// 	return null;
+				// }
+
+				return rented;
+			}
+			catch (IOException)
+			{
+				// TODO: log
+			}
+			catch (SerializationException)
+			{
+				// TODO: log
+			}
+
+			return null;
+		}
+
+		// ReSharper disable once AccessToDisposedClosure
+		void OnDataReceived(object sender, SerialDataReceivedEventArgs e) => semaphore.Release();
 	}
 }
 
 public class DeviceIdentityResponse
 {
-	public required DeviceInfo DeviceInfo { get; init; }
+	public required DeviceInfo Info { get; init; }
 }

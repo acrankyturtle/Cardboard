@@ -75,7 +75,7 @@ impl<'a> KeyboardState<'a> {
 	// }
 
 	fn get_key(&self, key_id: KeyId) -> Option<&KeyState<'a>> {
-		self.keys.iter().find(|ks| ks.key.key_id == key_id)
+		self.keys.iter().find(|ks| ks.key.id == key_id)
 	}
 
 	pub fn release_key(&mut self, key_id: KeyId) {
@@ -118,7 +118,7 @@ impl<'a> KeyboardState<'a> {
 				for macro_ in self
 					.macros
 					.iter_mut()
-					.filter(|m| m.source.key == ks.key.key_id && m.source.layer != new_layer.id)
+					.filter(|m| m.source.key == ks.key.id && m.source.layer != new_layer.id)
 				{
 					macro_.stop();
 				}
@@ -175,7 +175,7 @@ impl<'a> MacroState<'a> {
 			)),
 			trigger: TriggerState::Running,
 			source: MacroSource {
-				key: source.key.key_id,
+				key: source.key.id,
 				layer: source.current_layer.id,
 			},
 		}
@@ -821,7 +821,7 @@ mod tests {
 		let other_macro_id = MACRO_ID;
 
 		let device_key = DeviceKey {
-			key_id: KEY_ID,
+			id: KEY_ID,
 			layers: vec![TaggedDeviceKeyLayer {
 				layer: DeviceKeyLayer {
 					id: LAYER_ID2,
@@ -860,7 +860,7 @@ mod tests {
 		let other_macro_id = MACRO_ID;
 
 		let device_key = DeviceKey {
-			key_id: KEY_ID,
+			id: KEY_ID,
 			layers: vec![TaggedDeviceKeyLayer {
 				layer: DeviceKeyLayer {
 					id: LAYER_ID2,
@@ -899,7 +899,7 @@ mod tests {
 		let other_macro_id = MACRO_ID2;
 
 		let device_key = DeviceKey {
-			key_id: KEY_ID,
+			id: KEY_ID,
 			layers: vec![TaggedDeviceKeyLayer {
 				layer: DeviceKeyLayer {
 					id: LAYER_ID2,
@@ -938,7 +938,7 @@ mod tests {
 
 	fn new_test_device_key(id: KeyId, macros: Vec<Macro>) -> DeviceKey {
 		DeviceKey {
-			key_id: id,
+			id,
 			layers: Vec::new(),
 			default_layer: DeviceKeyLayer {
 				id: LAYER_ID,

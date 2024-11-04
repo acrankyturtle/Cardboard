@@ -2,18 +2,25 @@ using StronglyTypedIds;
 
 namespace Cardboard.Device;
 
-public record DeviceInfo(DeviceId Id, string Name, IReadOnlyCollection<ModuleInfo> Modules);
+public class DeviceInfo
+{
+	public required DeviceId Id { get; init; }
+	public required string Name { get; init; }
+	public required string Manufacturer { get; init; }
+	public required IReadOnlyCollection<CommandInfo> Commands { get; init; }
+}
 
-public record ModuleInfo(ModuleId Id, ModuleVersion Version, string Name);
+public class CommandInfo
+{
+	public required CommandId Id { get; init; }
+	public required string Name { get; init; }
+}
 
 /// <summary>
-/// A globally unique identifier associated with a specific device.
+/// A globally unique identifier associated with a specific device (e.g. a serial number).
 /// </summary>
 [StronglyTypedId]
 public readonly partial struct DeviceId;
 
 [StronglyTypedId]
-public readonly partial struct ModuleId;
-
-[StronglyTypedId(Template.String)]
-public readonly partial struct ModuleVersion;
+public readonly partial struct CommandId;

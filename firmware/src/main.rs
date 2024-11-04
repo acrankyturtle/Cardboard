@@ -9,11 +9,15 @@ use core::mem::MaybeUninit;
 
 use crate::debug_assert;
 use alloc::borrow::ToOwned;
-use alloc::string::String;
+use alloc::boxed::Box;
+use alloc::string::{String, ToString};
 use alloc::vec;
 use alloc::vec::Vec;
 use bsp::entry;
 use bsp::hal;
+use cardboard::command::{Command, CommandInfo, CommandList, DeviceId};
+use cardboard::command::{DeviceInfo, IdentifyCommand};
+use cardboard::device::{DeviceContext, DeviceSetup};
 use cardboard::hid_consumer_control;
 use cardboard::hid_consumer_control::map_cc;
 use cardboard::hid_keyboard;
@@ -21,20 +25,12 @@ use cardboard::hid_keyboard::map_key;
 use cardboard::hid_mouse;
 use cardboard::hid_mouse::map_button;
 use cardboard::input;
-use cardboard::input::InputKeyManager;
-use cardboard::input::InputKeyMatrix;
 use cardboard::input::KeyId;
-use cardboard::profile;
-use cardboard::profile::DeviceKey;
-use cardboard::profile::DeviceKey2;
-use cardboard::profile::DeviceKeyLayer;
+use cardboard::input::KeyMatrix;
 use cardboard::profile::KeyboardEvent;
 use cardboard::profile::KeyboardProfile;
-use cardboard::profile::KeyboardProfile2;
-use cardboard::profile::LayerId;
-use cardboard::profile::Macro;
-use cardboard::profile::MacroId;
 use cardboard::profile::{ActionEvent, MouseEvent};
+use cardboard::serial::{SerialReadBufferStore, SerialWriteBufferStore};
 use cardboard::state::KeyboardState;
 use cardboard::storage::ProfileStorage;
 use cortex_m::prelude::*;
@@ -56,6 +52,8 @@ use serde::Serialize;
 use usb_device::class_prelude::*;
 use usb_device::prelude::*;
 use usbd_human_interface_device::prelude::*;
+use usbd_serial::embedded_io::ReadReady;
+use usbd_serial::{DefaultBufferStore, SerialPort, USB_CLASS_CDC};
 use uuid::uuid;
 
 // Provide an alias for our BSP so we can switch targets quickly.
@@ -70,13 +68,8 @@ static mut PROFILE: MaybeUninit<[u8; PROFILE_SIZE]> = MaybeUninit::uninit();
 const PROFILE_OFFSET: usize = 0x10100000;
 const PROFILE_SIZE: usize = 1 << 20;
 
-// usb
-const MANUFACTURER: &str = "cranky industries";
-const PRODUCT: &str = "cardboard";
-const SERIAL_NUMBER: &str = "TEST";
-
 // device specific
-const HEAP_SIZE: usize = 2048;
+const HEAP_SIZE: usize = 4096;
 
 // matrix
 const ROWS: usize = 5;
@@ -86,6 +79,15 @@ const SIZE: usize = ROWS * COLS;
 #[entry]
 fn main() -> ! {
 	info!("Program start");
+	initialize_allocator();
+
+	let (device_info, command_list) = DeviceSetup {
+		id: DeviceId::new(Uuid::from_u128(0xd6875554_8cb4_5a57_b81f_70e91a6b7841)),
+		name: "Cardboard",
+		manufacturer: "cranky",
+		commands: [Box::new(IdentifyCommand::new())],
+	}
+	.build();
 
 	let mut pac = pac::Peripherals::take().unwrap();
 	let core = pac::CorePeripherals::take().unwrap();
@@ -105,8 +107,6 @@ fn main() -> ! {
 	)
 	.ok()
 	.unwrap();
-
-	initialize_allocator();
 
 	let timer = hal::Timer::new(pac.TIMER, &mut pac.RESETS, &clocks);
 
@@ -149,85 +149,82 @@ fn main() -> ! {
 
 	let mut hid_consumer_state = hid_consumer_control::HidKeyboardState::new();
 
+	let mut serial = SerialPort::new_with_store(
+		&usb_bus,
+		SerialReadBufferStore::default(),
+		SerialWriteBufferStore::default(),
+	);
+
+	let serial_number: String = device_info.id.to_string();
+
 	// device setup
 	let mut usb_dev = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0xF055, 0x6969))
 		.strings(&[StringDescriptors::default()
-			.manufacturer(MANUFACTURER)
-			.product(PRODUCT)
-			.serial_number(SERIAL_NUMBER)])
+			.manufacturer(device_info.manufacturer)
+			.product(device_info.name)
+			.serial_number(serial_number.as_str())])
 		.unwrap()
+		.composite_with_iads()
 		.build();
 
-	let mut input_keys: InputKeyManager<ROWS, COLS> = input::InputKeyManager::new(
-		input::InputKeyMap::new([
-			[
-				KeyId::new(Uuid::parse_str("0661ee85-348b-5d93-b5e2-ac11cfa5344b").unwrap()),
-				KeyId::new(Uuid::parse_str("87c4fd79-143b-576b-afa2-bea59e4cd02c").unwrap()),
-				KeyId::new(Uuid::parse_str("1d652794-96a4-5c59-9948-afd441289317").unwrap()),
-				KeyId::new(Uuid::parse_str("de57737c-e6c1-5818-bf94-d126ff5304a3").unwrap()),
-				KeyId::new(Uuid::parse_str("85c20588-8148-5785-9e9f-44976e8dfef8").unwrap()),
-			],
-			[
-				KeyId::new(Uuid::parse_str("b6ee974a-b405-5367-8c9f-e70a75045c37").unwrap()),
-				KeyId::new(Uuid::parse_str("8a1052be-8165-5976-849b-511ce92f9956").unwrap()),
-				KeyId::new(Uuid::parse_str("91206d06-70d4-5b75-9fdf-aad7f367fff5").unwrap()),
-				KeyId::new(Uuid::parse_str("7abd3edf-f94c-522e-b2be-06a88bdb1cc9").unwrap()),
-				KeyId::new(Uuid::parse_str("a32da69a-7f91-5f5a-87d2-dd5e4776b1c4").unwrap()),
-			],
-			[
-				KeyId::new(Uuid::parse_str("3a801a21-1ef7-5803-bf42-ecd1e8444656").unwrap()),
-				KeyId::new(Uuid::parse_str("c54ec31f-2381-5636-b0a5-edd448294b88").unwrap()),
-				KeyId::new(Uuid::parse_str("16ad3daf-bd00-5168-885a-74008ce8de35").unwrap()),
-				KeyId::new(Uuid::parse_str("da390fc5-5361-5af9-9398-d3823b81ecba").unwrap()),
-				KeyId::new(Uuid::parse_str("1a549b65-43d5-5068-a3f5-59429946e404").unwrap()),
-			],
-			[
-				KeyId::new(Uuid::parse_str("ec06b9a0-0713-5db1-862c-20fafd2b0764").unwrap()),
-				KeyId::new(Uuid::parse_str("cbfef260-a498-599f-a6c0-8a6a51002b76").unwrap()),
-				KeyId::new(Uuid::parse_str("852caff2-9ef9-59a3-ae41-e5eec3fa0d21").unwrap()),
-				KeyId::new(Uuid::parse_str("96148043-9890-5767-a464-1b12f126da14").unwrap()),
-				KeyId::new(Uuid::parse_str("7a30b4b5-f6b1-5aae-8cf5-f28bca7c1c13").unwrap()),
-			],
-			[
-				KeyId::new(Uuid::parse_str("ab6039e8-38dc-5f91-b15c-6678def87cea").unwrap()),
-				KeyId::new(Uuid::parse_str("0ef29fa7-07fb-5495-bb6f-33d164eda994").unwrap()),
-				KeyId::new(Uuid::parse_str("e18caa6c-d922-558e-b146-0262173a28bd").unwrap()),
-				KeyId::new(Uuid::parse_str("7b3285ea-4be6-5eae-9125-cec547fa3fb1").unwrap()),
-				KeyId::new(Uuid::parse_str("4ade2cba-18d3-5fd0-a6d4-ba928bb47009").unwrap()),
-			],
-		]),
-		InputKeyMatrix::new(
-			[
-				pins.gpio28
-					.into_push_pull_output()
-					.into_pull_type()
-					.into_dyn_pin(),
-				pins.gpio27
-					.into_push_pull_output()
-					.into_pull_type()
-					.into_dyn_pin(),
-				pins.gpio26
-					.into_push_pull_output()
-					.into_pull_type()
-					.into_dyn_pin(),
-				pins.gpio22
-					.into_push_pull_output()
-					.into_pull_type()
-					.into_dyn_pin(),
-				pins.gpio21
-					.into_push_pull_output()
-					.into_pull_type()
-					.into_dyn_pin(),
-			],
-			[
-				pins.gpio20.into_pull_down_input().into_dyn_pin(),
-				pins.gpio19.into_pull_down_input().into_dyn_pin(),
-				pins.gpio18.into_pull_down_input().into_dyn_pin(),
-				pins.gpio17.into_pull_down_input().into_dyn_pin(),
-				pins.gpio16.into_pull_down_input().into_dyn_pin(),
-			],
-		),
-		255,
+	let mut input_keys: KeyMatrix<ROWS, COLS, SIZE> = input::KeyMatrix::new(
+		[
+			KeyId::new(Uuid::parse_str("0661ee85-348b-5d93-b5e2-ac11cfa5344b").unwrap()),
+			KeyId::new(Uuid::parse_str("87c4fd79-143b-576b-afa2-bea59e4cd02c").unwrap()),
+			KeyId::new(Uuid::parse_str("1d652794-96a4-5c59-9948-afd441289317").unwrap()),
+			KeyId::new(Uuid::parse_str("de57737c-e6c1-5818-bf94-d126ff5304a3").unwrap()),
+			KeyId::new(Uuid::parse_str("85c20588-8148-5785-9e9f-44976e8dfef8").unwrap()),
+			KeyId::new(Uuid::parse_str("b6ee974a-b405-5367-8c9f-e70a75045c37").unwrap()),
+			KeyId::new(Uuid::parse_str("8a1052be-8165-5976-849b-511ce92f9956").unwrap()),
+			KeyId::new(Uuid::parse_str("91206d06-70d4-5b75-9fdf-aad7f367fff5").unwrap()),
+			KeyId::new(Uuid::parse_str("7abd3edf-f94c-522e-b2be-06a88bdb1cc9").unwrap()),
+			KeyId::new(Uuid::parse_str("a32da69a-7f91-5f5a-87d2-dd5e4776b1c4").unwrap()),
+			KeyId::new(Uuid::parse_str("3a801a21-1ef7-5803-bf42-ecd1e8444656").unwrap()),
+			KeyId::new(Uuid::parse_str("c54ec31f-2381-5636-b0a5-edd448294b88").unwrap()),
+			KeyId::new(Uuid::parse_str("16ad3daf-bd00-5168-885a-74008ce8de35").unwrap()),
+			KeyId::new(Uuid::parse_str("da390fc5-5361-5af9-9398-d3823b81ecba").unwrap()),
+			KeyId::new(Uuid::parse_str("1a549b65-43d5-5068-a3f5-59429946e404").unwrap()),
+			KeyId::new(Uuid::parse_str("ec06b9a0-0713-5db1-862c-20fafd2b0764").unwrap()),
+			KeyId::new(Uuid::parse_str("cbfef260-a498-599f-a6c0-8a6a51002b76").unwrap()),
+			KeyId::new(Uuid::parse_str("852caff2-9ef9-59a3-ae41-e5eec3fa0d21").unwrap()),
+			KeyId::new(Uuid::parse_str("96148043-9890-5767-a464-1b12f126da14").unwrap()),
+			KeyId::new(Uuid::parse_str("7a30b4b5-f6b1-5aae-8cf5-f28bca7c1c13").unwrap()),
+			KeyId::new(Uuid::parse_str("ab6039e8-38dc-5f91-b15c-6678def87cea").unwrap()),
+			KeyId::new(Uuid::parse_str("0ef29fa7-07fb-5495-bb6f-33d164eda994").unwrap()),
+			KeyId::new(Uuid::parse_str("e18caa6c-d922-558e-b146-0262173a28bd").unwrap()),
+			KeyId::new(Uuid::parse_str("7b3285ea-4be6-5eae-9125-cec547fa3fb1").unwrap()),
+			KeyId::new(Uuid::parse_str("4ade2cba-18d3-5fd0-a6d4-ba928bb47009").unwrap()),
+		],
+		[
+			pins.gpio28
+				.into_push_pull_output()
+				.into_pull_type()
+				.into_dyn_pin(),
+			pins.gpio27
+				.into_push_pull_output()
+				.into_pull_type()
+				.into_dyn_pin(),
+			pins.gpio26
+				.into_push_pull_output()
+				.into_pull_type()
+				.into_dyn_pin(),
+			pins.gpio22
+				.into_push_pull_output()
+				.into_pull_type()
+				.into_dyn_pin(),
+			pins.gpio21
+				.into_push_pull_output()
+				.into_pull_type()
+				.into_dyn_pin(),
+		],
+		[
+			pins.gpio20.into_pull_down_input().into_dyn_pin(),
+			pins.gpio19.into_pull_down_input().into_dyn_pin(),
+			pins.gpio18.into_pull_down_input().into_dyn_pin(),
+			pins.gpio17.into_pull_down_input().into_dyn_pin(),
+			pins.gpio16.into_pull_down_input().into_dyn_pin(),
+		],
+		5,
 	);
 
 	//let ptr = unsafe { PROFILE.assume_init() };
@@ -259,7 +256,7 @@ fn main() -> ! {
 	{
 		"keys": [
 			{
-				"key_id": "0661ee85-348b-5d93-b5e2-ac11cfa5344b",
+				"id": "0661ee85-348b-5d93-b5e2-ac11cfa5344b",
 				"layers": [],
 				"default_layer": {
 					"id": "4019527f-fc18-5a66-83a8-8e1b4f5b5775",
@@ -307,7 +304,11 @@ fn main() -> ! {
 	let (macro_profile, _) =
 		serde_json_core::from_str::<KeyboardProfile>(DEFAULT_PROFILE_JSON).unwrap();
 
-	let mut macro_state = KeyboardState::from(&macro_profile);
+	let mut context = DeviceContext {
+		device_info,
+		macro_state: KeyboardState::from(&macro_profile),
+		serial_port: &mut serial,
+	};
 
 	let mut key_actions = Vec::with_capacity(SIZE);
 	let mut macro_events = Vec::with_capacity(16);
@@ -317,8 +318,6 @@ fn main() -> ! {
 
 	let mut prev_macro_tick = timer.get_counter_low();
 
-	let mut last_key_down = 0;
-
 	loop {
 		if tick.wait().is_err() {
 			continue;
@@ -326,24 +325,25 @@ fn main() -> ! {
 
 		// read key matrix and update macro state with results
 		let now = timer.get_counter_low();
+		key_actions.clear();
 		input_keys.read_into(&mut key_actions, now);
 		for key in key_actions.iter() {
 			match key.action {
-				input::KeyboardActionType::Pressed => {
-					macro_state.press_key(key.key_id);
+				input::KeyState::Pressed => {
+					context.macro_state.press_key(key.key_id);
 				}
-				input::KeyboardActionType::Released => {
-					macro_state.release_key(key.key_id);
+				input::KeyState::Released => {
+					context.macro_state.release_key(key.key_id);
 				}
 			}
 		}
-		key_actions.clear();
 
 		// tick macros
 		let now = timer.get_counter_low();
 		let dt = now.wrapping_sub(prev_macro_tick) / 1000;
 		prev_macro_tick = now;
-		macro_state.tick(dt, &mut macro_events);
+		macro_events.clear();
+		context.macro_state.tick(dt, &mut macro_events);
 
 		// process each macro event and update hid states
 		for macro_event in macro_events.iter() {
@@ -355,21 +355,17 @@ fn main() -> ! {
 				ActionEvent::Keyboard(event) => match event {
 					KeyboardEvent::KeyDown(key) => {
 						hid_keyboard_state.key_down(map_key(key));
-						info!("Key down: {:?}", key);
-						last_key_down = now;
 					}
 					KeyboardEvent::KeyUp(key) => {
 						hid_keyboard_state.key_up(map_key(key));
-						info!("Key up: {:?}", key);
-						info!("Length: {:?}", (now - last_key_down) / 1000);
 					}
 				},
 				ActionEvent::Mouse(event) => match event {
-					MouseEvent::Move(x, y) => {
-						hid_mouse_state.move_cursor(*x, *y);
+					MouseEvent::Move(event) => {
+						hid_mouse_state.move_cursor(event.x, event.y);
 					}
-					MouseEvent::Scroll(x, y) => {
-						hid_mouse_state.scroll(*x, *y);
+					MouseEvent::Scroll(event) => {
+						hid_mouse_state.scroll(event.x, event.y);
 					}
 					MouseEvent::ButtonDown(button) => {
 						hid_mouse_state.button_down(map_button(button));
@@ -384,7 +380,6 @@ fn main() -> ! {
 				ActionEvent::Layer(_) => {}
 			}
 		}
-		macro_events.clear();
 
 		// convert hid states to reports and send
 		hid_keyboard
@@ -400,9 +395,18 @@ fn main() -> ! {
 			.write_report(&hid_consumer_state.report())
 			.ok();
 
-		// not sure if this is necessary
-		if (usb_dev.poll(&mut [&mut hid_keyboard])) && hid_keyboard.device().read_report().is_ok() {
-			info!("Report");
+		_ = usb_dev.poll(&mut [
+			&mut hid_keyboard,
+			// &mut hid_mouse,
+			// &mut hid_consumer,
+			context.serial_port,
+		]);
+
+		if context.serial_port.read_ready().unwrap_or(false) {
+			debug!("Serial message received");
+			if command_list.run_command(&mut context).is_none() {
+				error!("Failed to execute command");
+			};
 		}
 	}
 }

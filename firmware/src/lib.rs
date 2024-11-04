@@ -5,11 +5,15 @@ extern crate alloc;
 use alloc::vec::Vec;
 use profile::LayerTag;
 
+pub mod comm;
+pub mod command;
+pub mod device;
 pub mod hid_consumer_control;
 pub mod hid_keyboard;
 pub mod hid_mouse;
 pub mod input;
 pub mod profile;
+pub mod serial;
 pub mod state;
 pub mod storage;
 
@@ -66,4 +70,5 @@ impl TagList {
 }
 
 #[cfg(test)]
+mod tests {}
 mod tests {}

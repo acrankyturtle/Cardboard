@@ -6,12 +6,12 @@ namespace Cardboard.Device;
 public interface IDeviceManager
 {
 	Task<IReadOnlyCollection<DeviceInfo>> GetDevices();
-	Task Broadcast(ModuleMessage message, Predicate<DeviceInfo>? predicate);
+	Task Broadcast(DeviceCommand message, Predicate<DeviceInfo>? predicate = null);
 
 	Task<IEnumerable<KeyValuePair<DeviceInfo, Result<T>>>> BroadcastWithResponse<T>(
-		ModuleMessage message,
+		DeviceCommand message,
 		DeserializeFunc<T> deserializeResponse,
-		Predicate<DeviceInfo> predicate
+		Predicate<DeviceInfo>? predicate = null
 	);
 }
 
@@ -26,15 +26,15 @@ internal class DeviceManager(IEnumerable<IDeviceProvider> devices) : IDeviceMana
 			.ToList();
 	}
 
-	public async Task Broadcast(ModuleMessage message, Predicate<DeviceInfo>? predicate)
+	public async Task Broadcast(DeviceCommand message, Predicate<DeviceInfo>? predicate)
 	{
 		await Task.WhenAll(Providers.Select(async x => await x.Broadcast(message, predicate)));
 	}
 
 	public async Task<IEnumerable<KeyValuePair<DeviceInfo, Result<T>>>> BroadcastWithResponse<T>(
-		ModuleMessage message,
+		DeviceCommand message,
 		DeserializeFunc<T> deserializeResponse,
-		Predicate<DeviceInfo> predicate
+		Predicate<DeviceInfo>? predicate
 	)
 	{
 		return (
@@ -53,4 +53,20 @@ static partial class Services
 {
 	private static IServiceCollection AddDeviceManager(this IServiceCollection services) =>
 		services.AddSingleton<IDeviceManager, DeviceManager>();
+}
+
+public static class Extensions_IDeviceManager
+{
+	public static async Task<Result<T>> SendWithResponse<T>(
+		this IDeviceManager manager,
+		DeviceId deviceId,
+		DeviceCommand message,
+		DeserializeFunc<T> deserializeResponse
+	) =>
+		(await manager.BroadcastWithResponse(message, deserializeResponse, x => x.Id == deviceId))
+			.Single()
+			.Value;
+
+	public static async Task Send(this IDeviceManager manager, DeviceId deviceId, DeviceCommand message) =>
+		await manager.Broadcast(message, x => x.Id == deviceId);
 }

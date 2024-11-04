@@ -6,5 +6,7 @@ public interface ISerialPortProvider
 {
 	Task<IReadOnlyCollection<string>> GetPortNames();
 
-	Task<IReadOnlyDictionary<string, Result<ISerialPort>>> GetPorts(IEnumerable<string> ports);
+	Task<IEnumerable<(string Port, Result<ISerialPort, Exception> Result)>> GetPorts(
+		IEnumerable<string> ports
+	);
 }

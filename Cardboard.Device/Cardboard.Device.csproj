@@ -11,8 +11,8 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Cranky" Version="1.0.0" />
-      <PackageReference Include="Cranky.Events" Version="1.0.0" />
+      <PackageReference Include="ggbim.Cranky" Version="1.0.0" />
+      <PackageReference Include="ggbim.Cranky.Events" Version="1.0.0" />
       <PackageReference Include="JetBrains.Annotations" Version="2023.3.0" />
       <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.1" />
       <PackageReference Include="StronglyTypedId" Version="1.0.0-beta08" />

@@ -11,21 +11,31 @@ internal class SystemSerialPortProvider : ISerialPortProvider
 	public Task<IReadOnlyCollection<string>> GetPortNames() =>
 		Task.FromResult((IReadOnlyCollection<string>)SerialPort.GetPortNames());
 
-	public Task<IReadOnlyDictionary<string, Result<ISerialPort>>> GetPorts(IEnumerable<string> ports) =>
-		Task.FromResult<IReadOnlyDictionary<string, Result<ISerialPort>>>(
-			ports.ToDictionary(p => p, GetSerialPort)
+	public Task<IEnumerable<(string Port, Result<ISerialPort, Exception> Result)>> GetPorts(
+		IEnumerable<string> ports
+	) =>
+		Task.FromResult<IEnumerable<(string Port, Result<ISerialPort, Exception> Result)>>(
+			ports.Select(p => (p, GetSerialPort(p)))
 		);
 
-	private Result<ISerialPort> GetSerialPort(string portName) =>
-		_cache.TryGetValue(portName, out var cached) && cached.IsRunning
-			? Result.Success((ISerialPort)cached)
-			: SystemSerialPort
-				.Create(portName)
-				.Select(serialPort =>
-				{
-					_cache.Add(portName, serialPort);
-					return (ISerialPort)serialPort;
-				});
+	private Result<ISerialPort, Exception> GetSerialPort(string portName)
+	{
+		if (_cache.TryGetValue(portName, out var cached))
+		{
+			if (cached.IsOpen)
+				return Result.Success((ISerialPort)cached);
+
+			_cache.Remove(portName);
+		}
+
+		return SystemSerialPort
+			.Create(portName)
+			.Select(serialPort =>
+			{
+				_cache.Add(portName, serialPort);
+				return (ISerialPort)serialPort;
+			});
+	}
 }
 
 public static partial class Services

@@ -10,23 +10,13 @@ use crate::input::KeyId;
 use crate::TagList;
 
 #[derive(Serialize, Deserialize)]
-pub struct KeyboardProfile2 {
-	pub keys: Vec<DeviceKey2>,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct DeviceKey2 {
-	pub key_id: KeyId,
-}
-
-#[derive(Serialize, Deserialize)]
 pub struct KeyboardProfile {
 	pub keys: Vec<DeviceKey>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct DeviceKey {
-	pub key_id: KeyId,
+	pub id: KeyId,
 	pub layers: Vec<TaggedDeviceKeyLayer>,
 	pub default_layer: DeviceKeyLayer,
 }
@@ -274,8 +264,8 @@ pub enum KeyboardKey {
 pub enum MouseEvent {
 	ButtonDown(MouseButton),
 	ButtonUp(MouseButton),
-	Scroll(i32, i32),
-	Move(i32, i32),
+	Scroll(MouseScroll),
+	Move(MouseMove),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -285,6 +275,18 @@ pub enum MouseButton {
 	Middle,
 	Back,
 	Forward,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct MouseScroll {
+	pub x: i32,
+	pub y: i32,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct MouseMove {
+	pub x: i32,
+	pub y: i32,
 }
 
 #[derive(Serialize, Deserialize)]
