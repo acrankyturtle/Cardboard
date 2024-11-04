@@ -9,114 +9,73 @@ use usbd_serial::{embedded_io::Write, SerialPort};
 use uuid::Uuid;
 
 use crate::{
-	device::DeviceContext,
+	input::KeyId,
 	serial::{SerialReadBufferStore, SerialWriteBufferStore},
 };
 
 pub trait Command<RS: BorrowMut<[u8]>, WS: BorrowMut<[u8]>> {
+	fn get_cmd_info(&self) -> CommandInfo;
+
 	fn execute(
 		&self,
-		context: &mut DeviceContext<RS, WS>,
+		serial_port: &mut SerialPort<'_, UsbBus, RS, WS>,
 		response_buf: &mut [u8],
-	) -> Option<usize>;
-	fn get_cmd_info(&self) -> CommandInfo;
+	) -> Result<Option<usize>, ()>;
 }
 
-pub struct CommandList<const N: usize, RS = SerialReadBufferStore, WS = SerialWriteBufferStore>
-where
-	RS: BorrowMut<[u8]>,
-	WS: BorrowMut<[u8]>,
-{
-	pub commands: [Box<dyn Command<RS, WS>>; N],
+pub struct IdentifyCommand {
 }
 
-impl<const N: usize, RS: BorrowMut<[u8]>, WS: BorrowMut<[u8]>> CommandList<N, RS, WS> {
-	pub fn new(commands: [Box<dyn Command<RS, WS>>; N]) -> Self {
-		CommandList { commands }
-	}
-
-	pub fn run_command(&self, context: &mut DeviceContext<RS, WS>) -> Option<()> {
-		let index = match context.serial_port.read_u8() {
-			Some(index) => index as usize,
-			None => {
-				error!("Failed to read command index");
-				return None;
-			}
-		};
-
-		let cmd = match self.commands.get(index) {
-			Some(cmd) => cmd,
-			None => {
-				error!("Command index {} not found", index);
-				return None;
-			}
-		};
-
-		let mut response_buf = [0u8; 256];
-		match cmd.execute(context, &mut response_buf) {
-			Some(len) => match Self::send_response(&response_buf[..len], context.serial_port) {
-				Some(_) => {
-					info!(
-						"Command `{}` executed successfully",
-						cmd.get_cmd_info().name
-					);
-					Some(())
-				}
-				None => {
-					error!("Failed to send response");
-					None
-				}
-			},
-			None => {
-				error!("Failed to execute command `{}`", cmd.get_cmd_info().name);
-				None
-			}
+impl<RS: BorrowMut<[u8]>, WS: BorrowMut<[u8]>> Command<RS, WS> for IdentifyCommand {
+	fn get_cmd_info(&self) -> CommandInfo {
+		CommandInfo {
+			id: CommandId(Uuid::from_u128(0x9ef5b286_c44f_51f4_97be_ecbcfb00a80f)),
+			name: "Identify",
 		}
-
-		// match port.flush() {
-		// 	Ok(_) => Some(()),
-		// 	Err(err) => {
-		// 		error!("Failed to flush serial port {:?}", err);
-		// 		None
-		// 	}
 	}
 
-	fn send_response(buf: &[u8], port: &mut SerialPort<'_, UsbBus, RS, WS>) -> Option<()> {
-		let len = buf.len();
-		port.write_all(&len.to_le_bytes()).ok()?;
-		port.write_all(buf).ok()?;
-		Some(())
+	fn execute(
+		&self,
+		_: &mut SerialPort<'_, UsbBus, RS, WS>,
+		_: &mut [u8],
+	) -> Result<Option<usize>, ()> {
+		panic!("IdentifyCommand should not be executed directly");
 	}
 }
 
-#[derive(Serialize)]
-pub struct IdentifyCommand {}
+pub struct GetKeysCommand<'a> {
+	pub keys: &'a [KeyId],
+}
+
+impl<'a, RS: BorrowMut<[u8]>, WS: BorrowMut<[u8]>> Command<RS, WS> for GetKeysCommand<'a> {
+	fn get_cmd_info(&self) -> CommandInfo {
+		CommandInfo {
+			id: CommandId(Uuid::from_u128(0xcb920236_1f27_50c5_98c0_ff92367f330b)),
+			name: "GetKeys",
+		}
+	}
+
+	fn execute(
+		&self,
+		_: &mut SerialPort<'_, UsbBus, RS, WS>,
+		response_buf: &mut [u8],
+	) -> Result<Option<usize>, ()> {
+		let response = GetKeysResponse { keys: self.keys };
+		let res = serde_json_core::to_slice(&response, response_buf)
+			.map(|len| Some(len))
+			.map_err(|_| ());
+		res
+	}
+}
 
 #[derive(Serialize)]
 pub struct IdentifyResponse<'a> {
 	info: &'a DeviceInfo,
 }
 
-impl IdentifyCommand {
-	pub fn new() -> Self {
-		IdentifyCommand {}
-	}
-}
-
-impl<RS: BorrowMut<[u8]>, WS: BorrowMut<[u8]>> Command<RS, WS> for IdentifyCommand {
-	fn execute(&self, context: &mut DeviceContext<RS, WS>, response_buf: &mut [u8]) -> Option<usize> {
-		let response = IdentifyResponse {
-			info: &context.device_info,
-		};
-		serde_json_core::to_slice(&response, response_buf).ok()
-	}
-
-	fn get_cmd_info(&self) -> CommandInfo {
-		CommandInfo {
-			id: CommandId(Uuid::parse_str("9ef5b286-c44f-51f4-97be-ecbcfb00a80f").unwrap()),
-			name: "Identify",
-		}
-	}
+#[derive(Serialize)]
+pub struct GetKeysResponse<'a> {
+	keys: &'a [KeyId],
 }
 
 #[derive(Serialize, Deserialize)]
@@ -150,6 +109,87 @@ impl Display for DeviceId {
 
 #[derive(Serialize, Deserialize)]
 pub struct CommandId(Uuid);
+
+pub struct CommandList<'a, const N: usize, RS = SerialReadBufferStore, WS = SerialWriteBufferStore>
+where
+	RS: BorrowMut<[u8]>,
+	WS: BorrowMut<[u8]>,
+{
+	commands: [&'a dyn Command<RS, WS>; N],
+	device_info: &'a DeviceInfo,
+}
+
+impl<'a, const N: usize, RS: BorrowMut<[u8]>, WS: BorrowMut<[u8]>> CommandList<'a, N, RS, WS> {
+	pub fn new(commands: [&'a dyn Command<RS, WS>; N], device_info: &'a DeviceInfo) -> Self {
+		CommandList {
+			commands,
+			device_info,
+		}
+	}
+
+	pub fn run_command(&self, serial_port: &mut SerialPort<'_, UsbBus, RS, WS>) -> Result<(), ()> {
+		let index = match serial_port.read_u8() {
+			Some(index) => index as usize,
+			None => {
+				error!("Failed to read command index");
+				return Err(());
+			}
+		};
+
+		let mut response_buf = [0u8; 256];
+		let response_size = if index == 0 {
+			// identify command
+			let response = IdentifyResponse {
+				info: self.device_info,
+			};
+			Some(serde_json_core::to_slice(&response, &mut response_buf).map_err(|_| ())?)
+		} else {
+			// cmd
+			let cmd = match self.commands.get(index) {
+				Some(cmd) => cmd,
+				None => {
+					error!("Command index {} not found", index);
+					return Err(());
+				}
+			};
+
+			match cmd.execute(serial_port, &mut response_buf) {
+				Ok(Some(len)) => Some(len),
+				Ok(None) => None,
+				Err(_) => return Err(()),
+			}
+		};
+
+		if let Some(len) = response_size {
+			match Self::send_response(&response_buf[..len], serial_port) {
+				Ok(_) => {
+					info!(
+						"Command `{}` executed successfully",
+						self.commands[index].get_cmd_info().name
+					);
+					Ok(())
+				}
+				Err(_) => {
+					error!("Failed to send response");
+					Err(())
+				}
+			}
+		} else {
+			info!(
+				"Command `{}` executed successfully",
+				self.commands[index].get_cmd_info().name
+			);
+			Ok(())
+		}
+	}
+
+	fn send_response(buf: &[u8], port: &mut SerialPort<'_, UsbBus, RS, WS>) -> Result<(), ()> {
+		let len = buf.len();
+		port.write_all(&len.to_le_bytes()).map_err(|_| ())?;
+		port.write_all(buf).map_err(|_| ())?;
+		Ok(())
+	}
+}
 
 trait ReadExt {
 	fn read_u8(&mut self) -> Option<u8>;

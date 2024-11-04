@@ -17,7 +17,7 @@ use bsp::entry;
 use bsp::hal;
 use cardboard::command::{Command, CommandInfo, CommandList, DeviceId};
 use cardboard::command::{DeviceInfo, IdentifyCommand};
-use cardboard::device::{DeviceContext, DeviceSetup};
+use cardboard::device::DeviceSetup;
 use cardboard::hid_consumer_control;
 use cardboard::hid_consumer_control::map_cc;
 use cardboard::hid_keyboard;
@@ -75,19 +75,27 @@ const HEAP_SIZE: usize = 4096;
 const ROWS: usize = 5;
 const COLS: usize = 5;
 const SIZE: usize = ROWS * COLS;
+static INITIAL_DEVICE_INFO: DeviceInfo = DeviceInfo {
+	id: DeviceId::new(Uuid::nil()),
+	name: "Invalid",
+	manufacturer: "Invalid",
+	commands: Vec::new(),
+};
 
 #[entry]
 fn main() -> ! {
 	info!("Program start");
 	initialize_allocator();
 
-	let (device_info, command_list) = DeviceSetup {
+	let setup = DeviceSetup {
 		id: DeviceId::new(Uuid::from_u128(0xd6875554_8cb4_5a57_b81f_70e91a6b7841)),
 		name: "Cardboard",
 		manufacturer: "cranky",
-		commands: [Box::new(IdentifyCommand::new())],
-	}
-	.build();
+		commands: [&IdentifyCommand {}],
+	};
+
+	let device_info = setup.build_device_info();
+	let command_list = setup.build_command_list(&device_info);
 
 	let mut pac = pac::Peripherals::take().unwrap();
 	let core = pac::CorePeripherals::take().unwrap();
@@ -149,7 +157,7 @@ fn main() -> ! {
 
 	let mut hid_consumer_state = hid_consumer_control::HidKeyboardState::new();
 
-	let mut serial = SerialPort::new_with_store(
+	let mut serial_port = SerialPort::new_with_store(
 		&usb_bus,
 		SerialReadBufferStore::default(),
 		SerialWriteBufferStore::default(),
@@ -304,11 +312,7 @@ fn main() -> ! {
 	let (macro_profile, _) =
 		serde_json_core::from_str::<KeyboardProfile>(DEFAULT_PROFILE_JSON).unwrap();
 
-	let mut context = DeviceContext {
-		device_info,
-		macro_state: KeyboardState::from(&macro_profile),
-		serial_port: &mut serial,
-	};
+	let mut macro_state = KeyboardState::from(&macro_profile);
 
 	let mut key_actions = Vec::with_capacity(SIZE);
 	let mut macro_events = Vec::with_capacity(16);
@@ -330,10 +334,10 @@ fn main() -> ! {
 		for key in key_actions.iter() {
 			match key.action {
 				input::KeyState::Pressed => {
-					context.macro_state.press_key(key.key_id);
+					macro_state.press_key(key.key_id);
 				}
 				input::KeyState::Released => {
-					context.macro_state.release_key(key.key_id);
+					macro_state.release_key(key.key_id);
 				}
 			}
 		}
@@ -343,7 +347,7 @@ fn main() -> ! {
 		let dt = now.wrapping_sub(prev_macro_tick) / 1000;
 		prev_macro_tick = now;
 		macro_events.clear();
-		context.macro_state.tick(dt, &mut macro_events);
+		macro_state.tick(dt, &mut macro_events);
 
 		// process each macro event and update hid states
 		for macro_event in macro_events.iter() {
@@ -399,12 +403,12 @@ fn main() -> ! {
 			&mut hid_keyboard,
 			// &mut hid_mouse,
 			// &mut hid_consumer,
-			context.serial_port,
+			&mut serial_port,
 		]);
 
-		if context.serial_port.read_ready().unwrap_or(false) {
+		if serial_port.read_ready().unwrap_or(false) {
 			debug!("Serial message received");
-			if command_list.run_command(&mut context).is_none() {
+			if command_list.run_command(&mut serial_port).is_err() {
 				error!("Failed to execute command");
 			};
 		}

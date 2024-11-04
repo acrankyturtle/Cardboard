@@ -9,29 +9,24 @@ use crate::{
 	state::KeyboardState,
 };
 
-pub struct DeviceSetup<const C: usize, RS: BorrowMut<[u8]>, WS: BorrowMut<[u8]>> {
+pub struct DeviceSetup<'a, const C: usize, RS: BorrowMut<[u8]>, WS: BorrowMut<[u8]>> {
 	pub id: DeviceId,
 	pub name: &'static str,
 	pub manufacturer: &'static str,
-	pub commands: [Box<dyn Command<RS, WS>>; C],
+	pub commands: [&'a dyn Command<RS, WS>; C],
 }
 
-impl<const C: usize, RS: BorrowMut<[u8]>, WS: BorrowMut<[u8]>> DeviceSetup<C, RS, WS> {
-	pub fn build(self) -> (DeviceInfo, CommandList<C, RS, WS>) {
-		(
-			DeviceInfo {
-				id: self.id,
-				name: self.name,
-				manufacturer: self.manufacturer,
-				commands: self.commands.iter().map(|cmd| cmd.get_cmd_info()).collect(),
-			},
-			CommandList::new(self.commands),
-		)
+impl<'a, const C: usize, RS: BorrowMut<[u8]>, WS: BorrowMut<[u8]>> DeviceSetup<'a, C, RS, WS> {
+	pub fn build_device_info(&self) -> DeviceInfo {
+		DeviceInfo {
+			id: self.id,
+			name: self.name,
+			manufacturer: self.manufacturer,
+			commands: self.commands.iter().map(|cmd| cmd.get_cmd_info()).collect(),
+		}
 	}
-}
 
-pub struct DeviceContext<'a, RS: BorrowMut<[u8]>, WS: BorrowMut<[u8]>> {
-	pub device_info: DeviceInfo,
-	pub macro_state: KeyboardState<'a>,
-	pub serial_port: &'a mut SerialPort<'a, UsbBus, RS, WS>,
+	pub fn build_command_list(&self, device_info: &'a DeviceInfo) -> CommandList<'a, C, RS, WS> {
+		CommandList::new(self.commands, device_info)
+	}
 }
