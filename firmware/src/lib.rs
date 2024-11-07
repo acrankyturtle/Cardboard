@@ -3,6 +3,7 @@
 extern crate alloc;
 
 use alloc::vec::Vec;
+use defmt::Format;
 use profile::LayerTag;
 
 pub mod comm;
@@ -14,8 +15,14 @@ pub mod hid_mouse;
 pub mod input;
 pub mod profile;
 pub mod serial;
+pub mod serialize;
 pub mod state;
 pub mod storage;
+
+#[derive(Debug, Format)]
+pub enum Error {
+	Unknown,
+}
 
 pub struct TagList {
 	internal: Vec<LayerTag>,
@@ -58,12 +65,12 @@ impl TagList {
 		self.external = tags;
 	}
 
-	pub fn contains_all(&self, tags: &Vec<LayerTag>) -> bool {
+	pub fn contains_all(&self, tags: &[LayerTag]) -> bool {
 		tags.iter()
 			.all(|tag| self.internal.contains(tag) || self.external.contains(tag))
 	}
 
-	pub fn contains_any(&self, tags: &Vec<LayerTag>) -> bool {
+	pub fn contains_any(&self, tags: &[LayerTag]) -> bool {
 		tags.iter()
 			.any(|tag| self.internal.contains(tag) || self.external.contains(tag))
 	}

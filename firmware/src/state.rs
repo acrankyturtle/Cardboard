@@ -6,7 +6,6 @@ use crate::input::KeyId;
 use crate::profile::*;
 use crate::TagList;
 use alloc::vec::Vec;
-use defmt::info;
 
 pub struct KeyboardState<'a> {
 	keys: Vec<KeyState<'a>>,

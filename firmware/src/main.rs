@@ -15,7 +15,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 use bsp::entry;
 use bsp::hal;
-use cardboard::command::{Command, CommandInfo, CommandList, DeviceId};
+use cardboard::command::{Command, CommandInfo, CommandList, DeviceId, SetKeyboardProfileCommand};
 use cardboard::command::{DeviceInfo, IdentifyCommand};
 use cardboard::device::DeviceSetup;
 use cardboard::hid_consumer_control;
@@ -32,7 +32,7 @@ use cardboard::profile::KeyboardProfile;
 use cardboard::profile::{ActionEvent, MouseEvent};
 use cardboard::serial::{SerialReadBufferStore, SerialWriteBufferStore};
 use cardboard::state::KeyboardState;
-use cardboard::storage::ProfileStorage;
+use cardboard::storage::{FlashStorage, ProfileFlashStorage, ProfileStorage};
 use cortex_m::prelude::*;
 use defmt::*;
 use defmt_rtt as _;
@@ -47,6 +47,7 @@ use littlefs2::io::SeekFrom;
 use littlefs2::path::PathBuf;
 use littlefs2::{driver, ram_storage};
 use panic_probe as _;
+use rp2040_hal::rom_data::memcpy;
 use serde::Deserialize;
 use serde::Serialize;
 use usb_device::class_prelude::*;
@@ -65,8 +66,8 @@ use uuid::Uuid;
 // profile storage
 #[link_section = ".profile"]
 static mut PROFILE: MaybeUninit<[u8; PROFILE_SIZE]> = MaybeUninit::uninit();
-const PROFILE_OFFSET: usize = 0x10100000;
-const PROFILE_SIZE: usize = 1 << 20;
+// const PROFILE_OFFSET: usize = 0x10180100;
+const PROFILE_SIZE: usize = 10 * 1024;
 
 // device specific
 const HEAP_SIZE: usize = 4096;
@@ -75,27 +76,11 @@ const HEAP_SIZE: usize = 4096;
 const ROWS: usize = 5;
 const COLS: usize = 5;
 const SIZE: usize = ROWS * COLS;
-static INITIAL_DEVICE_INFO: DeviceInfo = DeviceInfo {
-	id: DeviceId::new(Uuid::nil()),
-	name: "Invalid",
-	manufacturer: "Invalid",
-	commands: Vec::new(),
-};
 
 #[entry]
 fn main() -> ! {
 	info!("Program start");
 	initialize_allocator();
-
-	let setup = DeviceSetup {
-		id: DeviceId::new(Uuid::from_u128(0xd6875554_8cb4_5a57_b81f_70e91a6b7841)),
-		name: "Cardboard",
-		manufacturer: "cranky",
-		commands: [&IdentifyCommand {}],
-	};
-
-	let device_info = setup.build_device_info();
-	let command_list = setup.build_command_list(&device_info);
 
 	let mut pac = pac::Peripherals::take().unwrap();
 	let core = pac::CorePeripherals::take().unwrap();
@@ -235,15 +220,6 @@ fn main() -> ! {
 		5,
 	);
 
-	//let ptr = unsafe { PROFILE.assume_init() };
-	//let mut storage = ProfileStorage::<PROFILE_SIZE>::new([0; PROFILE_SIZE], PROFILE_OFFSET);
-
-	// must format before first mount
-	//Filesystem::format(&mut storage).unwrap();
-	// must allocate state statically before use
-	//let mut alloc = Filesystem::allocate();
-	//let mut fs = Filesystem::mount(&mut alloc, &mut storage).unwrap();
-
 	// // may use common `OpenOptions`
 	// let mut buf = [0u8; 11];
 	// fs.open_file_with_options_and_then(
@@ -309,18 +285,56 @@ fn main() -> ! {
 	}
 	"#;
 
-	let (macro_profile, _) =
-		serde_json_core::from_str::<KeyboardProfile>(DEFAULT_PROFILE_JSON).unwrap();
+	// let ptr = unsafe { PROFILE.as_ptr() };
+	// let first = unsafe { (*ptr).as_ptr() };
+	// let mut buf = [0u8; 256];
+	// unsafe { memcpy(buf.as_mut_ptr(), first, 256) };
+
+	let profile_data = unsafe { PROFILE.assume_init_ref() };
+	let mut profile_storage = FlashStorage::<PROFILE_SIZE>::new(profile_data);
+	let macro_profile = profile_storage.read().unwrap_or_else(|_| {
+		warn!("No profile found");
+		KeyboardProfile::default()
+	});
+
+	// // must format before first mount
+	// Filesystem::format(&mut storage).unwrap();
+	// info!("Formatted");
+	// // must allocate state statically before use
+	// let mut alloc = Filesystem::allocate();
+	// info!("Allocated");
+	// let mut fs = Filesystem::mount(&mut alloc, &mut storage).unwrap();
+	// info!("Mounted");
+
+	// let (macro_profile, _) =
+	// 	serde_json_core::from_str::<KeyboardProfile>(DEFAULT_PROFILE_JSON).unwrap();
 
 	let mut macro_state = KeyboardState::from(&macro_profile);
 
 	let mut key_actions = Vec::with_capacity(SIZE);
 	let mut macro_events = Vec::with_capacity(16);
 
+	let setup = DeviceSetup {
+		id: DeviceId::new(Uuid::from_u128(0xd6875554_8cb4_5a57_b81f_70e91a6b7841)),
+		name: "Cardboard",
+		manufacturer: "cranky",
+		commands: [
+			&IdentifyCommand {},
+			&SetKeyboardProfileCommand {
+				storage: &mut profile_storage,
+			},
+		],
+	};
+
+	let device_info = setup.build_device_info();
+	let command_list = setup.build_command_list(&device_info);
+
 	let mut tick = timer.count_down();
 	tick.start(1.millis());
 
 	let mut prev_macro_tick = timer.get_counter_low();
+
+	info!("Ready");
 
 	loop {
 		if tick.wait().is_err() {
