@@ -6,6 +6,7 @@ extern crate usbd_human_interface_device;
 
 use core::fmt::Display;
 use core::mem::MaybeUninit;
+use core::task::Context;
 
 use crate::debug_assert;
 use alloc::borrow::ToOwned;
@@ -15,9 +16,10 @@ use alloc::vec;
 use alloc::vec::Vec;
 use bsp::entry;
 use bsp::hal;
-use cardboard::command::{Command, CommandInfo, CommandList, DeviceId, SetKeyboardProfileCommand};
-use cardboard::command::{DeviceInfo, IdentifyCommand};
-use cardboard::device::DeviceSetup;
+use cardboard::command::{
+	identify_cmd, set_profile_cmd, Command, CommandInfo, CommandList, DeviceId,
+};
+use cardboard::device::{Device, DeviceSetup};
 use cardboard::hid_consumer_control;
 use cardboard::hid_consumer_control::map_cc;
 use cardboard::hid_keyboard;
@@ -30,7 +32,6 @@ use cardboard::input::KeyMatrix;
 use cardboard::profile::KeyboardEvent;
 use cardboard::profile::KeyboardProfile;
 use cardboard::profile::{ActionEvent, MouseEvent};
-use cardboard::serial::{SerialReadBufferStore, SerialWriteBufferStore};
 use cardboard::state::KeyboardState;
 use cardboard::storage::{FlashStorage, ProfileFlashStorage, ProfileStorage};
 use cortex_m::prelude::*;
@@ -81,6 +82,14 @@ const SIZE: usize = ROWS * COLS;
 fn main() -> ! {
 	info!("Program start");
 	initialize_allocator();
+
+	let (device_info, cmds) = DeviceSetup {
+		id: DeviceId::new(Uuid::from_u128(0xd6875554_8cb4_5a57_b81f_70e91a6b7841)),
+		name: "Cardboard",
+		manufacturer: "cranky",
+		commands: [identify_cmd(), set_profile_cmd()],
+	}
+	.build();
 
 	let mut pac = pac::Peripherals::take().unwrap();
 	let core = pac::CorePeripherals::take().unwrap();
@@ -142,11 +151,7 @@ fn main() -> ! {
 
 	let mut hid_consumer_state = hid_consumer_control::HidKeyboardState::new();
 
-	let mut serial_port = SerialPort::new_with_store(
-		&usb_bus,
-		SerialReadBufferStore::default(),
-		SerialWriteBufferStore::default(),
-	);
+	let mut serial_port = SerialPort::new_with_store(&usb_bus, [0u8; 256], [0u8; 256]);
 
 	let serial_number: String = device_info.id.to_string();
 
@@ -290,12 +295,15 @@ fn main() -> ! {
 	// let mut buf = [0u8; 256];
 	// unsafe { memcpy(buf.as_mut_ptr(), first, 256) };
 
-	let profile_data = unsafe { PROFILE.assume_init_ref() };
-	let mut profile_storage = FlashStorage::<PROFILE_SIZE>::new(profile_data);
-	let macro_profile = profile_storage.read().unwrap_or_else(|_| {
-		warn!("No profile found");
-		KeyboardProfile::default()
-	});
+	let mut profile_storage =
+		FlashStorage::<PROFILE_SIZE>::new(unsafe { PROFILE.assume_init_ref() });
+
+	let macro_profile = serde_json_core::from_slice(profile_storage.get())
+		.map(|(profile, _)| profile)
+		.unwrap_or_else(|_| {
+			warn!("No profile found");
+			KeyboardProfile::default()
+		});
 
 	// // must format before first mount
 	// Filesystem::format(&mut storage).unwrap();
@@ -314,20 +322,11 @@ fn main() -> ! {
 	let mut key_actions = Vec::with_capacity(SIZE);
 	let mut macro_events = Vec::with_capacity(16);
 
-	let setup = DeviceSetup {
-		id: DeviceId::new(Uuid::from_u128(0xd6875554_8cb4_5a57_b81f_70e91a6b7841)),
-		name: "Cardboard",
-		manufacturer: "cranky",
-		commands: [
-			&IdentifyCommand {},
-			&SetKeyboardProfileCommand {
-				storage: &mut profile_storage,
-			},
-		],
+	let mut ctx = Device {
+		device_info,
+		serial_port,
+		profile_storage,
 	};
-
-	let device_info = setup.build_device_info();
-	let command_list = setup.build_command_list(&device_info);
 
 	let mut tick = timer.count_down();
 	tick.start(1.millis());
@@ -417,12 +416,12 @@ fn main() -> ! {
 			&mut hid_keyboard,
 			// &mut hid_mouse,
 			// &mut hid_consumer,
-			&mut serial_port,
+			&mut ctx.serial_port,
 		]);
 
-		if serial_port.read_ready().unwrap_or(false) {
+		if ctx.serial_port.read_ready().unwrap_or(false) {
 			debug!("Serial message received");
-			if command_list.run_command(&mut serial_port).is_err() {
+			if cmds.run_command(&mut ctx).is_err() {
 				error!("Failed to execute command");
 			};
 		}

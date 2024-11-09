@@ -9,7 +9,7 @@ use uuid::Uuid;
 use crate::input::KeyId;
 use crate::TagList;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct KeyboardProfile {
 	pub keys: Vec<DeviceKey>,
 }
