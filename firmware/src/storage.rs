@@ -1,14 +1,19 @@
 use defmt::error;
+use generic_array::{ArrayLength, GenericArray};
 use rp2040_hal::rom_data::{flash_range_erase, flash_range_program};
 
-use crate::{profile::KeyboardProfile, Error};
+use crate::{
+	context::{ContextProfileStorage, ContextSerialPort},
+	profile::KeyboardProfile,
+	Error,
+};
 
-pub struct FlashStorage<const SIZE: usize> {
-	buf: &'static [u8; SIZE],
+pub struct FlashStorage<Size: ArrayLength<u8>> {
+	buf: &'static GenericArray<u8, Size>,
 }
 
-impl<const SIZE: usize> FlashStorage<SIZE> {
-	pub fn new(buf: &'static [u8; SIZE]) -> Self {
+impl<SIZE: ArrayLength<u8>> FlashStorage<SIZE> {
+	pub fn new(buf: &'static GenericArray<u8, SIZE>) -> Self {
 		FlashStorage { buf }
 	}
 
@@ -16,22 +21,24 @@ impl<const SIZE: usize> FlashStorage<SIZE> {
 		self.buf.as_ptr()
 	}
 
-	pub fn get(&self) -> &[u8; SIZE] {
+	pub fn get(&self) -> &GenericArray<u8, SIZE> {
 		self.buf
 	}
 
 	pub fn write(&mut self, offset: usize, buf: &[u8]) -> Result<(), Error> {
-		if offset + buf.len() > SIZE {
+		const WRITE_SIZE: usize = 256;
+
+		if offset + buf.len() > SIZE::USIZE {
 			return Err(Error::Unknown);
 		}
 
 		let offset = self.get_ptr() as usize + offset;
-		if offset % 256 != 0 {
+		if offset % WRITE_SIZE != 0 {
 			error!("Invalid offset: {}", offset);
 			return Err(Error::Unknown);
 		}
 
-		if buf.len() % 256 != 0 {
+		if buf.len() % WRITE_SIZE != 0 {
 			error!("Invalid buffer size: {}", buf.len());
 			return Err(Error::Unknown);
 		}
@@ -44,17 +51,19 @@ impl<const SIZE: usize> FlashStorage<SIZE> {
 	}
 
 	pub fn erase(&mut self, offset: usize, len: usize) -> Result<(), Error> {
-		if offset + len > SIZE {
+		const ERASE_SIZE: usize = 4096;
+
+		if offset + len > SIZE::USIZE {
 			return Err(Error::Unknown);
 		}
 
 		let offset = self.get_ptr() as usize + offset;
-		if offset % 4096 != 0 {
+		if offset % ERASE_SIZE != 0 {
 			error!("Invalid offset: {}", offset);
 			return Err(Error::Unknown);
 		}
 
-		if len % 4096 != 0 {
+		if len % ERASE_SIZE != 0 {
 			error!("Invalid length: {}", len);
 			return Err(Error::Unknown);
 		}
@@ -128,11 +137,11 @@ pub trait ProfileStorage {
 	fn write(&mut self, profile: &KeyboardProfile) -> Result<(), Error>;
 }
 
-pub struct ProfileFlashStorage<const SIZE: usize> {
+pub struct ProfileFlashStorage<SIZE: ArrayLength<u8>> {
 	pub storage: FlashStorage<SIZE>,
 }
 
-impl<const SIZE: usize> ProfileStorage for ProfileFlashStorage<SIZE> {
+impl<SIZE: ArrayLength<u8>> ProfileStorage for ProfileFlashStorage<SIZE> {
 	fn read(&self) -> Result<KeyboardProfile, Error> {
 		serde_json_core::from_slice::<KeyboardProfile>(self.storage.get())
 			.map(|(profile, _)| profile)
@@ -140,10 +149,10 @@ impl<const SIZE: usize> ProfileStorage for ProfileFlashStorage<SIZE> {
 	}
 
 	fn write(&mut self, profile: &KeyboardProfile) -> Result<(), Error> {
-		let mut buf = [0; SIZE];
+		let mut buf = GenericArray::<u8, SIZE>::default();
 		let size = serde_json_core::to_slice(profile, &mut buf).map_err(|_| Error::Unknown)?;
 
-		if size > SIZE {
+		if size > SIZE::USIZE {
 			error!("Profile size too large: {}", size);
 			return Err(Error::Unknown);
 		}

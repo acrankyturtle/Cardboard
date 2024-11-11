@@ -6,6 +6,40 @@ use crate::input::KeyId;
 use crate::profile::*;
 use crate::TagList;
 use alloc::vec::Vec;
+use ouroboros::self_referencing;
+
+#[self_referencing]
+pub struct CurrentProfile {
+	pub profile: KeyboardProfile,
+
+	#[borrows(profile)]
+	#[covariant]
+	pub state: KeyboardState<'this>,
+}
+
+impl CurrentProfile {
+	pub fn from(profile: KeyboardProfile) -> Self {
+		CurrentProfileBuilder {
+			profile,
+			state_builder: |profile| KeyboardState::from(profile),
+		}
+		.build()
+	}
+}
+
+impl CurrentProfile {
+	pub fn press_key(&mut self, key_id: KeyId) {
+		self.with_state_mut(|state| state.press_key(key_id));
+	}
+
+	pub fn release_key(&mut self, key_id: KeyId) {
+		self.with_state_mut(|state| state.release_key(key_id));
+	}
+
+	pub fn tick(&mut self, elapsed_ms: u32, events: &mut Vec<ActionEvent>) {
+		self.with_state_mut(|state| state.tick(elapsed_ms, events));
+	}
+}
 
 pub struct KeyboardState<'a> {
 	keys: Vec<KeyState<'a>>,
@@ -15,23 +49,27 @@ pub struct KeyboardState<'a> {
 
 impl<'a> KeyboardState<'a> {
 	pub fn from(profile: &'a KeyboardProfile) -> Self {
-		KeyboardState {
+		let mut state = KeyboardState {
 			keys: KeyboardState::map_keys_from_profile(profile),
 			tags: TagList::new(),
 			macros: Vec::new(),
-		}
+		};
+
+		state.update_layers();
+
+		state
 	}
 
-	pub fn update_key_profile(&mut self, profile: &'a KeyboardProfile) {
-		self.keys = KeyboardState::map_keys_from_profile(profile);
+	// pub fn update_key_profile(&mut self, profile: &'a KeyboardProfile) {
+	// 	self.keys = KeyboardState::map_keys_from_profile(profile);
 
-		// release all
-		for macro_ in self.macros.iter_mut() {
-			macro_.stop();
-		}
+	// 	// release all
+	// 	for macro_ in self.macros.iter_mut() {
+	// 		macro_.stop();
+	// 	}
 
-		self.update_layers();
-	}
+	// 	self.update_layers();
+	// }
 
 	pub fn press_key(&mut self, key_id: KeyId) {
 		if let Some(key) = self.get_key(key_id) {
@@ -53,26 +91,6 @@ impl<'a> KeyboardState<'a> {
 		}
 	}
 
-	// 	pub fn press_key(&mut self, key_id: KeyId) {
-	// 	if let Some(key) = self.get_key(key_id) {
-	// 		let macros: Vec<MacroState<'a>> = key
-	// 			.current_layer
-	// 			.macros
-	// 			.iter()
-	// 			.map(|macro_| MacroState::from(macro_, key))
-	// 			.collect();
-
-	// 		self.cut_channels(
-	// 			macros
-	// 				.iter()
-	// 				.flat_map(|m| m.macro_.cut_channels.iter().copied())
-	// 				.collect(),
-	// 		);
-
-	// 		self.macros.extend(macros);
-	// 	}
-	// }
-
 	fn get_key(&self, key_id: KeyId) -> Option<&KeyState<'a>> {
 		self.keys.iter().find(|ks| ks.key.id == key_id)
 	}
@@ -85,12 +103,18 @@ impl<'a> KeyboardState<'a> {
 		}
 	}
 
-	pub fn tick(&mut self, elapsed_ms: u32, events: &mut Vec<&'a ActionEvent>) {
+	pub fn tick(&mut self, elapsed_ms: u32, events: &mut Vec<ActionEvent>) {
+		let mut event_refs = Vec::new();
+
 		for macro_ in self.macros.iter_mut() {
-			macro_.tick(elapsed_ms, events);
+			macro_.tick(elapsed_ms, &mut event_refs);
 		}
 
 		self.macros.retain(|macro_| !macro_.is_finished());
+
+		for event in event_refs {
+			events.push(event.clone());
+		}
 	}
 
 	pub fn add_internal_tags(&mut self, tags: Vec<LayerTag>) {
@@ -143,7 +167,7 @@ impl<'a> KeyboardState<'a> {
 	}
 }
 
-pub struct KeyState<'a> {
+struct KeyState<'a> {
 	key: &'a DeviceKey,
 	current_layer: &'a DeviceKeyLayer,
 }
@@ -151,13 +175,13 @@ pub struct KeyState<'a> {
 impl<'a> KeyState<'a> {
 	pub fn from(key: &'a DeviceKey) -> Self {
 		KeyState {
-			key: key,
+			key,
 			current_layer: &key.default_layer,
 		}
 	}
 }
 
-pub struct MacroState<'a> {
+struct MacroState<'a> {
 	macro_: &'a Macro,
 	current_sequence: CurrentSequence<'a>,
 	trigger: TriggerState,
@@ -241,12 +265,12 @@ impl<'a> MacroState<'a> {
 	}
 }
 
-pub struct MacroSource {
+struct MacroSource {
 	key: KeyId,
 	layer: LayerId,
 }
 
-pub struct SequenceState<'a> {
+struct SequenceState<'a> {
 	pending: Vec<&'a Action>,
 	elapsed_ms: u32,
 }
@@ -280,7 +304,7 @@ impl<'a> SequenceState<'a> {
 	}
 }
 
-pub enum CurrentSequence<'a> {
+enum CurrentSequence<'a> {
 	Start(SequenceState<'a>),
 	Loop(SequenceState<'a>),
 	End(SequenceState<'a>),
@@ -299,7 +323,7 @@ impl<'a> fmt::Debug for CurrentSequence<'a> {
 }
 
 #[derive(Debug)]
-pub enum TriggerState {
+enum TriggerState {
 	Running,
 	Stopping,
 }
@@ -479,7 +503,7 @@ mod tests {
 				},
 				Action {
 					predelay_ms: 200,
-					action_event: ActionEvent::Mouse(MouseEvent::Move(0, 0)),
+					action_event: ActionEvent::Mouse(MouseEvent::Move((0, 0))),
 				},
 				Action {
 					predelay_ms: 100,
@@ -500,7 +524,7 @@ mod tests {
 		));
 		assert!(matches!(
 			events[1],
-			ActionEvent::Mouse(MouseEvent::Move(0, 0))
+			ActionEvent::Mouse(MouseEvent::Move((0, 0)))
 		));
 		assert!(matches!(
 			events[2],

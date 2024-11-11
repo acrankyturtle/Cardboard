@@ -1,7 +1,25 @@
-use alloc::vec::Vec;
-use usbd_human_interface_device::page::Keyboard;
+use alloc::{collections::VecDeque, vec::Vec};
+use bitflags::bitflags;
+use usbd_human_interface_device::{
+	device::{consumer::MultipleConsumerReport, mouse::WheelMouseReport},
+	page::{Consumer, Keyboard},
+};
 
-use crate::profile::KeyboardKey;
+use crate::profile::{ConsumerControlEvent, KeyboardKey, MouseButton};
+
+pub struct HidState {
+	pub keyboard: HidKeyboardState,
+	pub mouse: HidMouseState,
+	pub consumer: HidCCState,
+}
+
+impl HidState {
+	pub fn reset(&mut self) {
+		self.keyboard.clear();
+		self.mouse.clear();
+		self.consumer.clear();
+	}
+}
 
 pub struct HidKeyboardState {
 	keys_down: Vec<Keyboard>,
@@ -161,5 +179,145 @@ pub fn map_key(key: &KeyboardKey) -> Keyboard {
 		KeyboardKey::RIGHT_SHIFT => Keyboard::RightShift,
 		KeyboardKey::RIGHT_ALT => Keyboard::RightAlt,
 		KeyboardKey::RIGHT_GUI => Keyboard::RightGUI,
+	}
+}
+
+pub struct HidMouseState {
+	report: WheelMouseReport,
+	cursor: (i32, i32),
+	scroll: (i32, i32),
+}
+
+impl HidMouseState {
+	pub fn new() -> Self {
+		HidMouseState {
+			report: WheelMouseReport::default(),
+			cursor: (0, 0),
+			scroll: (0, 0),
+		}
+	}
+
+	pub fn button_down(&mut self, button: HidMouseButtons) {
+		self.report.buttons |= button.bits();
+	}
+
+	pub fn button_up(&mut self, button: HidMouseButtons) {
+		self.report.buttons &= !button.bits();
+	}
+
+	pub fn move_cursor(&mut self, x: i32, y: i32) {
+		self.cursor.0 += x;
+		self.cursor.1 += y;
+	}
+
+	pub fn scroll(&mut self, x: i32, y: i32) {
+		self.scroll.0 += x;
+		self.scroll.1 += y;
+	}
+
+	pub fn clear(&mut self) {
+		self.report.buttons = HidMouseButtons::empty().bits();
+	}
+
+	pub fn report(&mut self) -> &WheelMouseReport {
+		let cursor = (
+			self.cursor.0.clamp(-127, 127),
+			self.cursor.1.clamp(-127, 127),
+		);
+		self.cursor.0 -= cursor.0;
+		self.cursor.1 -= cursor.1;
+
+		let scroll = (
+			self.scroll.0.clamp(-127, 127),
+			self.scroll.1.clamp(-127, 127),
+		);
+		self.scroll.0 -= scroll.0;
+		self.scroll.1 -= scroll.1;
+
+		self.report.x = cursor.0 as i8;
+		self.report.y = cursor.1 as i8;
+		self.report.horizontal_wheel = scroll.0 as i8;
+		self.report.vertical_wheel = scroll.1 as i8;
+
+		&self.report
+	}
+}
+
+impl Default for HidMouseState {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
+pub fn map_button(key: &MouseButton) -> HidMouseButtons {
+	match key {
+		MouseButton::Left => HidMouseButtons::LEFT,
+		MouseButton::Right => HidMouseButtons::RIGHT,
+		MouseButton::Middle => HidMouseButtons::MIDDLE,
+		MouseButton::Back => HidMouseButtons::BACK,
+		MouseButton::Forward => HidMouseButtons::FORWARD,
+	}
+}
+
+bitflags! {
+	pub struct HidMouseButtons: u8 {
+		const LEFT = 0b00000001;
+		const RIGHT = 0b00000010;
+		const MIDDLE = 0b00000100;
+		const BACK = 0b00001000;
+		const FORWARD = 0b00010000;
+	}
+}
+
+pub struct HidCCState {
+	keys_down: VecDeque<Consumer>,
+}
+
+impl HidCCState {
+	pub fn new() -> Self {
+		HidCCState {
+			keys_down: VecDeque::new(),
+		}
+	}
+
+	pub fn key_down(&mut self, key: Consumer) {
+		self.keys_down.push_back(key);
+	}
+
+	pub fn clear(&mut self) {
+		self.keys_down.clear();
+	}
+
+	pub fn report(&mut self) -> MultipleConsumerReport {
+		let mut codes = [Consumer::Unassigned; 4];
+		let num = self.keys_down.len().min(codes.len());
+
+		for i in 0..num {
+			codes[i] = self.keys_down.pop_front().unwrap();
+		}
+
+		MultipleConsumerReport { codes }
+	}
+}
+
+impl Default for HidCCState {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
+pub fn map_cc(key: &ConsumerControlEvent) -> Consumer {
+	match key {
+		ConsumerControlEvent::RECORD => Consumer::Record,
+		ConsumerControlEvent::FAST_FORWARD => Consumer::FastForward,
+		ConsumerControlEvent::REWIND => Consumer::Rewind,
+		ConsumerControlEvent::SCAN_NEXT_TRACK => Consumer::ScanNextTrack,
+		ConsumerControlEvent::SCAN_PREVIOUS_TRACK => Consumer::ScanPreviousTrack,
+		ConsumerControlEvent::STOP => Consumer::Stop,
+		ConsumerControlEvent::EJECT => Consumer::Eject,
+		ConsumerControlEvent::PLAY_PAUSE => Consumer::PlayPause,
+		ConsumerControlEvent::MUTE => Consumer::Mute,
+		ConsumerControlEvent::VOLUME_DECREMENT => Consumer::VolumeDecrement,
+		ConsumerControlEvent::VOLUME_INCREMENT => Consumer::VolumeIncrement,
 	}
 }

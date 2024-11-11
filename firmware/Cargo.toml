@@ -35,6 +35,7 @@ serde = { version = "1.0.210", default-features = false, features = ["alloc"] }
 serde-json-core = { version = "0.6.0", features = ["defmt"] }
 uuid = { version = "1.10.0", default-features = false, features = ["serde"] }
 typenum = "1.17.0"
+ouroboros = { version = "0.18.4", default-features = false }
 
 # necessary for getting delog (littlefs2 dependency) to build
 [patch.crates-io]

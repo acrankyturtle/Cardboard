@@ -5,7 +5,9 @@ extern crate alloc;
 extern crate usbd_human_interface_device;
 
 use core::fmt::Display;
+use core::iter::Product;
 use core::mem::MaybeUninit;
+use core::ops::{Add, Mul};
 use core::task::Context;
 
 use crate::debug_assert;
@@ -17,22 +19,20 @@ use alloc::vec::Vec;
 use bsp::entry;
 use bsp::hal;
 use cardboard::command::{
-	identify_cmd, set_profile_cmd, Command, CommandInfo, CommandList, DeviceId,
+	Command, CommandInfo, CommandList, DeviceId, IdentifyCommand, SetProfileCommand,
 };
-use cardboard::device::{Device, DeviceSetup};
-use cardboard::hid_consumer_control;
-use cardboard::hid_consumer_control::map_cc;
-use cardboard::hid_keyboard;
-use cardboard::hid_keyboard::map_key;
-use cardboard::hid_mouse;
-use cardboard::hid_mouse::map_button;
+use cardboard::context::{ContextCurrentProfile, ContextHidState, ContextSerialPort, Device};
+use cardboard::device::DeviceSetup;
+use cardboard::hid::{
+	map_button, map_cc, map_key, HidCCState, HidKeyboardState, HidMouseState, HidState,
+};
 use cardboard::input;
 use cardboard::input::KeyId;
 use cardboard::input::KeyMatrix;
 use cardboard::profile::KeyboardEvent;
 use cardboard::profile::KeyboardProfile;
 use cardboard::profile::{ActionEvent, MouseEvent};
-use cardboard::state::KeyboardState;
+use cardboard::state::{CurrentProfile, KeyboardState};
 use cardboard::storage::{FlashStorage, ProfileFlashStorage, ProfileStorage};
 use cortex_m::prelude::*;
 use defmt::*;
@@ -40,6 +40,7 @@ use defmt_rtt as _;
 use embedded_hal::digital::OutputPin;
 use fugit::ExtU32;
 use generic_array::typenum::Unsigned;
+use generic_array::{ArrayLength, GenericArray};
 use hal::pac;
 use littlefs2::driver::Storage;
 use littlefs2::fs::Filesystem;
@@ -51,6 +52,7 @@ use panic_probe as _;
 use rp2040_hal::rom_data::memcpy;
 use serde::Deserialize;
 use serde::Serialize;
+use typenum::{U10, U1024};
 use usb_device::class_prelude::*;
 use usb_device::prelude::*;
 use usbd_human_interface_device::prelude::*;
@@ -66,9 +68,8 @@ use uuid::Uuid;
 
 // profile storage
 #[link_section = ".profile"]
-static mut PROFILE: MaybeUninit<[u8; PROFILE_SIZE]> = MaybeUninit::uninit();
-// const PROFILE_OFFSET: usize = 0x10180100;
-const PROFILE_SIZE: usize = 10 * 1024;
+static mut PROFILE: MaybeUninit<GenericArray<u8, PROFILE_SIZE>> = MaybeUninit::uninit();
+type PROFILE_SIZE = <U1024 as Mul<U10>>::Output;
 
 // device specific
 const HEAP_SIZE: usize = 4096;
@@ -87,7 +88,7 @@ fn main() -> ! {
 		id: DeviceId::new(Uuid::from_u128(0xd6875554_8cb4_5a57_b81f_70e91a6b7841)),
 		name: "Cardboard",
 		manufacturer: "cranky",
-		commands: [identify_cmd(), set_profile_cmd()],
+		commands: [IdentifyCommand::instance(), SetProfileCommand::instance()],
 	}
 	.build();
 
@@ -137,21 +138,21 @@ fn main() -> ! {
 		)
 		.build(&usb_bus);
 
-	let mut hid_keyboard_state = hid_keyboard::HidKeyboardState::new();
-
 	let mut hid_mouse = UsbHidClassBuilder::new()
 		.add_device(usbd_human_interface_device::device::mouse::WheelMouseConfig::default())
 		.build(&usb_bus);
-
-	let mut hid_mouse_state = hid_mouse::HidMouseState::new();
 
 	let mut hid_consumer = UsbHidClassBuilder::new()
 		.add_device(usbd_human_interface_device::device::consumer::ConsumerControlConfig::default())
 		.build(&usb_bus);
 
-	let mut hid_consumer_state = hid_consumer_control::HidKeyboardState::new();
+	let hid_state = HidState {
+		keyboard: HidKeyboardState::new(),
+		mouse: HidMouseState::new(),
+		consumer: HidCCState::new(),
+	};
 
-	let mut serial_port = SerialPort::new_with_store(&usb_bus, [0u8; 256], [0u8; 256]);
+	let serial_port = SerialPort::new_with_store(&usb_bus, [0u8; 256], [0u8; 256]);
 
 	let serial_number: String = device_info.id.to_string();
 
@@ -295,8 +296,7 @@ fn main() -> ! {
 	// let mut buf = [0u8; 256];
 	// unsafe { memcpy(buf.as_mut_ptr(), first, 256) };
 
-	let mut profile_storage =
-		FlashStorage::<PROFILE_SIZE>::new(unsafe { PROFILE.assume_init_ref() });
+	let profile_storage = FlashStorage::<PROFILE_SIZE>::new(unsafe { PROFILE.assume_init_ref() });
 
 	let macro_profile = serde_json_core::from_slice(profile_storage.get())
 		.map(|(profile, _)| profile)
@@ -317,15 +317,17 @@ fn main() -> ! {
 	// let (macro_profile, _) =
 	// 	serde_json_core::from_str::<KeyboardProfile>(DEFAULT_PROFILE_JSON).unwrap();
 
-	let mut macro_state = KeyboardState::from(&macro_profile);
+	let current_profile = CurrentProfile::from(macro_profile);
 
 	let mut key_actions = Vec::with_capacity(SIZE);
 	let mut macro_events = Vec::with_capacity(16);
 
 	let mut ctx = Device {
 		device_info,
-		serial_port,
 		profile_storage,
+		current_profile,
+		serial_port,
+		hid: hid_state,
 	};
 
 	let mut tick = timer.count_down();
@@ -347,10 +349,10 @@ fn main() -> ! {
 		for key in key_actions.iter() {
 			match key.action {
 				input::KeyState::Pressed => {
-					macro_state.press_key(key.key_id);
+					ctx.get_current_profile().press_key(key.key_id);
 				}
 				input::KeyState::Released => {
-					macro_state.release_key(key.key_id);
+					ctx.get_current_profile().release_key(key.key_id);
 				}
 			}
 		}
@@ -360,7 +362,7 @@ fn main() -> ! {
 		let dt = now.wrapping_sub(prev_macro_tick) / 1000;
 		prev_macro_tick = now;
 		macro_events.clear();
-		macro_state.tick(dt, &mut macro_events);
+		ctx.get_current_profile().tick(dt, &mut macro_events);
 
 		// process each macro event and update hid states
 		for macro_event in macro_events.iter() {
@@ -371,28 +373,28 @@ fn main() -> ! {
 				ActionEvent::None => {}
 				ActionEvent::Keyboard(event) => match event {
 					KeyboardEvent::KeyDown(key) => {
-						hid_keyboard_state.key_down(map_key(key));
+						ctx.get_hid_state().keyboard.key_down(map_key(key));
 					}
 					KeyboardEvent::KeyUp(key) => {
-						hid_keyboard_state.key_up(map_key(key));
+						ctx.get_hid_state().keyboard.key_up(map_key(key));
 					}
 				},
 				ActionEvent::Mouse(event) => match event {
 					MouseEvent::Move(event) => {
-						hid_mouse_state.move_cursor(event.x, event.y);
+						ctx.get_hid_state().mouse.move_cursor(event.x, event.y);
 					}
 					MouseEvent::Scroll(event) => {
-						hid_mouse_state.scroll(event.x, event.y);
+						ctx.get_hid_state().mouse.scroll(event.x, event.y);
 					}
 					MouseEvent::ButtonDown(button) => {
-						hid_mouse_state.button_down(map_button(button));
+						ctx.get_hid_state().mouse.button_down(map_button(button));
 					}
 					MouseEvent::ButtonUp(button) => {
-						hid_mouse_state.button_up(map_button(button));
+						ctx.get_hid_state().mouse.button_up(map_button(button));
 					}
 				},
 				ActionEvent::ConsumerControl(event) => {
-					hid_consumer_state.key_down(map_cc(event));
+					ctx.get_hid_state().consumer.key_down(map_cc(event));
 				}
 				ActionEvent::Layer(_) => {}
 			}
@@ -401,25 +403,25 @@ fn main() -> ! {
 		// convert hid states to reports and send
 		hid_keyboard
 			.device()
-			.write_report(hid_keyboard_state.keys().iter().copied())
+			.write_report(ctx.get_hid_state().keyboard.keys().iter().copied())
 			.ok();
 		hid_mouse
 			.device()
-			.write_report(hid_mouse_state.report())
+			.write_report(ctx.get_hid_state().mouse.report())
 			.ok();
 		hid_consumer
 			.device()
-			.write_report(&hid_consumer_state.report())
+			.write_report(&ctx.get_hid_state().consumer.report())
 			.ok();
 
 		_ = usb_dev.poll(&mut [
 			&mut hid_keyboard,
-			// &mut hid_mouse,
-			// &mut hid_consumer,
-			&mut ctx.serial_port,
+			&mut hid_mouse,
+			&mut hid_consumer,
+			ctx.get_serial_port(),
 		]);
 
-		if ctx.serial_port.read_ready().unwrap_or(false) {
+		if ctx.get_serial_port().read_ready().unwrap_or(false) {
 			debug!("Serial message received");
 			if cmds.run_command(&mut ctx).is_err() {
 				error!("Failed to execute command");
