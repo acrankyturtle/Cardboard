@@ -1,24 +1,29 @@
 using System.IO.Ports;
 using Cranky;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Cardboard.Serial;
 
-internal class SystemSerialPortProvider : ISerialPortProvider
+internal class SystemSerialPortProvider(ILogger<SystemSerialPortProvider> logger) : ISerialPortProvider
 {
 	private readonly Dictionary<string, SystemSerialPort> _cache = new();
 
-	public Task<IReadOnlyCollection<string>> GetPortNames() =>
+	public Task<IReadOnlyCollection<string>> GetPortNames(CancellationToken cancellationToken) =>
 		Task.FromResult((IReadOnlyCollection<string>)SerialPort.GetPortNames());
 
-	public Task<IEnumerable<(string Port, Result<ISerialPort, Exception> Result)>> GetPorts(
-		IEnumerable<string> ports
+	public async Task<IEnumerable<(string Port, Result<ISerialPort, Exception> Result)>> GetPorts(
+		IEnumerable<string> ports,
+		CancellationToken cancellationToken
 	) =>
-		Task.FromResult<IEnumerable<(string Port, Result<ISerialPort, Exception> Result)>>(
-			ports.Select(p => (p, GetSerialPort(p)))
+		await Task.WhenAll<(string Port, Result<ISerialPort, Exception> Result)>(
+			ports.Select(async p => (p, await GetSerialPort(p, cancellationToken)))
 		);
 
-	private Result<ISerialPort, Exception> GetSerialPort(string portName)
+	private async Task<Result<ISerialPort, Exception>> GetSerialPort(
+		string portName,
+		CancellationToken cancellationToken = default
+	)
 	{
 		if (_cache.TryGetValue(portName, out var cached))
 		{
@@ -28,13 +33,11 @@ internal class SystemSerialPortProvider : ISerialPortProvider
 			_cache.Remove(portName);
 		}
 
-		return SystemSerialPort
-			.Create(portName)
-			.Select(serialPort =>
-			{
-				_cache.Add(portName, serialPort);
-				return (ISerialPort)serialPort;
-			});
+		return (await SystemSerialPort.Create(portName, cancellationToken)).Select(serialPort =>
+		{
+			_cache.Add(portName, serialPort);
+			return (ISerialPort)serialPort;
+		});
 	}
 }
 

@@ -19,7 +19,7 @@ use alloc::vec::Vec;
 use bsp::entry;
 use bsp::hal;
 use cardboard::command::{
-	Command, CommandInfo, CommandList, DeviceId, IdentifyCommand, SetProfileCommand,
+	Command, CommandInfo, CommandList, DeviceId, IdentifyCommand, Reader, SetProfileCommand,
 };
 use cardboard::context::{ContextCurrentProfile, ContextHidState, ContextSerialPort, Device};
 use cardboard::device::DeviceSetup;
@@ -423,8 +423,15 @@ fn main() -> ! {
 
 		if ctx.get_serial_port().read_ready().unwrap_or(false) {
 			debug!("Serial message received");
-			if cmds.run_command(&mut ctx).is_err() {
-				error!("Failed to execute command");
+			match cmds.run_command(&mut ctx) {
+				Ok(_) => info!("Executed command successully."),
+				Err(e) => {
+					// clear read buffer
+					while ctx.get_serial_port().read_ready().is_ok_and(|x| x) {
+						let _ = ctx.get_serial_port().read_u8();
+					}
+					error!("Error executing command: {:?}", e)
+				}
 			};
 		}
 	}

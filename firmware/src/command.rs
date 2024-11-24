@@ -1,11 +1,11 @@
 use core::{borrow::BorrowMut, fmt::Display};
 
-use alloc::vec::Vec;
-use defmt::error;
+use alloc::{string::ToString, vec::Vec};
+use defmt::{debug, error, info, Format};
 use rp2040_hal::usb::UsbBus;
 use serde::{Deserialize, Serialize};
 use usbd_serial::{embedded_io::Write, SerialPort};
-use uuid::Uuid;
+use uuid::{uuid, Uuid};
 
 use crate::{
 	context::{
@@ -35,7 +35,7 @@ where
 	Context: ContextDeviceInfo + ContextSerialPort<'a>,
 {
 	const INFO: CommandInfo = CommandInfo {
-		id: CommandId(Uuid::from_u128(0xFFFFFFFF_FFFF_FFFF_FFFF_FFFFFFFFFFFF)),
+		id: CommandId(uuid!("ffffffff-ffff-ffff-ffff-ffffffffffff")),
 		name: "Identify",
 	};
 
@@ -46,7 +46,7 @@ where
 		let mut buf = [0u8; 256]; // todo: choose size
 
 		if let Ok(len) = serde_json_core::to_slice(&response, &mut buf) {
-			let len = len as u32;
+			let len = len as u16;
 			ctx.get_serial_port()
 				.write_all(&len.to_le_bytes())
 				.map_err(|_| Error::Unknown)?;
@@ -68,24 +68,35 @@ where
 		ContextProfileStorage + ContextCurrentProfile + ContextSerialPort<'a> + ContextHidState,
 {
 	const INFO: CommandInfo = CommandInfo {
-		id: CommandId(Uuid::from_u128(0x45963fd8_73e2_50a0_ba69_69c3333dd8af)),
+		id: CommandId(uuid!("45963fd8-73e2-50a0-ba69-69c3333dd8af")),
 		name: "Set Keyboard Profile",
 	};
 
 	fn execute(ctx: &mut Context) -> Result<(), Error> {
-		let len = ctx.get_serial_port().read_u16().ok_or(Error::Unknown)? as usize;
+		let len = ctx.get_serial_port().read_u16().ok_or_else(|| {
+			error!("Failed to read profile length");
+			Error::Unknown
+		})? as usize;
+
+		debug!("Profile length: {}", len);
 
 		write_profile_from_reader(len, ctx)?;
 
 		load_profile(ctx)?;
 
-		// indicate success
+		ctx.get_serial_port()
+			.write(&[1])
+			.map_err(|_| Error::Unknown)?;
+
 		ctx.get_serial_port()
 			.write(&[0xFF])
 			.map_err(|_| Error::Unknown)?;
+
 		Ok(())
 	}
 }
+
+pub enum SetProfileCommandError {}
 
 // impl<'a, Context> Command<Context> for IdentifyCommand
 // where
@@ -227,8 +238,20 @@ impl Display for DeviceId {
 	}
 }
 
-#[derive(Serialize, Deserialize, Copy, Clone)]
+#[derive(Serialize, Deserialize, Copy, Clone, PartialEq)]
 pub struct CommandId(Uuid);
+
+impl Display for CommandId {
+	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+		self.0.fmt(f)
+	}
+}
+
+impl Format for CommandId {
+	fn format(&self, fmt: defmt::Formatter) {
+		self.0.to_string().format(fmt);
+	}
+}
 
 pub struct CommandList<const N: usize, Context> {
 	commands: [CommandInstance<Context>; N],
@@ -247,15 +270,20 @@ where
 			error!("Failed to read command index");
 			Error::Unknown
 		})?;
+		let cmd_id = CommandId(cmd_id);
+
+		info!("Command id: {:x}", cmd_id);
 
 		let cmd = self
 			.commands
 			.iter()
-			.find(|cmd| cmd.info.id.0 == cmd_id)
+			.find(|cmd| cmd.info.id == cmd_id)
 			.ok_or_else(|| {
-				error!("Command id {:x} not found", cmd_id.as_u128());
+				error!("Command id {:x} not found", cmd_id);
 				Error::Unknown
 			})?;
+
+		info!("Boutta do {}", cmd.info.name);
 
 		(cmd.execute)(ctx)
 	}
@@ -289,7 +317,7 @@ pub trait Reader {
 	fn read_uuid(&mut self) -> Option<Uuid> {
 		let mut buf = [0; 16];
 		self.read(&mut buf).ok()?;
-		Uuid::from_slice(&buf).ok()
+		Uuid::from_slice_le(&buf).ok()
 	}
 }
 

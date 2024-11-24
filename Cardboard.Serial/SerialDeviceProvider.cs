@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Cardboard.Device;
 using Cranky;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,219 +10,253 @@ namespace Cardboard.Serial;
 internal partial class SerialDeviceProvider(
 	ISerialPortProvider serialPortProvider,
 	IOptions<SerialDeviceOptions> serialDeviceConfiguration,
+	IEnumerable<ICommandImplementation<SerialDeviceProvider>> impls,
 	ILogger<SerialDeviceProvider> logger
 ) : IDeviceProvider
 {
-	private readonly PortCache _ports = new(serialPortProvider);
-	private readonly DeviceInfoCache _deviceCache = new();
+	private readonly CachedPortProvider _ports = new(serialPortProvider);
+	private readonly CommandImplementations<SerialDeviceProvider> _commands =
+		new(new DefaultCommandImplementation(), impls);
 	private readonly ILogger _logger = logger; // hack: https://github.com/dotnet/runtime/issues/91121
 
-	public async Task<IReadOnlyCollection<DeviceInfo>> GetDevices()
+	public async Task<IReadOnlyCollection<DeviceInfo>> GetDevices(CancellationToken cancellationToken)
 	{
-		await Update();
-		return _deviceCache.Devices.Values.Select(x => x.Info).ToList();
+		await _ports.Update([], cancellationToken);
+		await EnsureUpToDate(cancellationToken);
+		return _ports.Ports.Select(x => x.Info).ToList();
 	}
 
-	public async Task<IEnumerable<KeyValuePair<DeviceInfo, Result<T>>>> BroadcastWithResponse<T>(
-		DeviceCommand message,
-		DeserializeFunc<T> deserializeResponse,
-		Predicate<DeviceInfo>? predicate
+	public async Task<IEnumerable<KeyValuePair<DeviceId, Result<TResponse>>>> ExecuteCommand<TResponse>(
+		ICommandWithResponse<TResponse> command,
+		IReadOnlyCollection<DeviceId>? filter,
+		CancellationToken cancellationToken
 	)
 	{
-		await Update();
+		await EnsureUpToDate(cancellationToken);
 
-		var destinations = GetDestinationsFromCache(predicate);
+		var destinations = filter is null
+			? _ports.Ports
+			: _ports.Ports.Where(x => filter.Contains(x.Info.Id));
 
 		return await Task.WhenAll(
-			destinations.Select(async x =>
+			destinations.Select(async device =>
 			{
-				using var stream = new MemoryStream();
-				await using var writer = stream.CreateDeviceWriter();
+				// get implementation
+				var result = await device
+					.SerialPort
+					.With(
+						async (reader, writer) =>
+						{
+							writer.WriteGuid(command.Id.Value);
+							return (await _commands.Execute(command, reader, writer)).Match(
+								memory =>
+								{
+									var result = command.GetResult(memory.Data.Span);
+									memory.Dispose();
+									return result;
+								},
+								ex =>
+								{
+									LogCommandException(device.Info.Id, command.Id, ex);
+									return Result<TResponse>.Fail;
+								}
+							);
+						},
+						true,
+						cancellationToken
+					);
 
-				var result = WriteCommand(writer, x.Device, message);
-
-				return new KeyValuePair<DeviceInfo, Result<T>>(
-					x.Device.Info,
-					result.IsSuccess
-						? await x.SerialPort.SendWithResponse(stream.AsMemory(), deserializeResponse)
-						: Result.Fail()
+				return new KeyValuePair<DeviceId, Result<TResponse>>(
+					device.Info.Id,
+					result.Match<Result<TResponse>>(x => Result.Success(x), _ => Result<TResponse>.Fail)
 				);
 			})
 		);
-
-		static Result WriteCommand(BinaryWriter writer, CachedDevice device, DeviceCommand message)
-		{
-			if (!device.WriteCommandIndex(message.CommandId, writer).IsSuccess)
-				return Result.Fail();
-
-			writer.Write(message.Data.Span);
-
-			return Result.Success();
-		}
 	}
 
-	public async Task Broadcast(DeviceCommand message, Predicate<DeviceInfo>? predicate)
+	public async Task<IEnumerable<KeyValuePair<DeviceId, Result>>> ExecuteCommand(
+		ICommandNoResponse command,
+		IReadOnlyCollection<DeviceId>? filter,
+		CancellationToken cancellationToken
+	)
 	{
-		await Update();
+		await EnsureUpToDate(cancellationToken);
 
-		var destinations = GetDestinationsFromCache(predicate);
+		var destinations = filter is null
+			? _ports.Ports
+			: _ports.Ports.Where(x => filter.Contains(x.Info.Id));
 
-		await Task.WhenAll(destinations.Select(async x => await x.SerialPort.Send(message.Data)));
+		return await Task.WhenAll(
+			destinations.Select(async device =>
+			{
+				var result = await device
+					.SerialPort
+					.With<Result>(
+						async (reader, writer) =>
+						{
+							writer.WriteGuid(command.Id.Value);
+							return (await _commands.Execute(command, reader, writer)).Match<Result>(
+								x =>
+								{
+									Debug.Assert(x.Data.IsEmpty);
+									x.Dispose();
+									return Result.Success();
+								},
+								ex =>
+								{
+									LogCommandException(device.Info.Id, command.Id, ex);
+									return Result.Fail();
+								}
+							);
+						},
+						true,
+						cancellationToken
+					);
+
+				return new KeyValuePair<DeviceId, Result>(
+					device.Info.Id,
+					result.IsSuccess ? Result.Success() : Result.Fail()
+				);
+			})
+		);
 	}
 
-	private IEnumerable<MessageDestination> GetDestinationsFromCache(Predicate<DeviceInfo>? predicate) =>
-		_ports
-			.ConnectedPorts
-			.Where(
-				x =>
-					_deviceCache.Devices.TryGetValue(x.Key, out var cached)
-					&& (predicate == null || predicate.Invoke(cached.Info))
-			)
-			.Select(x => new MessageDestination(x.Value, _deviceCache.Devices[x.Key]));
-
-	private readonly record struct MessageDestination(ISerialPort SerialPort, CachedDevice Device);
-
-	private async Task Update()
+	private async Task EnsureUpToDate(CancellationToken cancellationToken)
 	{
-		var errors = await _ports.Update(serialDeviceConfiguration.Value.Ports);
+		var errors = await _ports.Update(serialDeviceConfiguration.Value.Ports, cancellationToken);
 
 		if (errors is not null)
 		{
 			foreach (var (portName, ex) in errors)
 				LogFailedToOpenPort(portName, ex);
 		}
-
-		await _deviceCache.Update(_ports.ConnectedPorts);
 	}
 
-	private class PortCache(ISerialPortProvider serialPortProvider)
+	private class CachedPortProvider(ISerialPortProvider serialPortProvider)
 	{
-		private Dictionary<string, ISerialPort> _connected = new();
-		public IReadOnlyDictionary<string, ISerialPort> ConnectedPorts => _connected;
+		private List<CachedDevice> _ports = [];
+		public IReadOnlyCollection<CachedDevice> Ports => _ports;
 
-		public async Task<IEnumerable<(string Port, Exception Exception)>?> Update(
-			IReadOnlyCollection<string> ports
+		public async Task<IEnumerable<(string Port, Exception? Exception)>?> Update(
+			IReadOnlyCollection<string> ports,
+			CancellationToken cancellationToken
 		)
 		{
-			var maxPortCount = ports.Count + _connected.Count;
-			var connectedPorts = new Dictionary<string, ISerialPort>(maxPortCount);
+			var portLookup = _ports.ToLookup(x => x.SerialPort.IsOpen && ports.Contains(x.PortName));
 
-			foreach (var (name, port) in _connected.Where(x => x.Value.IsOpen))
-				connectedPorts.Add(name, port);
+			var disconnectedPorts = portLookup[false];
+			foreach (var port in disconnectedPorts)
+				port.Dispose();
 
-			var newPortNames = ports.Where(p => !connectedPorts.ContainsKey(p));
-			var newPorts = await serialPortProvider.GetPorts(
-				newPortNames.Where(p => !connectedPorts.ContainsKey(p))
-			);
+			var connectedPorts = portLookup[true].ToList();
+			var newPortNames = ports.Where(p => connectedPorts.All(x => x.PortName != p));
+			var newPorts = await serialPortProvider.GetPorts(newPortNames, cancellationToken);
 
-			List<(string, Exception)>? maybeErrors = null;
+			List<(string, Exception?)>? maybeErrors = null;
 
 			foreach (var (portName, result) in newPorts)
 			{
-				result.Match(
-					port =>
+				await result.Match(
+					async port =>
 					{
-						connectedPorts.Add(portName, port);
+						(await GetDeviceInfo(port, cancellationToken)).Match(
+							x => connectedPorts.Add(new(port.Name, x, port)),
+							x => AddError(portName, x)
+						);
 					},
 					ex =>
 					{
-						(maybeErrors ??= []).Add((portName, ex));
+						AddError(portName, ex);
+						return Task.CompletedTask;
 					}
 				);
 			}
 
-			_connected = connectedPorts;
+			_ports = connectedPorts;
 
 			return maybeErrors;
 
-			// 	var connectedPorts = _connected.Where(x => x.Value.IsOpen);
-			// 	var connectedNames = connectedPorts.Select(x => x.Key).ToHashSet();
-			// 	var newPortNames = ports.Where(port => !connectedNames.Contains(port));
-			//
-			// 	_connected = (await serialPortProvider.GetPorts(newPortNames))
-			// 		.Where(x => x.Value.IsSuccess)
-			// 		.Select(
-			// 			x => new KeyValuePair<string, Result<ISerialPort, Exception>>(x.Key, x.Value.Assert())
-			// 		)
-			// 		.Concat(_connected)
-			// 		.ToDictionary();
+			void AddError(string portName, Exception? ex)
+			{
+				(maybeErrors ??= []).Add((portName, ex));
+			}
 		}
-	}
 
-	private class DeviceInfoCache
-	{
-		private readonly Dictionary<string, CachedDevice> _devices = new();
-		public IReadOnlyDictionary<string, CachedDevice> Devices => _devices;
+		private async Task<Result<DeviceInfo, Exception?>> GetDeviceInfo(
+			ISerialPort port,
+			CancellationToken cancellationToken
+		) =>
+			(
+				await port.With(
+					(reader, writer) =>
+					{
+						writer.BaseStream.Write(_deviceIdentityCmdId.Span);
+						writer.Flush();
 
-		public async Task Update(IEnumerable<KeyValuePair<string, ISerialPort>> ports)
-		{
-			var results = await Task.WhenAll(
-				ports.Select(
-					async x =>
-						new KeyValuePair<string, Result<DeviceInfo>>(x.Key, await x.Value.GetDeviceInfo())
+						var len = reader.ReadUInt16();
+						var response = reader.ReadJson<DeviceIdentityResponse>(len);
+
+						return Task.FromResult<Result<DeviceInfo>>(response.Info);
+					},
+					true,
+					cancellationToken
 				)
 			);
 
-			foreach (var (key, result) in results)
-			{
-				result.Match(
-					response =>
-					{
-						_devices[key] = new(
-							response,
-							key,
-							_devices.TryGetValue(key, out var cached) ? cached.TokenManager : new()
-						);
-					},
-					() => _devices.Remove(key)
-				);
-			}
+		private static readonly ReadOnlyMemory<byte> _deviceIdentityCmdId = new byte[16]
+		{
+			0xFF,
+			0xFF,
+			0xFF,
+			0xFF,
+			0xFF,
+			0xFF,
+			0xFF,
+			0xFF,
+			0xFF,
+			0xFF,
+			0xFF,
+			0xFF,
+			0xFF,
+			0xFF,
+			0xFF,
+			0xFF,
+		};
+
+		private class DeviceIdentityResponse
+		{
+			public required DeviceInfo Info { get; init; }
 		}
 	}
 
-	private class CachedDevice(DeviceInfo deviceInfo, string portName, TokenManager tokenManager)
+	private class CachedDevice(string portName, DeviceInfo deviceInfo, ISerialPort serialPort) : IDisposable
 	{
-		public DeviceInfo Info => deviceInfo;
 		public string PortName => portName;
-		public TokenManager TokenManager { get; } = tokenManager;
+		public DeviceInfo Info => deviceInfo;
+		public ISerialPort SerialPort => serialPort;
 
-		public Result WriteCommandIndex(CommandId id, BinaryWriter writer)
+		public void Dispose()
 		{
-			if (
-				Info.Commands
-					.Select((x, i) => (x, i))
-					.Where(p => p.x.Id == id)
-					.Select(p => (int?)p.i)
-					.FirstOrDefault()
-				is not { } index
-			)
-			{
-				return Result.Fail();
-			}
-
-			switch (Info.Commands.Count)
-			{
-				case <= byte.MaxValue:
-					writer.Write((byte)index);
-					break;
-				case <= ushort.MaxValue:
-					writer.Write((ushort)index);
-					break;
-				default:
-					writer.Write(index);
-					break;
-			}
-
-			return Result.Success();
+			serialPort.Dispose();
 		}
 	}
 
 	[LoggerMessage(EventId = 0, Level = LogLevel.Error, Message = "Failed to open serial port {PortName}")]
-	partial void LogFailedToOpenPort(string portName, Exception exception);
+	partial void LogFailedToOpenPort(string portName, Exception? exception);
+
+	[LoggerMessage(EventId = 1, Level = LogLevel.Error, Message = "Failed to identify port {PortName}.")]
+	partial void LogIdentifyException(string portName, Exception? exception);
+
+	[LoggerMessage(
+		EventId = 2,
+		Level = LogLevel.Error,
+		Message = "Failed to execute command {CommandId} on device {InfoId}"
+	)]
+	partial void LogCommandException(DeviceId infoId, CommandId commandId, Exception? exception);
 }
 
 public static partial class Services
 {
 	private static IServiceCollection AddSerialDeviceProvider(this IServiceCollection services) =>
-		services.AddSingleton<IDeviceProvider, SerialDeviceProvider>();
+		services.AddDeviceProvider<SerialDeviceProvider>();
 }

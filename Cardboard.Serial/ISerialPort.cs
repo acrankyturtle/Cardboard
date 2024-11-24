@@ -1,24 +1,21 @@
-﻿using System.Runtime.Serialization;
-using Cardboard.Device;
-using Cranky;
+﻿using Cranky;
 
 namespace Cardboard.Serial;
 
-public interface ISerialPort
+public interface ISerialPort : IDisposable
 {
-	Task<Result<T>> SendWithResponse<T>(
-		ReadOnlyMemory<byte> msg,
-		DeserializeFunc<T> deserializeResponse,
+	string Name { get; }
+
+	/// <param name="clearReadBuffer">Clear the serial port's read buffer before beginning.</param>
+	Task<Result<T, Exception?>> With<T>(
+		Func<BinaryReader, BinaryWriter, Task<Result<T>>> action,
+		bool clearReadBuffer,
 		CancellationToken cancellationToken = default
 	);
 
-	Task Send(ReadOnlyMemory<byte> msg, CancellationToken cancellationToken = default);
-
-	Task<Result<DeviceInfo>> GetDeviceInfo(CancellationToken cancellationToken = default);
-
-	//IAsyncEvent<ReadOnlyBuffer> Received { get; }
-
 	bool IsOpen { get; }
+
+	Task<Result<Unit, Exception>> Open(CancellationToken cancellationToken = default);
 }
 
 // public abstract record SerialMessage(byte? Token)

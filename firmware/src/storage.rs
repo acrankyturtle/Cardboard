@@ -1,12 +1,9 @@
-use defmt::error;
+use cortex_m::interrupt::{disable as __disable_irq, enable as __enable_irq};
+use defmt::{debug, error};
 use generic_array::{ArrayLength, GenericArray};
 use rp2040_hal::rom_data::{flash_range_erase, flash_range_program};
 
-use crate::{
-	context::{ContextProfileStorage, ContextSerialPort},
-	profile::KeyboardProfile,
-	Error,
-};
+use crate::{profile::KeyboardProfile, Error};
 
 pub struct FlashStorage<Size: ArrayLength<u8>> {
 	buf: &'static GenericArray<u8, Size>,
@@ -29,17 +26,27 @@ impl<SIZE: ArrayLength<u8>> FlashStorage<SIZE> {
 		const WRITE_SIZE: usize = 256;
 
 		if offset + buf.len() > SIZE::USIZE {
+			error!(
+				"Write out of bounds: {} + {} > {}",
+				offset,
+				buf.len(),
+				SIZE::USIZE
+			);
 			return Err(Error::Unknown);
 		}
 
 		let offset = self.get_ptr() as usize + offset;
 		if offset % WRITE_SIZE != 0 {
-			error!("Invalid offset: {}", offset);
+			error!("Offset is not block aligned ({}): {}", WRITE_SIZE, offset);
 			return Err(Error::Unknown);
 		}
 
 		if buf.len() % WRITE_SIZE != 0 {
-			error!("Invalid buffer size: {}", buf.len());
+			error!(
+				"Length is not block aligned ({}): {}",
+				WRITE_SIZE,
+				buf.len()
+			);
 			return Err(Error::Unknown);
 		}
 
@@ -54,22 +61,30 @@ impl<SIZE: ArrayLength<u8>> FlashStorage<SIZE> {
 		const ERASE_SIZE: usize = 4096;
 
 		if offset + len > SIZE::USIZE {
+			error!(
+				"Erase out of bounds: {} + {} > {}",
+				offset,
+				len,
+				SIZE::USIZE
+			);
 			return Err(Error::Unknown);
 		}
 
 		let offset = self.get_ptr() as usize + offset;
 		if offset % ERASE_SIZE != 0 {
-			error!("Invalid offset: {}", offset);
+			error!("Offset is not block aligned ({}): {}", ERASE_SIZE, offset);
 			return Err(Error::Unknown);
 		}
 
 		if len % ERASE_SIZE != 0 {
-			error!("Invalid length: {}", len);
+			error!("Length is not block aligned ({}): {}", ERASE_SIZE, len);
 			return Err(Error::Unknown);
 		}
 
 		unsafe {
+			__disable_irq();
 			flash_range_erase(offset as u32, len, 4096, 0);
+			__enable_irq();
 		}
 
 		Ok(())

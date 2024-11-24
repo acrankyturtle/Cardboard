@@ -1,113 +1,149 @@
 ﻿using Cranky;
-using Microsoft.Extensions.DependencyInjection;
 using StronglyTypedIds;
 
 namespace Cardboard.Device.Modules.Keyboard;
 
-public interface IKeyboardService
+public class SetKeyboardProfileCommand(KeyboardProfile profile)
+	: ICommandWithResponse<SetKeyboardProfileCommandResponse>
 {
-	Task<Result<IReadOnlyCollection<DeviceKeyInfo>>> GetDeviceKeys(DeviceId deviceId);
-	Task<Result<KeyboardProfile>> GetDeviceProfile(DeviceId deviceId);
-	Task SetDeviceProfile(DeviceId deviceId, KeyboardProfile profile);
+	public CommandId Id { get; } = CommandId.Parse("45963fd8-73e2-50a0-ba69-69c3333dd8af");
+	public ReadOnlyMemory<byte> Data => Serialize(profile);
 
-	Task SetExternalLayerTags(IReadOnlyCollection<KeyboardLayerTag> tags);
+	public Result<SetKeyboardProfileCommandResponse> GetResult(ReadOnlySpan<byte> data)
+	{
+		return Result.Success(new SetKeyboardProfileCommandResponse { Success = data is [0xFF] });
+	}
 
-	Task SetVirtualKeyState(KeyboardKeyId keyId, VirtualKeyEvent events);
-}
-
-internal class KeyboardService(IDeviceManager deviceManager) : IKeyboardService
-{
-	private static readonly CommandId _getDeviceKeysCommandId =
-		new(Guid.Parse("E98E5984-05C6-47D0-A96E-FE0129376749"));
-	private static readonly CommandId _getDeviceProfileCommandId =
-		new(Guid.Parse("FB6969F0-C63C-4D02-939F-3C767D5B6577"));
-	private static readonly CommandId _setDeviceProfileCommandId =
-		new(Guid.Parse("C1E811DB-C502-4118-A70B-21C59C803466"));
-	private static readonly CommandId _setExternalLayerTagsCommandId =
-		new(Guid.Parse("A1FFA53C-721E-4096-BE00-9941AD08CAA6"));
-	private static readonly CommandId _setVirtualKeyStateCommandId =
-		new(Guid.Parse("14989349-88B9-4EE6-A08B-5753973691D5"));
-
-	public async Task<Result<IReadOnlyCollection<DeviceKeyInfo>>> GetDeviceKeys(DeviceId deviceId) =>
-		(
-			await deviceManager.SendWithResponse(
-				deviceId,
-				new(_getDeviceKeysCommandId, ReadOnlyMemory<byte>.Empty),
-				b =>
-				{
-					var span = b.Span;
-					return BinaryHelpers.ReadJson<GetDeviceKeysResponse>(ref span);
-				}
-			)
-		).Select(x => x.Keys);
-
-	public async Task<Result<KeyboardProfile>> GetDeviceProfile(DeviceId deviceId) =>
-		(
-			await deviceManager.SendWithResponse(
-				deviceId,
-				new(_getDeviceProfileCommandId, ReadOnlyMemory<byte>.Empty),
-				b =>
-				{
-					var span = b.Span;
-					return BinaryHelpers.ReadJson<GetDeviceProfileResponse>(ref span);
-				}
-			)
-		).Select(x => x.Profile);
-
-	public async Task SetDeviceProfile(DeviceId deviceId, KeyboardProfile profile)
+	private static ReadOnlyMemory<byte> Serialize(KeyboardProfile profile)
 	{
 		using var stream = new MemoryStream();
+		stream.Write(stackalloc byte[] { 0, 0 });
 		BinaryHelpers.WriteJson(profile, stream);
-		var memory = stream.AsMemory();
-
-		var message = new DeviceCommand(_setDeviceProfileCommandId, memory);
-
-		await deviceManager.Send(deviceId, message);
-	}
-
-	public async Task SetExternalLayerTags(IReadOnlyCollection<KeyboardLayerTag> tags)
-	{
-		using var stream = new MemoryStream();
-		await using var writer = stream.CreateDeviceWriter();
-
-		writer.Write(tags.Count);
-		foreach (var tag in tags)
-		{
-			writer.Write(tag.Value.Length);
-			writer.Write(tag.Value.AsSpan());
-		}
-		var memory = stream.AsMemory();
-
-		var message = new DeviceCommand(_setExternalLayerTagsCommandId, memory);
-
-		await deviceManager.Broadcast(message);
-	}
-
-	public async Task SetVirtualKeyState(KeyboardKeyId keyId, VirtualKeyEvent events)
-	{
-		using var stream = new MemoryStream();
-		await using var writer = stream.CreateDeviceWriter();
-
-		writer.WriteGuid(keyId.Value);
-		writer.Write((byte)events);
-
-		var memory = stream.AsMemory();
-		var message = new DeviceCommand(_setVirtualKeyStateCommandId, memory);
-
-		await deviceManager.Broadcast(message);
-	}
-
-	private class GetDeviceProfileResponse
-	{
-		public required KeyboardProfile Profile { get; init; }
+		var len = stream.Length - 2;
+		var buffer = stream.GetBuffer().AsSpan();
+		buffer[0] = (byte)len;
+		buffer[1] = (byte)(len >> 8);
+		return stream.ToArray();
 	}
 }
 
-public static class Services
+public class SetKeyboardProfileCommandResponse
 {
-	public static IServiceCollection AddKeyboard(this IServiceCollection services) =>
-		services.AddSingleton<IKeyboardService, KeyboardService>();
+	public required bool Success { get; init; }
 }
+
+public class FakeCommand : ICommandWithResponse<Unit>
+{
+	public CommandId Id => CommandId.Parse("fb46f5a3-41dc-42d1-88d7-5acb5bb7234e");
+	public ReadOnlyMemory<byte> Data => default;
+
+	public Result<Unit> GetResult(ReadOnlySpan<byte> data) => Unit.Value;
+}
+
+// public interface IKeyboardService
+// {
+// 	Task<Result<IReadOnlyCollection<DeviceKeyInfo>>> GetDeviceKeys(DeviceId deviceId);
+// 	Task<Result<KeyboardProfile>> GetDeviceProfile(DeviceId deviceId);
+// 	Task SetDeviceProfile(DeviceId deviceId, KeyboardProfile profile);
+//
+// 	Task SetExternalLayerTags(IReadOnlyCollection<KeyboardLayerTag> tags);
+//
+// 	Task SetVirtualKeyState(KeyboardKeyId keyId, VirtualKeyEvent events);
+// }
+//
+// internal class KeyboardService(IDeviceManager deviceManager) : IKeyboardService
+// {
+// 	private static readonly CommandId _getDeviceKeysCommandId =
+// 		new(Guid.Parse("E98E5984-05C6-47D0-A96E-FE0129376749"));
+// 	private static readonly CommandId _getDeviceProfileCommandId =
+// 		new(Guid.Parse("FB6969F0-C63C-4D02-939F-3C767D5B6577"));
+// 	private static readonly CommandId _setDeviceProfileCommandId =
+// 		new(Guid.Parse("C1E811DB-C502-4118-A70B-21C59C803466"));
+// 	private static readonly CommandId _setExternalLayerTagsCommandId =
+// 		new(Guid.Parse("A1FFA53C-721E-4096-BE00-9941AD08CAA6"));
+// 	private static readonly CommandId _setVirtualKeyStateCommandId =
+// 		new(Guid.Parse("14989349-88B9-4EE6-A08B-5753973691D5"));
+//
+// 	public async Task<Result<IReadOnlyCollection<DeviceKeyInfo>>> GetDeviceKeys(DeviceId deviceId) =>
+// 		(
+// 			await deviceManager.SendWithResponse(
+// 				deviceId,
+// 				new(_getDeviceKeysCommandId, ReadOnlyMemory<byte>.Empty),
+// 				b =>
+// 				{
+// 					var span = b.Span;
+// 					return BinaryHelpers.ReadJson<GetDeviceKeysResponse>(ref span);
+// 				}
+// 			)
+// 		).Select(x => x.Keys);
+//
+// 	public async Task<Result<KeyboardProfile>> GetDeviceProfile(DeviceId deviceId) =>
+// 		(
+// 			await deviceManager.SendWithResponse(
+// 				deviceId,
+// 				new(_getDeviceProfileCommandId, ReadOnlyMemory<byte>.Empty),
+// 				b =>
+// 				{
+// 					var span = b.Span;
+// 					return BinaryHelpers.ReadJson<GetDeviceProfileResponse>(ref span);
+// 				}
+// 			)
+// 		).Select(x => x.Profile);
+//
+// 	public async Task SetDeviceProfile(DeviceId deviceId, KeyboardProfile profile)
+// 	{
+// 		using var stream = new MemoryStream();
+// 		BinaryHelpers.WriteJson(profile, stream);
+// 		var memory = stream.AsMemory();
+//
+// 		var message = new DeviceCommand(_setDeviceProfileCommandId, memory);
+//
+// 		await deviceManager.Send(deviceId, message);
+// 	}
+//
+// 	public async Task SetExternalLayerTags(IReadOnlyCollection<KeyboardLayerTag> tags)
+// 	{
+// 		using var stream = new MemoryStream();
+// 		await using var writer = stream.CreateDeviceWriter();
+//
+// 		writer.Write(tags.Count);
+// 		foreach (var tag in tags)
+// 		{
+// 			writer.Write(tag.Value.Length);
+// 			writer.Write(tag.Value.AsSpan());
+// 		}
+// 		var memory = stream.AsMemory();
+//
+// 		var message = new DeviceCommand(_setExternalLayerTagsCommandId, memory);
+//
+// 		await deviceManager.Broadcast(message);
+// 	}
+//
+// 	public async Task SetVirtualKeyState(KeyboardKeyId keyId, VirtualKeyEvent events)
+// 	{
+// 		using var stream = new MemoryStream();
+// 		await using var writer = stream.CreateDeviceWriter();
+//
+// 		writer.WriteGuid(keyId.Value);
+// 		writer.Write((byte)events);
+//
+// 		var memory = stream.AsMemory();
+// 		var message = new DeviceCommand(_setVirtualKeyStateCommandId, memory);
+//
+// 		await deviceManager.Broadcast(message);
+// 	}
+//
+// 	private class GetDeviceProfileResponse
+// 	{
+// 		public required KeyboardProfile Profile { get; init; }
+// 	}
+// }
+
+// public static class Services
+// {
+// 	public static IServiceCollection AddKeyboard(this IServiceCollection services) =>
+// 		services.AddSingleton<IKeyboardService, KeyboardService>();
+// }
 
 [Flags]
 public enum VirtualKeyEvent : byte

@@ -11,6 +11,7 @@ public static partial class Services
 	) =>
 		services
 			.AddSystemSerialPortProvider()
+			// .AddFakeSerialPortProvider()
 			.AddSerialDeviceProvider()
 			.AddSerialDeviceConfiguration(configuration);
 }

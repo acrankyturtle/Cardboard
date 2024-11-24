@@ -12,7 +12,6 @@ var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddInitialization();
 builder.Services.AddCardboardDeviceManager();
 builder.Services.AddSystemSerialPort(builder.Configuration);
-builder.Services.AddKeyboard();
 builder.Services.AddHostedService<App>();
 
 var host = builder.Build();
@@ -21,8 +20,7 @@ await host.Services.Initialize();
 
 host.Run();
 
-internal class App(IDeviceManager deviceManager, IKeyboardService keyboardService, IHost host)
-	: BackgroundService
+internal class App(IDeviceManager deviceManager, IHost host) : BackgroundService
 {
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
@@ -52,11 +50,7 @@ internal class App(IDeviceManager deviceManager, IKeyboardService keyboardServic
 			1: Identify
 
 			- KEYBOARD
-			2: Get Device Keys
-			3: Get Device Profile
-			4: Set Device Profile
-			5: Set External Layer Tags
-			6: Set Virtual Key State
+			2: Set Profile
 
 			command=
 			"""
@@ -85,6 +79,50 @@ internal class App(IDeviceManager deviceManager, IKeyboardService keyboardServic
 							"""
 						);
 					}
+					break;
+
+				case 2:
+
+					{
+						var profile = new KeyboardProfile
+						{
+							Keys =
+							[
+								new()
+								{
+									Id = new(Guid.Parse("E8EC3732-62BC-452E-9ADF-6D5C2DD3A330")),
+									DefaultLayer = new()
+									{
+										Id = new(Guid.Parse("E7D333EE-B7F4-42C7-8652-E0DBF603B20F")),
+										Macros = [],
+									},
+									Layers = [],
+								},
+							],
+						};
+
+						var command = new SetKeyboardProfileCommand(profile);
+						var result = await deviceManager.ExecuteCommand(command);
+
+						foreach (var (deviceId, r) in result)
+						{
+							Console.WriteLine($"Device {deviceId}: {(r.IsSuccess ? "success" : "FAIL")}");
+						}
+					}
+					break;
+
+				case 3:
+
+					{
+						var command = new FakeCommand();
+						var result = await deviceManager.ExecuteCommand(command);
+
+						foreach (var (deviceId, r) in result)
+						{
+							Console.WriteLine($"Device {deviceId}: {(r.IsSuccess ? "success" : "FAIL")}");
+						}
+					}
+
 					break;
 			}
 		}

@@ -17,7 +17,7 @@ public static class BinaryHelpers
 		var reader = new Utf8JsonReader(buffer);
 		var value =
 			JsonSerializer.Deserialize<T>(ref reader, DeviceJson.SerializerOptions)
-			?? throw new NullReferenceException();
+			?? throw new JsonException();
 
 		var size = (int)reader.BytesConsumed;
 		buffer = buffer[size..];
@@ -30,11 +30,19 @@ public static class BinaryHelpers
 
 	public static T ReadJson<T>(Stream stream)
 		where T : notnull =>
-		JsonSerializer.Deserialize<T>(stream, DeviceJson.SerializerOptions)
-		?? throw new NullReferenceException();
+		JsonSerializer.Deserialize<T>(stream, DeviceJson.SerializerOptions) ?? throw new JsonException();
 
 	public static T ReadJson<T>(this BinaryReader reader)
 		where T : notnull => ReadJson<T>(reader.BaseStream);
+
+	public static T ReadJson<T>(this BinaryReader reader, int numBytes)
+		where T : notnull
+	{
+		// todo: perf
+		var bytes = reader.ReadBytes(numBytes);
+		return JsonSerializer.Deserialize<T>(bytes, DeviceJson.SerializerOptions)
+			?? throw new JsonException();
+	}
 
 	public static void WriteJson<T>(T value, ref Span<byte> buffer)
 	{
@@ -49,7 +57,7 @@ public static class BinaryHelpers
 	public static void WriteJson<T>(T value, Stream stream) =>
 		JsonSerializer.Serialize(stream, value, DeviceJson.SerializerOptions);
 
-	public static void WriteJson<T>(this BinaryReader reader, T value) => WriteJson(value, reader.BaseStream);
+	public static void WriteJson<T>(this BinaryWriter writer, T value) => WriteJson(value, writer.BaseStream);
 
 	public static void WriteGuid(this BinaryWriter writer, Guid guid)
 	{

@@ -1,10 +1,12 @@
 using System.Buffers;
 using CommunityToolkit.HighPerformance;
 
-namespace Cardboard.Serial;
+namespace Cardboard.Device;
 
 public readonly struct RentedMemory(Memory<byte> data, Action? dispose) : IDisposable
 {
+	public static RentedMemory Empty = default;
+
 	public Memory<byte> Data => data;
 
 	public void Dispose()
