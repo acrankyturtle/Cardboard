@@ -1,10 +1,8 @@
-use core::{borrow::BorrowMut, fmt::Display};
+use core::fmt::Display;
 
 use alloc::{string::ToString, vec::Vec};
 use defmt::{debug, error, info, Format};
-use rp2040_hal::usb::UsbBus;
 use serde::{Deserialize, Serialize};
-use usbd_serial::{embedded_io::Write, SerialPort};
 use uuid::{uuid, Uuid};
 
 use crate::{
@@ -14,32 +12,33 @@ use crate::{
 	},
 	device::CommandInstance,
 	input::KeyId,
+	serial::SerialPort,
 	Error,
 };
 
 pub trait Command<Context> {
 	const INFO: CommandInfo;
-	fn execute(ctx: &mut Context) -> Result<(), Error>;
-	fn instance() -> CommandInstance<Context> {
-		CommandInstance {
-			info: Self::INFO,
-			execute: Self::execute,
-		}
-	}
+	async fn execute(&mut self, ctx: &mut Context) -> Result<(), Error>;
 }
 
 pub struct IdentifyCommand;
 
-impl<'a, Context> Command<Context> for IdentifyCommand
+impl Default for IdentifyCommand {
+	fn default() -> Self {
+		IdentifyCommand
+	}
+}
+
+impl<Context> Command<Context> for IdentifyCommand
 where
-	Context: ContextDeviceInfo + ContextSerialPort<'a>,
+	Context: ContextDeviceInfo + ContextSerialPort,
 {
 	const INFO: CommandInfo = CommandInfo {
 		id: CommandId(uuid!("ffffffff-ffff-ffff-ffff-ffffffffffff")),
 		name: "Identify",
 	};
 
-	fn execute(ctx: &mut Context) -> Result<(), Error> {
+	async fn execute(&mut self, ctx: &mut Context) -> Result<(), Error> {
 		let device_info = ctx.get_device_info();
 
 		let response = IdentifyResponse { info: device_info };
@@ -48,10 +47,12 @@ where
 		if let Ok(len) = serde_json_core::to_slice(&response, &mut buf) {
 			let len = len as u16;
 			ctx.get_serial_port()
-				.write_all(&len.to_le_bytes())
+				.write(&len.to_le_bytes())
+				.await
 				.map_err(|_| Error::Unknown)?;
 			ctx.get_serial_port()
-				.write_all(&buf[..len as usize])
+				.write(&buf[..len as usize])
+				.await
 				.map_err(|_| Error::Unknown)?;
 			Ok(())
 		} else {
@@ -62,18 +63,23 @@ where
 
 pub struct SetProfileCommand;
 
-impl<'a, Context> Command<Context> for SetProfileCommand
+impl Default for SetProfileCommand {
+	fn default() -> Self {
+		SetProfileCommand
+	}
+}
+
+impl<Context> Command<Context> for SetProfileCommand
 where
-	Context:
-		ContextProfileStorage + ContextCurrentProfile + ContextSerialPort<'a> + ContextHidState,
+	Context: ContextProfileStorage + ContextCurrentProfile + ContextSerialPort + ContextHidState,
 {
 	const INFO: CommandInfo = CommandInfo {
 		id: CommandId(uuid!("45963fd8-73e2-50a0-ba69-69c3333dd8af")),
 		name: "Set Keyboard Profile",
 	};
 
-	fn execute(ctx: &mut Context) -> Result<(), Error> {
-		let len = ctx.get_serial_port().read_u16().ok_or_else(|| {
+	async fn execute(&mut self, ctx: &mut Context) -> Result<(), Error> {
+		let len = ctx.get_serial_port().read_u16().await.ok_or_else(|| {
 			error!("Failed to read profile length");
 			Error::Unknown
 		})? as usize;
@@ -86,10 +92,12 @@ where
 
 		ctx.get_serial_port()
 			.write(&[1])
+			.await
 			.map_err(|_| Error::Unknown)?;
 
 		ctx.get_serial_port()
 			.write(&[0xFF])
+			.await
 			.map_err(|_| Error::Unknown)?;
 
 		Ok(())
@@ -223,35 +231,7 @@ pub struct CommandInfo {
 	name: &'static str,
 }
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
-pub struct DeviceId(Uuid);
 
-impl DeviceId {
-	pub const fn new(id: Uuid) -> Self {
-		DeviceId(id)
-	}
-}
-
-impl Display for DeviceId {
-	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-		self.0.fmt(f)
-	}
-}
-
-#[derive(Serialize, Deserialize, Copy, Clone, PartialEq)]
-pub struct CommandId(Uuid);
-
-impl Display for CommandId {
-	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-		self.0.fmt(f)
-	}
-}
-
-impl Format for CommandId {
-	fn format(&self, fmt: defmt::Formatter) {
-		self.0.to_string().format(fmt);
-	}
-}
 
 pub struct CommandList<const N: usize, Context> {
 	commands: [CommandInstance<Context>; N],
@@ -259,14 +239,14 @@ pub struct CommandList<const N: usize, Context> {
 
 impl<'a, const N: usize, Context> CommandList<N, Context>
 where
-	Context: ContextSerialPort<'a>,
+	Context: ContextSerialPort,
 {
 	pub fn new(commands: [CommandInstance<Context>; N]) -> Self {
 		CommandList { commands }
 	}
 
-	pub fn run_command(&self, ctx: &mut Context) -> Result<(), Error> {
-		let cmd_id = ctx.get_serial_port().read_uuid().ok_or_else(|| {
+	pub async fn run_command(&self, ctx: &mut Context) -> Result<(), Error> {
+		let cmd_id = ctx.get_serial_port().read_uuid().await.ok_or_else(|| {
 			error!("Failed to read command index");
 			Error::Unknown
 		})?;
@@ -286,48 +266,5 @@ where
 		info!("Boutta do {}", cmd.info.name);
 
 		(cmd.execute)(ctx)
-	}
-}
-
-pub trait Reader {
-	fn read(&mut self, buf: &mut [u8]) -> Result<(), Error>;
-
-	fn read_u8(&mut self) -> Option<u8> {
-		let mut buf = [0];
-		self.read(&mut buf).ok()?;
-		Some(buf[0])
-	}
-	fn read_u16(&mut self) -> Option<u32> {
-		let mut buf = [0; 2];
-		self.read(&mut buf).ok()?;
-		Some(u16::from_le_bytes(buf) as u32)
-	}
-
-	fn read_u32(&mut self) -> Option<u32> {
-		let mut buf = [0; 4];
-		self.read(&mut buf).ok()?;
-		Some(u32::from_le_bytes(buf))
-	}
-
-	fn read_utf8<'a>(&mut self, buf: &'a mut [u8]) -> Option<&'a str> {
-		self.read(buf).ok()?;
-		core::str::from_utf8(buf).ok()
-	}
-
-	fn read_uuid(&mut self) -> Option<Uuid> {
-		let mut buf = [0; 16];
-		self.read(&mut buf).ok()?;
-		Uuid::from_slice_le(&buf).ok()
-	}
-}
-
-impl<RS: BorrowMut<[u8]>, WS: BorrowMut<[u8]>> Reader for SerialPort<'_, UsbBus, RS, WS> {
-	fn read(&mut self, buf: &mut [u8]) -> Result<(), Error> {
-		let mut offset = 0;
-		while offset < buf.len() {
-			let len = self.read(&mut buf[offset..]).map_err(|_| Error::Unknown)?;
-			offset += len;
-		}
-		Ok(())
 	}
 }

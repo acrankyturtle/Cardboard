@@ -1,42 +1,100 @@
 use alloc::string::ToString;
-use alloc::vec::Vec;
 use defmt::Format;
-use embedded_hal::digital::{InputPin, OutputPin};
-use rp2040_hal::gpio::{DynPinId, FunctionSioInput, FunctionSioOutput, Pin, PullDown, PullNone};
+use embassy_rp::gpio::{Input, Output};
+use embassy_sync::blocking_mutex::raw::NoopRawMutex;
+use embassy_time::{Duration, Instant, Timer};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-pub struct KeyMatrix<const ROWS: usize, const COLS: usize, const KEY_COUNT: usize> {
-	rows: [Pin<DynPinId, FunctionSioOutput, PullNone>; ROWS],
-	cols: [Pin<DynPinId, FunctionSioInput, PullDown>; COLS],
-	keys: [InputKey; KEY_COUNT],
-	debounce_time: u32,
+#[macro_export]
+macro_rules! matrix_task {
+	($name:ident, $rows:expr, $cols:expr, $tick_rate:literal) => {
+		#[embassy_executor::task]
+		async fn $name(
+			mut matrix: KeyMatrix<'static, $rows, $cols, { $rows * $cols }>,
+			sender: embassy_sync::channel::Sender<
+				'static,
+				NoopRawMutex,
+				$crate::input::MatrixEventMessage<{ $rows * $cols }>,
+				3,
+			>,
+		) {
+			const KEY_COUNT: usize = $rows * $cols;
+			$crate::input::input_task(matrix, sender, 100).await;
+		}
+	};
 }
 
-impl<const ROWS: usize, const COLS: usize, const KEY_COUNT: usize>
-	KeyMatrix<ROWS, COLS, KEY_COUNT>
+pub async fn input_task<'a, const ROWS: usize, const COLS: usize, const KEY_COUNT: usize>(
+	mut matrix: KeyMatrix<'a, ROWS, COLS, KEY_COUNT>,
+	sender: embassy_sync::channel::Sender<'a, NoopRawMutex, MatrixEventMessage<KEY_COUNT>, 3>,
+	tick_rate: u32,
+) {
+	let tick_duration_ms = 1000.0 / tick_rate as f32;
+	let tick_duration = Duration::from_millis(tick_duration_ms as u64);
+
+	loop {
+		let now = Instant::now();
+		let (actions, count) = matrix.update(now);
+
+		sender
+			.send(MatrixEventMessage::new(actions, count).unwrap())
+			.await;
+
+		Timer::at(now + tick_duration).await;
+	}
+}
+
+pub struct MatrixEventMessage<const KEY_COUNT: usize> {
+	actions: [KeyboardAction; KEY_COUNT],
+	count: usize,
+}
+
+impl<const KEY_COUNT: usize> MatrixEventMessage<KEY_COUNT> {
+	pub fn new(actions: [KeyboardAction; KEY_COUNT], count: usize) -> Option<Self> {
+		if count <= KEY_COUNT {
+			Some(Self { count, actions })
+		} else {
+			None
+		}
+	}
+
+	pub fn actions(&self) -> &[KeyboardAction] {
+		&self.actions[..self.count]
+	}
+}
+
+pub struct KeyMatrix<'a, const ROWS: usize, const COLS: usize, const KEY_COUNT: usize> {
+	rows: [Output<'a>; ROWS],
+	cols: [Input<'a>; COLS],
+	keys: [InputKey; KEY_COUNT],
+}
+
+impl<'a, const ROWS: usize, const COLS: usize, const KEY_COUNT: usize>
+	KeyMatrix<'a, ROWS, COLS, KEY_COUNT>
 {
 	pub fn new(
 		key_ids: [KeyId; KEY_COUNT],
-		rows: [Pin<DynPinId, FunctionSioOutput, PullNone>; ROWS],
-		cols: [Pin<DynPinId, FunctionSioInput, PullDown>; COLS],
-		debounce_time: u32,
+		rows: [Output<'a>; ROWS],
+		cols: [Input<'a>; COLS],
+		debounce_time: Duration,
 	) -> Self {
 		assert_eq!(key_ids.len(), ROWS * COLS);
 		Self {
 			rows,
 			cols,
-			keys: Self::from_key_ids(key_ids),
-			debounce_time: debounce_time * 1000,
+			keys: Self::from_key_ids(key_ids, debounce_time),
 		}
 	}
 
-	fn from_key_ids<const N: usize>(key_ids: [KeyId; N]) -> [InputKey; N] {
+	fn from_key_ids<const N: usize>(key_ids: [KeyId; N], debounce_time: Duration) -> [InputKey; N] {
 		let mut keys = [InputKey {
 			id: KeyId(Uuid::nil()),
 			state: KeyState::Released,
 			report: KeyState::Released,
-			keydown_timestamp: 0,
+			prev_report: KeyState::Released,
+			keydown_timestamp: Instant::from_ticks(0),
+			debounce_time,
 		}; N];
 
 		for (k, id) in keys.iter_mut().zip(key_ids) {
@@ -44,57 +102,80 @@ impl<const ROWS: usize, const COLS: usize, const KEY_COUNT: usize>
 				id,
 				state: KeyState::Released,
 				report: KeyState::Released,
-				keydown_timestamp: 0,
+				prev_report: KeyState::Released,
+				keydown_timestamp: Instant::from_ticks(0),
+				debounce_time,
 			};
 		}
 
 		keys
 	}
 
-	pub fn read_into(&mut self, out: &mut Vec<KeyboardAction>, time: u32) {
+	pub fn update(&mut self, time: Instant) -> ([KeyboardAction; KEY_COUNT], usize) {
 		self.scan(time);
 
 		for k in self.keys.iter_mut() {
-			let prev_report = k.report;
-			k.update_report(time, self.debounce_time);
-
-			if prev_report != k.report {
-				out.push(KeyboardAction {
-					action: k.report,
-					key_id: k.id,
-				});
-			}
+			k.debounce_tick(time);
 		}
+
+		self.get_actions()
 	}
 
-	fn scan(&mut self, time: u32) {
+	fn scan(&mut self, time: Instant) {
 		for (r, row_pin) in self.rows.iter_mut().enumerate() {
-			row_pin.set_high().unwrap();
+			row_pin.set_high();
 
 			for (c, col_pin) in self.cols.iter_mut().enumerate() {
 				let i = r * ROWS + c;
-				if col_pin.is_high().unwrap() {
+				if col_pin.is_high() {
 					self.keys[i].down(time)
 				} else {
 					self.keys[i].up()
 				}
 			}
 
-			row_pin.set_low().unwrap();
+			row_pin.set_low();
 		}
+	}
+
+	fn get_actions(&self) -> ([KeyboardAction; KEY_COUNT], usize) {
+		let mut actions = [KeyboardAction::default(); KEY_COUNT];
+
+		let i = 0;
+
+		for k in self.keys.iter() {
+			if k.report != k.prev_report {
+				actions[i] = KeyboardAction {
+					action: k.report,
+					key_id: k.id,
+				};
+			}
+		}
+
+		(actions, i)
 	}
 }
 
 #[derive(Clone, Copy)]
-struct InputKey {
+pub struct InputKey {
 	id: KeyId,
 	state: KeyState,
 	report: KeyState,
-	keydown_timestamp: u32,
+	prev_report: KeyState,
+	keydown_timestamp: Instant,
+	debounce_time: Duration,
 }
 
 impl InputKey {
-	pub fn down(&mut self, time: u32) {
+	pub fn id(&self) -> KeyId {
+		self.id
+	}
+
+	pub fn state(&self) -> (KeyState, KeyState) {
+		(self.prev_report, self.state)
+	}
+
+	fn down(&mut self, time: Instant) {
 		if self.state == KeyState::Pressed {
 			return;
 		}
@@ -102,15 +183,17 @@ impl InputKey {
 		self.state = KeyState::Pressed;
 	}
 
-	pub fn up(&mut self) {
+	fn up(&mut self) {
 		self.state = KeyState::Released;
 	}
 
-	pub fn update_report(&mut self, time: u32, debounce: u32) {
+	/// Latches all key presses for at least `debounce_time`
+	fn debounce_tick(&mut self, time: Instant) {
+		self.prev_report = self.report;
 		self.report = match (self.report, self.state) {
 			(KeyState::Pressed, KeyState::Released) => {
-				if time.wrapping_sub(self.keydown_timestamp) < debounce {
-					// debounce
+				if time.duration_since(self.keydown_timestamp) < self.debounce_time {
+					// debouncing
 					KeyState::Pressed
 				} else {
 					KeyState::Released
@@ -136,6 +219,7 @@ impl Format for KeyId {
 	}
 }
 
+#[derive(Clone, Copy)]
 pub struct KeyboardAction {
 	pub action: KeyState,
 	pub key_id: KeyId,
@@ -153,6 +237,15 @@ impl KeyboardAction {
 		Self {
 			action: KeyState::Released,
 			key_id,
+		}
+	}
+}
+
+impl Default for KeyboardAction {
+	fn default() -> Self {
+		Self {
+			action: KeyState::Released,
+			key_id: KeyId(Uuid::nil()),
 		}
 	}
 }

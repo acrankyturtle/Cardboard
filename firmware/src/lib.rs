@@ -6,12 +6,13 @@ use alloc::vec::Vec;
 use defmt::Format;
 use profile::LayerTag;
 
-pub mod command;
-pub mod context;
+// pub mod command;
+// pub mod context;
 pub mod device;
 pub mod hid;
 pub mod input;
 pub mod profile;
+pub mod serial;
 pub mod state;
 pub mod storage;
 

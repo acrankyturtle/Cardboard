@@ -1,34 +1,26 @@
-use core::borrow::BorrowMut;
-
 use defmt::{debug, error, info};
 use generic_array::ArrayLength;
-use rp2040_hal::usb::UsbBus;
-use usbd_serial::{embedded_io::Read, SerialPort};
 
 use crate::{
-	command::DeviceInfo, hid::HidState, profile::KeyboardProfile, state::CurrentProfile,
-	storage::FlashStorage, Error,
+	command::DeviceInfo, hid::HidState, profile::KeyboardProfile, serial::SerialPort,
+	state::CurrentProfile, storage::FlashStorage, Error,
 };
 
-pub struct Device<'a, ProfileSize: ArrayLength<u8>, RS: BorrowMut<[u8]>, WS: BorrowMut<[u8]>> {
+pub struct Device<ProfileSize: ArrayLength<u8>, S: SerialPort> {
 	pub device_info: DeviceInfo,
 	pub profile_storage: FlashStorage<ProfileSize>,
 	pub current_profile: CurrentProfile,
-	pub serial_port: SerialPort<'a, UsbBus, RS, WS>,
+	pub serial_port: S,
 	pub hid: HidState,
 }
 
-impl<ProfileSize: ArrayLength<u8>, RS: BorrowMut<[u8]>, WS: BorrowMut<[u8]>> ContextDeviceInfo
-	for Device<'_, ProfileSize, RS, WS>
-{
+impl<ProfileSize: ArrayLength<u8>, S: SerialPort> ContextDeviceInfo for Device<ProfileSize, S> {
 	fn get_device_info(&self) -> &DeviceInfo {
 		&self.device_info
 	}
 }
 
-impl<ProfileSize: ArrayLength<u8>, RS: BorrowMut<[u8]>, WS: BorrowMut<[u8]>> ContextProfileStorage
-	for Device<'_, ProfileSize, RS, WS>
-{
+impl<ProfileSize: ArrayLength<u8>, S: SerialPort> ContextProfileStorage for Device<ProfileSize, S> {
 	fn get_profile_storage(&mut self) -> &mut FlashStorage<ProfileSize> {
 		&mut self.profile_storage
 	}
@@ -36,28 +28,19 @@ impl<ProfileSize: ArrayLength<u8>, RS: BorrowMut<[u8]>, WS: BorrowMut<[u8]>> Con
 	type SIZE = ProfileSize;
 }
 
-impl<ProfileSize: ArrayLength<u8>, RS: BorrowMut<[u8]>, WS: BorrowMut<[u8]>> ContextCurrentProfile
-	for Device<'_, ProfileSize, RS, WS>
-{
+impl<ProfileSize: ArrayLength<u8>, S: SerialPort> ContextCurrentProfile for Device<ProfileSize, S> {
 	fn get_current_profile(&mut self) -> &mut CurrentProfile {
 		&mut self.current_profile
 	}
 }
 
-impl<'a, ProfileSize: ArrayLength<u8>, RS: BorrowMut<[u8]>, WS: BorrowMut<[u8]>>
-	ContextSerialPort<'a> for Device<'a, ProfileSize, RS, WS>
-{
-	fn get_serial_port(&mut self) -> &mut SerialPort<'a, UsbBus, Self::RS, Self::WS> {
+impl<ProfileSize: ArrayLength<u8>, S: SerialPort> ContextSerialPort for Device<ProfileSize, S> {
+	fn get_serial_port(&mut self) -> &mut impl SerialPort {
 		&mut self.serial_port
 	}
-
-	type RS = RS;
-	type WS = WS;
 }
 
-impl<ProfileSize: ArrayLength<u8>, RS: BorrowMut<[u8]>, WS: BorrowMut<[u8]>> ContextHidState
-	for Device<'_, ProfileSize, RS, WS>
-{
+impl<ProfileSize: ArrayLength<u8>, S: SerialPort> ContextHidState for Device<ProfileSize, S> {
 	fn get_hid_state(&mut self) -> &mut HidState {
 		&mut self.hid
 	}
@@ -77,11 +60,8 @@ pub trait ContextCurrentProfile {
 	fn get_current_profile(&mut self) -> &mut CurrentProfile;
 }
 
-pub trait ContextSerialPort<'a> {
-	fn get_serial_port(&mut self) -> &mut SerialPort<'a, UsbBus, Self::RS, Self::WS>;
-
-	type RS: BorrowMut<[u8]>;
-	type WS: BorrowMut<[u8]>;
+pub trait ContextSerialPort {
+	fn get_serial_port(&mut self) -> &mut impl SerialPort;
 }
 
 pub trait ContextHidState {
@@ -102,9 +82,9 @@ where
 }
 
 // reads the profile from the serial port and writes it to the profile storage in blocks
-pub fn write_profile_from_reader<'a, Context>(len: usize, ctx: &mut Context) -> Result<(), Error>
+pub fn write_profile_from_reader<Context>(len: usize, ctx: &mut Context) -> Result<(), Error>
 where
-	Context: ContextProfileStorage + ContextSerialPort<'a>,
+	Context: ContextProfileStorage + ContextSerialPort,
 {
 	if len == 0 {
 		error!("Profile length is 0");

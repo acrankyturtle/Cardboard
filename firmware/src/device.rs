@@ -1,31 +1,48 @@
-use crate::{
-	command::{CommandInfo, CommandList, DeviceId, DeviceInfo},
-	context::ContextSerialPort,
-	Error,
-};
+use core::fmt::Display;
 
-pub struct CommandInstance<Context> {
-	pub info: CommandInfo,
-	pub execute: fn(&mut Context) -> Result<(), Error>,
+use alloc::{string::ToString, vec::Vec};
+use defmt::Format;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+
+pub struct DeviceId(Uuid);
+
+impl DeviceId {
+	pub const fn new(id: Uuid) -> Self {
+		DeviceId(id)
+	}
 }
 
-pub struct DeviceSetup<const C: usize, Context> {
+impl Display for DeviceId {
+	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+		self.0.fmt(f)
+	}
+}
+
+#[derive(Serialize, Deserialize, Copy, Clone, PartialEq)]
+pub struct CommandId(Uuid);
+
+impl Display for CommandId {
+	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+		self.0.fmt(f)
+	}
+}
+
+impl Format for CommandId {
+	fn format(&self, fmt: defmt::Formatter) {
+		self.0.to_string().format(fmt);
+	}
+}
+
+pub struct DeviceInfo {
 	pub id: DeviceId,
 	pub name: &'static str,
 	pub manufacturer: &'static str,
-	pub commands: [CommandInstance<Context>; C],
+	pub commands: Vec<CommandInfo>,
 }
 
-impl<'a, const C: usize, Context: ContextSerialPort<'a>> DeviceSetup<C, Context> {
-	pub fn build(self) -> (DeviceInfo, CommandList<C, Context>) {
-		(
-			DeviceInfo {
-				id: self.id,
-				name: self.name,
-				manufacturer: self.manufacturer,
-				commands: self.commands.iter().map(|cmd| cmd.info).collect(),
-			},
-			CommandList::new(self.commands),
-		)
-	}
+#[derive(Serialize, Copy, Clone)]
+pub struct CommandInfo {
+	id: CommandId,
+	name: &'static str,
 }

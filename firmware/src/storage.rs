@@ -1,7 +1,5 @@
-use cortex_m::interrupt::{disable as __disable_irq, enable as __enable_irq};
 use defmt::{debug, error};
 use generic_array::{ArrayLength, GenericArray};
-use rp2040_hal::rom_data::{flash_range_erase, flash_range_program};
 
 use crate::{profile::KeyboardProfile, Error};
 
@@ -50,9 +48,9 @@ impl<SIZE: ArrayLength<u8>> FlashStorage<SIZE> {
 			return Err(Error::Unknown);
 		}
 
-		unsafe {
-			flash_range_program(offset as u32, buf.as_ptr(), buf.len());
-		}
+		// critical_section::with(|_| unsafe {
+		// 	flash_range_program(offset as u32, buf.as_ptr(), buf.len());
+		// });
 
 		Ok(())
 	}
@@ -81,11 +79,9 @@ impl<SIZE: ArrayLength<u8>> FlashStorage<SIZE> {
 			return Err(Error::Unknown);
 		}
 
-		unsafe {
-			__disable_irq();
-			flash_range_erase(offset as u32, len, 4096, 0);
-			__enable_irq();
-		}
+		// critical_section::with(|_| unsafe {
+		// 	flash_range_erase(offset as u32, len, ERASE_SIZE as u32, 0);
+		// });
 
 		Ok(())
 	}
