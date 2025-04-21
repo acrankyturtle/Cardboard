@@ -1,173 +1,93 @@
-use defmt::{debug, error};
-use generic_array::{ArrayLength, GenericArray};
+use defmt::error;
+use embassy_rp::{
+	flash::{Async, Flash, ERASE_SIZE, WRITE_SIZE},
+	peripherals::FLASH,
+};
 
-use crate::{profile::KeyboardProfile, Error};
+pub trait FlashMemory {
+	fn as_slice(&self) -> &'static [u8];
+	fn erase_all(&mut self) -> Result<(), &'static str>;
+	fn write(&mut self, offset: usize, data: &[u8]) -> Result<(), &'static str>;
 
-pub struct FlashStorage<Size: ArrayLength<u8>> {
-	buf: &'static GenericArray<u8, Size>,
+	const SIZE: usize;
 }
 
-impl<SIZE: ArrayLength<u8>> FlashStorage<SIZE> {
-	pub fn new(buf: &'static GenericArray<u8, SIZE>) -> Self {
-		FlashStorage { buf }
+pub struct EmbassyFlashMemory<'d, const SIZE: usize> {
+	base_addr: *const u8,
+	flash: Flash<'d, FLASH, Async, SIZE>,
+}
+
+impl<'d, const SIZE: usize> EmbassyFlashMemory<'d, SIZE> {
+	pub unsafe fn new(base_addr: *const u8, flash: Flash<'d, FLASH, Async, SIZE>) -> Self {
+		if base_addr as usize % WRITE_SIZE != 0 {
+			error!(
+				"Base address is not write block aligned: {}",
+				base_addr as usize
+			);
+			panic!("Base address is not write block aligned");
+		}
+
+		if base_addr as usize % ERASE_SIZE != 0 {
+			error!(
+				"Base address is not erase block aligned: {}",
+				base_addr as usize
+			);
+			panic!("Base address is not erase block aligned");
+		}
+
+		EmbassyFlashMemory { base_addr, flash }
 	}
 
-	fn get_ptr(&self) -> *const u8 {
-		self.buf.as_ptr()
+	pub fn get_flash_offset(&self, offset: usize) -> usize {
+		self.base_addr as usize + offset
+	}
+}
+
+impl<'a, const SIZE: usize> FlashMemory for EmbassyFlashMemory<'a, SIZE> {
+	fn as_slice(&self) -> &'static [u8] {
+		unsafe { core::slice::from_raw_parts(self.base_addr, SIZE) }
 	}
 
-	pub fn get(&self) -> &GenericArray<u8, SIZE> {
-		self.buf
+	fn erase_all(&mut self) -> Result<(), &'static str> {
+		let base_addr = self.base_addr as u32;
+		self.flash
+			.blocking_erase(base_addr as u32, base_addr + SIZE as u32)
+			.map_err(|e| {
+				error!("Error erasing flash memory: {:?}", e);
+				"Error erasing flash memory"
+			})
 	}
 
-	pub fn write(&mut self, offset: usize, buf: &[u8]) -> Result<(), Error> {
-		const WRITE_SIZE: usize = 256;
-
-		if offset + buf.len() > SIZE::USIZE {
+	fn write(&mut self, offset: usize, data: &[u8]) -> Result<(), &'static str> {
+		if offset + data.len() > SIZE {
 			error!(
 				"Write out of bounds: {} + {} > {}",
 				offset,
-				buf.len(),
-				SIZE::USIZE
+				data.len(),
+				SIZE
 			);
-			return Err(Error::Unknown);
+			return Err("Write out of bounds");
 		}
 
-		let offset = self.get_ptr() as usize + offset;
 		if offset % WRITE_SIZE != 0 {
 			error!("Offset is not block aligned ({}): {}", WRITE_SIZE, offset);
-			return Err(Error::Unknown);
+			return Err("Offset is not block aligned");
 		}
 
-		if buf.len() % WRITE_SIZE != 0 {
+		if data.len() % WRITE_SIZE != 0 {
 			error!(
 				"Length is not block aligned ({}): {}",
 				WRITE_SIZE,
-				buf.len()
+				data.len()
 			);
-			return Err(Error::Unknown);
+			return Err("Length is not block aligned");
 		}
 
-		// critical_section::with(|_| unsafe {
-		// 	flash_range_program(offset as u32, buf.as_ptr(), buf.len());
-		// });
-
-		Ok(())
+		self.flash.blocking_write(offset as u32, data).map_err(|e| {
+			error!("Error writing to flash memory: {:?}", e);
+			"Error writing to flash memory"
+		})
 	}
 
-	pub fn erase(&mut self, offset: usize, len: usize) -> Result<(), Error> {
-		const ERASE_SIZE: usize = 4096;
-
-		if offset + len > SIZE::USIZE {
-			error!(
-				"Erase out of bounds: {} + {} > {}",
-				offset,
-				len,
-				SIZE::USIZE
-			);
-			return Err(Error::Unknown);
-		}
-
-		let offset = self.get_ptr() as usize + offset;
-		if offset % ERASE_SIZE != 0 {
-			error!("Offset is not block aligned ({}): {}", ERASE_SIZE, offset);
-			return Err(Error::Unknown);
-		}
-
-		if len % ERASE_SIZE != 0 {
-			error!("Length is not block aligned ({}): {}", ERASE_SIZE, len);
-			return Err(Error::Unknown);
-		}
-
-		// critical_section::with(|_| unsafe {
-		// 	flash_range_erase(offset as u32, len, ERASE_SIZE as u32, 0);
-		// });
-
-		Ok(())
-	}
-}
-
-// impl<const SIZE: usize> Storage for FlashStorage<SIZE> {
-// 	const READ_SIZE: usize = 64;
-// 	const WRITE_SIZE: usize = 256;
-// 	const BLOCK_SIZE: usize = 4096;
-// 	const BLOCK_COUNT: usize = SIZE / Self::BLOCK_SIZE;
-
-// 	type CACHE_SIZE = U256;
-
-// 	type LOOKAHEAD_SIZE = U2;
-
-// 	fn read(&mut self, off: usize, buf: &mut [u8]) -> littlefs2::io::Result<usize> {
-// 		let read_size = Self::READ_SIZE;
-// 		debug_assert!(off % read_size == 0);
-// 		debug_assert!(buf.len() % read_size == 0);
-
-// 		let len = buf.len();
-// 		buf.copy_from_slice(&self.buf[off..off + len]);
-// 		Ok(len)
-// 	}
-
-// 	fn write(&mut self, off: usize, data: &[u8]) -> littlefs2::io::Result<usize> {
-// 		let write_size = Self::WRITE_SIZE;
-// 		debug_assert!(off % write_size == 0);
-// 		debug_assert!(data.len() % write_size == 0);
-// 		debug_assert!(data.len() + off <= SIZE);
-
-// 		let offset = self.buf.as_ptr() as u32 + off as u32;
-
-// 		info!("write offset: {}, write len: {}", offset, data.len());
-
-// 		// unsafe {
-// 		// 	flash_range_program(offset, data.as_ptr(), data.len());
-// 		// }
-
-// 		Ok(data.len())
-// 	}
-
-// 	fn erase(&mut self, off: usize, len: usize) -> littlefs2::io::Result<usize> {
-// 		let erase_size = Self::BLOCK_SIZE;
-// 		debug_assert!(off % erase_size == 0);
-// 		debug_assert!(len % erase_size == 0);
-// 		debug_assert!(len + off <= SIZE);
-
-// 		let offset = self.buf.as_ptr() as u32 + off as u32;
-
-// 		info!("erase offset: {}, write len: {}", offset, len);
-
-// 		// unsafe {
-// 		// 	flash_range_erase(offset, len, Self::BLOCK_SIZE as u32, 0);
-// 		// }
-
-// 		Ok(len)
-// 	}
-// }
-
-pub trait ProfileStorage {
-	fn read(&self) -> Result<KeyboardProfile, Error>;
-
-	fn write(&mut self, profile: &KeyboardProfile) -> Result<(), Error>;
-}
-
-pub struct ProfileFlashStorage<SIZE: ArrayLength<u8>> {
-	pub storage: FlashStorage<SIZE>,
-}
-
-impl<SIZE: ArrayLength<u8>> ProfileStorage for ProfileFlashStorage<SIZE> {
-	fn read(&self) -> Result<KeyboardProfile, Error> {
-		serde_json_core::from_slice::<KeyboardProfile>(self.storage.get())
-			.map(|(profile, _)| profile)
-			.map_err(|_| Error::Unknown)
-	}
-
-	fn write(&mut self, profile: &KeyboardProfile) -> Result<(), Error> {
-		let mut buf = GenericArray::<u8, SIZE>::default();
-		let size = serde_json_core::to_slice(profile, &mut buf).map_err(|_| Error::Unknown)?;
-
-		if size > SIZE::USIZE {
-			error!("Profile size too large: {}", size);
-			return Err(Error::Unknown);
-		}
-
-		self.storage.write(0, &buf[..size])
-	}
+	const SIZE: usize = SIZE;
 }

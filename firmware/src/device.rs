@@ -1,10 +1,16 @@
 use core::fmt::Display;
 
-use alloc::{string::ToString, vec::Vec};
+use alloc::{
+	string::{String, ToString},
+	vec::Vec,
+};
 use defmt::Format;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::command::CommandInfo;
+
+#[derive(Serialize, Deserialize, Copy, Clone, PartialEq)]
 pub struct DeviceId(Uuid);
 
 impl DeviceId {
@@ -20,7 +26,7 @@ impl Display for DeviceId {
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone, PartialEq)]
-pub struct CommandId(Uuid);
+pub struct CommandId(pub Uuid);
 
 impl Display for CommandId {
 	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -34,15 +40,10 @@ impl Format for CommandId {
 	}
 }
 
+#[derive(Serialize)]
 pub struct DeviceInfo {
 	pub id: DeviceId,
 	pub name: &'static str,
 	pub manufacturer: &'static str,
 	pub commands: Vec<CommandInfo>,
-}
-
-#[derive(Serialize, Copy, Clone)]
-pub struct CommandInfo {
-	id: CommandId,
-	name: &'static str,
 }

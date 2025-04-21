@@ -6,8 +6,8 @@ use defmt::{error, Format};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::input::KeyId;
-use crate::{Error, TagList};
+use crate::TagList;
+use cardboard_lib::input::KeyId;
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct KeyboardProfile {
@@ -15,12 +15,12 @@ pub struct KeyboardProfile {
 }
 
 impl KeyboardProfile {
-	pub fn from_json_bytes(json: &[u8]) -> Result<Self, Error> {
+	pub fn from_json_bytes(json: &[u8]) -> Result<Self, &'static str> {
 		serde_json_core::from_slice(json)
 			.map(|(profile, _)| profile)
 			.map_err(|e| {
 				error!("Failed to read profile: {:?}", e);
-				Error::Unknown
+				"Failed to read profile from json bytes"
 			})
 	}
 }
@@ -138,13 +138,13 @@ impl LayerTag {
 	}
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Format, Serialize, Deserialize, Clone)]
 pub enum KeyboardEvent {
 	KeyDown(KeyboardKey),
 	KeyUp(KeyboardKey),
 }
 
-#[derive(Format, Serialize, Deserialize, Clone)]
+#[derive(Debug, Format, Serialize, Deserialize, Clone, Copy)]
 pub enum KeyboardKey {
 	A = 0x04,
 	B = 0x05,

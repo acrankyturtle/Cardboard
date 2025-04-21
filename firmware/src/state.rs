@@ -2,10 +2,10 @@ extern crate alloc;
 
 use core::fmt;
 
-use crate::input::KeyId;
 use crate::profile::*;
 use crate::TagList;
 use alloc::vec::Vec;
+use cardboard_lib::input::KeyId;
 use ouroboros::self_referencing;
 
 #[self_referencing]

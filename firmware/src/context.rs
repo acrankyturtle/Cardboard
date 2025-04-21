@@ -1,180 +1,94 @@
-use defmt::{debug, error, info};
-use generic_array::ArrayLength;
-
 use crate::{
-	command::DeviceInfo, hid::HidState, profile::KeyboardProfile, serial::SerialPort,
-	state::CurrentProfile, storage::FlashStorage, Error,
+	device::DeviceInfo,
+	serial::{ChunkedSerialReceiver, ChunkedSerialSender, SerialReceiver, SerialSender},
+	storage::FlashMemory,
 };
 
-pub struct Device<ProfileSize: ArrayLength<u8>, S: SerialPort> {
-	pub device_info: DeviceInfo,
-	pub profile_storage: FlashStorage<ProfileSize>,
-	pub current_profile: CurrentProfile,
-	pub serial_port: S,
-	pub hid: HidState,
+pub struct Context<
+	ProfileFlash: FlashMemory,
+	ProfileSignal: 'static,
+	SerialReader: SerialReceiver + ChunkedSerialReceiver,
+	SerialWriter: SerialSender + ChunkedSerialSender,
+> {
+	pub device_info: &'static DeviceInfo,
+	pub profile_flash: ProfileFlash,
+	pub change_profile_signal: &'static ProfileSignal,
+	pub serial_rx: SerialReader,
+	pub serial_tx: SerialWriter,
 }
 
-impl<ProfileSize: ArrayLength<u8>, S: SerialPort> ContextDeviceInfo for Device<ProfileSize, S> {
-	fn get_device_info(&self) -> &DeviceInfo {
-		&self.device_info
-	}
-}
-
-impl<ProfileSize: ArrayLength<u8>, S: SerialPort> ContextProfileStorage for Device<ProfileSize, S> {
-	fn get_profile_storage(&mut self) -> &mut FlashStorage<ProfileSize> {
-		&mut self.profile_storage
-	}
-
-	type SIZE = ProfileSize;
-}
-
-impl<ProfileSize: ArrayLength<u8>, S: SerialPort> ContextCurrentProfile for Device<ProfileSize, S> {
-	fn get_current_profile(&mut self) -> &mut CurrentProfile {
-		&mut self.current_profile
-	}
-}
-
-impl<ProfileSize: ArrayLength<u8>, S: SerialPort> ContextSerialPort for Device<ProfileSize, S> {
-	fn get_serial_port(&mut self) -> &mut impl SerialPort {
-		&mut self.serial_port
-	}
-}
-
-impl<ProfileSize: ArrayLength<u8>, S: SerialPort> ContextHidState for Device<ProfileSize, S> {
-	fn get_hid_state(&mut self) -> &mut HidState {
-		&mut self.hid
+impl<
+		ProfileFlash: FlashMemory,
+		ProfileSignal,
+		SerialRx: SerialReceiver + ChunkedSerialReceiver,
+		SerialTx: SerialSender + ChunkedSerialSender,
+	> Context<ProfileFlash, ProfileSignal, SerialRx, SerialTx>
+{
+	pub fn new(
+		device_info: &'static DeviceInfo,
+		profile_flash: ProfileFlash,
+		change_profile_signal: &'static ProfileSignal,
+		serial_rx: SerialRx,
+		serial_tx: SerialTx,
+	) -> Self {
+		Self {
+			device_info,
+			profile_flash,
+			change_profile_signal,
+			serial_rx,
+			serial_tx,
+		}
 	}
 }
 
 pub trait ContextDeviceInfo {
-	fn get_device_info(&self) -> &DeviceInfo;
+	fn device_info(&self) -> &'static DeviceInfo;
 }
 
-pub trait ContextProfileStorage {
-	fn get_profile_storage(&mut self) -> &mut FlashStorage<Self::SIZE>;
-
-	type SIZE: ArrayLength<u8>;
+pub trait ContextSerialRx {
+	type SerialRx: SerialReceiver;
+	fn serial_rx(&mut self) -> &mut Self::SerialRx;
 }
 
-pub trait ContextCurrentProfile {
-	fn get_current_profile(&mut self) -> &mut CurrentProfile;
+pub trait ContextSerialTx {
+	type SerialTx: SerialSender;
+	fn serial_tx(&mut self) -> &mut Self::SerialTx;
 }
 
-pub trait ContextSerialPort {
-	fn get_serial_port(&mut self) -> &mut impl SerialPort;
-}
-
-pub trait ContextHidState {
-	fn get_hid_state(&mut self) -> &mut HidState;
-}
-
-pub fn load_profile<Context>(ctx: &mut Context) -> Result<(), Error>
-where
-	Context: ContextProfileStorage + ContextCurrentProfile + ContextHidState,
+impl<
+		ProfileFlash: FlashMemory,
+		ProfileSignal,
+		SerialReader: SerialReceiver + ChunkedSerialReceiver,
+		SerialWriter: SerialSender + ChunkedSerialSender,
+	> ContextDeviceInfo for Context<ProfileFlash, ProfileSignal, SerialReader, SerialWriter>
 {
-	let profile = KeyboardProfile::from_json_bytes(ctx.get_profile_storage().get())?;
-	info!("Loaded profile with {} keys", profile.keys.len());
-
-	let current_profile = ctx.get_current_profile();
-	*current_profile = CurrentProfile::from(profile);
-	ctx.get_hid_state().reset();
-	Ok(())
-}
-
-// reads the profile from the serial port and writes it to the profile storage in blocks
-pub fn write_profile_from_reader<Context>(len: usize, ctx: &mut Context) -> Result<(), Error>
-where
-	Context: ContextProfileStorage + ContextSerialPort,
-{
-	if len == 0 {
-		error!("Profile length is 0");
-		return Err(Error::Unknown);
+	fn device_info(&self) -> &'static DeviceInfo {
+		self.device_info
 	}
+}
 
-	debug!("boutta erase profile storage");
+impl<
+		ProfileFlash: FlashMemory,
+		ProfileSignal,
+		SerialReader: SerialReceiver + ChunkedSerialReceiver,
+		SerialWriter: SerialSender + ChunkedSerialSender,
+	> ContextSerialRx for Context<ProfileFlash, ProfileSignal, SerialReader, SerialWriter>
+{
+	type SerialRx = SerialReader;
+	fn serial_rx(&mut self) -> &mut Self::SerialRx {
+		&mut self.serial_rx
+	}
+}
 
-	// erase old profile (ensure erase multiple of 4096)
-	let rem = len % 4096;
-	let erase_len = if rem != 0 { len + (4096 - rem) } else { len };
-	ctx.get_profile_storage().erase(0, erase_len)?;
-
-	const BLOCK_SIZE: usize = 4 * 1024;
-
-	debug!("len: {}", len);
-
-	// let mut pos = 0;
-	// while pos < len {
-	// 	let read_len = if len - pos > BLOCK_SIZE {
-	// 		BLOCK_SIZE
-	// 	} else {
-	// 		len - pos
-	// 	};
-	// 	let mut buf = [0; BLOCK_SIZE];
-
-	// 	ctx.get_serial_port()
-	// 		.read_exact(&mut buf[..read_len])
-	// 		.map_err(|_| {
-	// 			error!("Error reading profile from serial port.");
-	// 			Error::Unknown
-	// 		})?;
-
-	// 	let write_len = if read_len < BLOCK_SIZE {
-	// 		// pad to multiple of 256
-	// 		let rem = read_len % 256;
-	// 		if rem != 0 {
-	// 			let pad = 256 - rem;
-	// 			read_len + pad
-	// 		} else {
-	// 			read_len
-	// 		}
-	// 	} else {
-	// 		BLOCK_SIZE
-	// 	};
-	// 	ctx.get_profile_storage().write(pos, &buf[..write_len])?;
-
-	// 	pos += read_len;
-	// }
-
-	// */BROKEN*/
-	// read/write profile in chunks
-	// let mut offset = 0;
-	// while len > 0 {
-	// 	let read_len = if len > BLOCK_SIZE { BLOCK_SIZE } else { len };
-	// 	let mut buf = [0; BLOCK_SIZE];
-
-	// 	let num_read = ctx
-	// 		.get_serial_port()
-	// 		.read(&mut buf[..read_len])
-	// 		.map_err(|_| {
-	// 			error!("Error reading from serial port");
-	// 			Error::Unknown
-	// 		})?;
-
-	// 	if num_read != read_len {
-	// 		error!(
-	// 			"Unexpected end of stream. Expected {} bytes, got {}.",
-	// 			read_len, num_read
-	// 		);
-	// 		return Err(Error::Unknown);
-	// 	}
-
-	// 	let write_len = if read_len < BLOCK_SIZE {
-	// 		// pad to multiple of 256
-	// 		let rem = read_len % 256;
-	// 		if rem != 0 {
-	// 			let pad = 256 - rem;
-	// 			read_len + pad
-	// 		} else {
-	// 			read_len
-	// 		}
-	// 	} else {
-	// 		BLOCK_SIZE
-	// 	};
-	// 	ctx.get_profile_storage().write(offset, &buf[..write_len])?;
-
-	// 	len -= read_len;
-	// 	offset += read_len;
-	// }
-
-	Ok(())
+impl<
+		ProfileFlash: FlashMemory,
+		ProfileSignal,
+		SerialReader: SerialReceiver + ChunkedSerialReceiver,
+		SerialWriter: SerialSender + ChunkedSerialSender,
+	> ContextSerialTx for Context<ProfileFlash, ProfileSignal, SerialReader, SerialWriter>
+{
+	type SerialTx = SerialWriter;
+	fn serial_tx(&mut self) -> &mut Self::SerialTx {
+		&mut self.serial_tx
+	}
 }
