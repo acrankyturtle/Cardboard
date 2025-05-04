@@ -4,7 +4,7 @@ name = "cardboard"
 version = "0.1.0"
 
 [dependencies]
-cardboard-lib = { path = "../cardboard-lib" }
+cardboard-lib = { path = "../cardboard-lib", features = ["embassy"] }
 
 cortex-m = { version = "0.7.6", features = ["inline-asm"] }
 cortex-m-rt = "0.7.0"

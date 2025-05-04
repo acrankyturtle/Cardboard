@@ -1,9 +1,6 @@
 use core::fmt::Display;
 
-use alloc::{
-	string::{String, ToString},
-	vec::Vec,
-};
+use alloc::{string::ToString, vec::Vec};
 use defmt::Format;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

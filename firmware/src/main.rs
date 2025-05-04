@@ -2,6 +2,7 @@
 #![no_main]
 #![feature(type_alias_impl_trait)]
 #![feature(impl_trait_in_assoc_type)]
+#![feature(generic_const_exprs)]
 
 extern crate alloc;
 extern crate cortex_m;
@@ -16,11 +17,12 @@ use cardboard::device::{DeviceId, DeviceInfo};
 use cardboard::hid::HidDevice;
 use cardboard::profile::ActionEvent;
 use cardboard::profile::KeyboardProfile;
-use cardboard::serial::{BufferedReader, BufferedWriter, SerialReader, SerialReceiver};
 use cardboard::state::KeyboardState;
-use cardboard::storage::{EmbassyFlashMemory, FlashMemory};
+use cardboard::storage::{load_profile_from_flash, EmbassyFlashMemory, FlashMemory};
 use cardboard::StaticCell;
 use cardboard_lib::input::{ColPin, KeyId, KeyMatrix, KeyState, RowPin};
+use cardboard_lib::serial::embassy::{EmbassySerialPacketReader, EmbassySerialPacketWriter};
+use cardboard_lib::serial::{BufferedReader, SerialReaderExt};
 use core::mem::MaybeUninit;
 use core::ops::Add;
 use defmt::*;
@@ -42,21 +44,30 @@ use serde::de;
 
 use {defmt_rtt as _, panic_probe as _}; // global logger
 
-use cardboard::command::{Command, IdentifyCommand};
+use cardboard::command::{ChangeProfileCommand, Command, IdentifyCommand};
 use embedded_alloc::LlffHeap as Heap;
 use uuid::Uuid;
+
+const FLASH_ADDR: *const u8 = 0x10000000 as *const u8;
+const FLASH_SIZE: usize = 2 * 1024 * 1024; // 2 MB
 
 // profile flash storage
 #[link_section = ".profile"]
 static mut PROFILE: MaybeUninit<[u8; PROFILE_SIZE]> = MaybeUninit::uninit();
-const PROFILE_SIZE: usize = 1024 * 500; // 500kB
+const PROFILE_SIZE: usize = 500 * 1024; // 500 KB
 
-// platform specific
-const HEAP_SIZE: usize = 1024 * 4; // 4kB
+// allocator setup
+const HEAP_SIZE: usize = 1024 * 4; // 4 KB
 
 // matrix
 const ROWS: usize = 5;
 const COLS: usize = 6;
+
+// usb
+const USB_HID_KEYBOARD_PACKET_SIZE: usize = 32;
+const USB_HID_MOUSE_PACKET_SIZE: usize = 32;
+const USB_HID_CONSUMER_PACKET_SIZE: usize = 32;
+const USB_SERIAL_PACKET_SIZE: usize = 64;
 
 // hid
 type KeyboardImpl = cardboard::hid::NKROKeyboard;
@@ -87,21 +98,24 @@ fn create_device_info(
 	}
 }
 
-const CMD_COUNT: usize = 1;
+const CMD_COUNT: usize = 2;
 
 static mut COMMANDS: MaybeUninit<[Box<dyn Command<CommandContext>>; CMD_COUNT]> =
 	MaybeUninit::uninit();
 fn create_cmds() -> &'static mut [Box<dyn Command<CommandContext>>; CMD_COUNT] {
-	let cmds: [Box<dyn Command<CommandContext>>; CMD_COUNT] = [Box::new(IdentifyCommand {})];
+	let cmds: [Box<dyn Command<CommandContext>>; CMD_COUNT] = [
+		Box::new(IdentifyCommand {}), // identify MUST be first
+		Box::new(ChangeProfileCommand {}),
+	];
 
 	unsafe { COMMANDS.write(cmds) }
 }
 
 type CommandContext = Context<
-	EmbassyFlashMemory<'static, PROFILE_SIZE>,
+	EmbassyFlashMemory<'static, FLASH_SIZE>,
 	Signal<ThreadModeRawMutex, KeyboardProfile>,
-	BufferedReader<'static, 256>,
-	BufferedWriter<'static, 256>,
+	BufferedReader<EmbassySerialPacketReader<'static, USB_SERIAL_PACKET_SIZE>>,
+	EmbassySerialPacketWriter<'static, USB_SERIAL_PACKET_SIZE>,
 >;
 
 static HID_SIGNAL: Signal<ThreadModeRawMutex, HidReport> = Signal::new();
@@ -174,7 +188,7 @@ async fn main(spawner: Spawner) -> () {
 
 	let (device_info, serial_number) = create_device_info(cmds);
 
-	let usb = init_usb(p.USB, device_info, &serial_number);
+	let mut usb = init_usb(p.USB, device_info, &serial_number);
 
 	spawner.spawn(usb_task(usb.device)).unwrap();
 
@@ -191,59 +205,41 @@ async fn main(spawner: Spawner) -> () {
 	let mouse = MouseImpl::new();
 	let consumer = ConsumerImpl::new();
 
-	const DEFAULT_PROFILE_JSON: &str = r#"
-{
-	"keys": [
-		{
-		"id": "0661ee85-348b-5d93-b5e2-ac11cfa5344b",
-		"layers": [],
-		"default_layer": {
-			"id": "4019527f-fc18-5a66-83a8-8e1b4f5b5775",
-			"macros": [
-				{
-				"id": "50f04f39-e2ff-5bce-a4b7-9d234fcc5078",
-				"name": "Test",
-				"play_channel": null,
-				"cut_channels": [],
-				"start_sequence": {
-					"actions": [
-						{
-						"predelay_ms": 0,
-						"action_event": {
-							"Keyboard": {
-								"KeyDown": "A"
-								}
-							}
-						}
-						]
-					},
-					"loop_sequence": {
-						"actions": []
-						},
-						"end_sequence": {
-							"actions": [
-								{
-								"predelay_ms": 0,
-								"action_event": {
-									"Keyboard": {
-										"KeyUp": "A"
-										}
-									}
-								}
-								]
-							}
-						}
-						]
-					}
-				}
-				]
-			}
-			"#;
+	Timer::after_millis(10).await;
 
-	let flash = init_flash(p.FLASH, p.DMA_CH0);
+	let mut flash = init_flash(p.FLASH, p.DMA_CH0);
 
-	let serial_reader = BufferedReader::<256>::new(usb.serial_reader);
-	let serial_writer = BufferedWriter::<256>::new(usb.serial_writer);
+	let profile = match load_profile_from_flash(&mut flash.profile_flash) {
+		Ok(profile) => {
+			info!("Profile loaded from flash storage");
+			profile
+		}
+		Err(err) => {
+			error!("Failed to load profile from flash storage. Falling back to empty profile. Error: {}", err);
+			KeyboardProfile::default()
+		}
+	};
+
+	spawner
+		.spawn(keypad_task(
+			matrix,
+			profile,
+			keyboard,
+			mouse,
+			consumer,
+			&PROFILE_CHANGED_SIGNAL,
+			&HID_SIGNAL,
+		))
+		.unwrap();
+
+	usb.serial_reader.wait_connection().await;
+	usb.serial_writer.wait_connection().await;
+
+	let serial_reader =
+		EmbassySerialPacketReader::<{ USB_SERIAL_PACKET_SIZE }>::new(usb.serial_reader);
+	let serial_reader = BufferedReader::new(serial_reader);
+	let serial_writer =
+		EmbassySerialPacketWriter::<{ USB_SERIAL_PACKET_SIZE }>::new(usb.serial_writer);
 
 	let cmd_ctx = CommandContext::new(
 		&device_info,
@@ -254,21 +250,6 @@ async fn main(spawner: Spawner) -> () {
 	);
 
 	spawner.spawn(cmd_task(cmd_ctx, cmds)).unwrap();
-
-	let (macro_profile, _) =
-		serde_json_core::from_str::<KeyboardProfile>(DEFAULT_PROFILE_JSON).unwrap();
-
-	spawner
-		.spawn(keypad_task(
-			matrix,
-			macro_profile,
-			keyboard,
-			mouse,
-			consumer,
-			&PROFILE_CHANGED_SIGNAL,
-			&HID_SIGNAL,
-		))
-		.unwrap();
 
 	info!("Ready");
 }
@@ -404,7 +385,7 @@ async fn hid_task(
 		if let Some(keyboard_report) = keyboard_report {
 			keyboard.write(&keyboard_report).await.unwrap();
 
-			if (keyboard_report.iter().any(|&x| x != 0)) {
+			if keyboard_report.iter().any(|&x| x != 0) {
 				info!("Keyboard report: {:?}", keyboard_report);
 			}
 		}
@@ -421,9 +402,6 @@ async fn hid_task(
 async fn cmd_task(mut ctx: CommandContext, cmds: &'static mut [Box<dyn Command<CommandContext>>]) {
 	info!("Serial task started.");
 
-	ctx.serial_rx.wait_connection().await;
-	info!("Serial connected.");
-
 	loop {
 		let cmd_id = match ctx.serial_rx.read_u8().await {
 			Some(cmd_id) => cmd_id,
@@ -433,9 +411,14 @@ async fn cmd_task(mut ctx: CommandContext, cmds: &'static mut [Box<dyn Command<C
 		};
 		match read_cmd(cmd_id, cmds, &mut ctx).await {
 			Ok(_) => {
-				info!("Command executed successfully");
+				info!("Command {} executed successfully", cmd_id);
 			}
 			Err(e) => {
+				// TODO: DELETE!!!
+				if e != "Invalid command ID" {
+					break;
+				}
+
 				warn!("Error: {}", e);
 			}
 		}
@@ -515,21 +498,21 @@ fn init_usb(usb: USB, device_info: &DeviceInfo, serial_number: &'static str) -> 
 		report_descriptor: KeyboardImpl::report_descriptor(),
 		request_handler: None,
 		poll_ms: 1,
-		max_packet_size: 32,
+		max_packet_size: USB_HID_KEYBOARD_PACKET_SIZE as u16,
 	};
 
 	let mouse_hid_config = embassy_usb::class::hid::Config {
 		report_descriptor: MouseImpl::report_descriptor(),
 		request_handler: None,
 		poll_ms: 1,
-		max_packet_size: 32,
+		max_packet_size: USB_HID_MOUSE_PACKET_SIZE as u16,
 	};
 
 	let consumer_hid_config = embassy_usb::class::hid::Config {
 		report_descriptor: ConsumerImpl::report_descriptor(),
 		request_handler: None,
 		poll_ms: 1,
-		max_packet_size: 32,
+		max_packet_size: USB_HID_CONSUMER_PACKET_SIZE as u16,
 	};
 
 	let keyboard_writer = {
@@ -550,12 +533,12 @@ fn init_usb(usb: USB, device_info: &DeviceInfo, serial_number: &'static str) -> 
 		HidWriter::new(&mut usb_builder, state, consumer_hid_config)
 	};
 
-	let class = {
+	let serial_class = {
 		static STATE: StaticCell<embassy_usb::class::cdc_acm::State> = StaticCell::new();
 		let state = STATE.init(embassy_usb::class::cdc_acm::State::new());
-		CdcAcmClass::new(&mut usb_builder, state, 64)
+		CdcAcmClass::new(&mut usb_builder, state, USB_SERIAL_PACKET_SIZE as u16)
 	};
-	let (serial_writer, serial_reader) = class.split();
+	let (serial_writer, serial_reader) = serial_class.split();
 	let usb_device = usb_builder.build();
 
 	UsbDevices {
@@ -575,10 +558,16 @@ struct FlashSetup<ProfileFlash: FlashMemory> {
 fn init_flash(
 	flash: FLASH,
 	dma_ch0: DMA_CH0,
-) -> FlashSetup<EmbassyFlashMemory<'static, PROFILE_SIZE>> {
-	let mut profile_flash = Flash::<_, Async, PROFILE_SIZE>::new(flash, dma_ch0);
-	let profile_flash =
-		unsafe { EmbassyFlashMemory::new(PROFILE.as_ptr() as *const u8, profile_flash) };
+) -> FlashSetup<EmbassyFlashMemory<'static, FLASH_SIZE>> {
+	let flash_memory = Flash::<_, Async, FLASH_SIZE>::new(flash, dma_ch0);
+	let profile_flash = unsafe {
+		EmbassyFlashMemory::new(
+			FLASH_ADDR,
+			PROFILE.as_ptr() as *const u8,
+			PROFILE_SIZE,
+			flash_memory,
+		)
+	};
 
 	FlashSetup { profile_flash }
 }

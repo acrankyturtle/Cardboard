@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 #[cfg(not(test))]
 use defmt::Format;
-#[cfg(not(test))]
+#[cfg(all(not(test), feature = "embassy"))]
 use embassy_rp::gpio::{Input, Output};
 
 pub trait RowPin {
@@ -19,7 +19,7 @@ pub trait ColPin {
 	fn is_high(&self) -> bool;
 }
 
-#[cfg(not(test))]
+#[cfg(all(not(test), feature = "embassy"))]
 impl RowPin for Output<'_> {
 	fn set_high(&mut self) {
 		self.set_high();
@@ -30,7 +30,7 @@ impl RowPin for Output<'_> {
 	}
 }
 
-#[cfg(not(test))]
+#[cfg(all(not(test), feature = "embassy"))]
 impl ColPin for Input<'_> {
 	fn is_high(&self) -> bool {
 		self.is_high()
