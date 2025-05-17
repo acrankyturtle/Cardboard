@@ -1,4 +1,4 @@
-use defmt::{error, info};
+use defmt::error;
 use embassy_rp::{
 	flash::{Async, Flash, ERASE_SIZE, WRITE_SIZE},
 	peripherals::FLASH,
@@ -131,12 +131,6 @@ pub fn load_profile_from_flash<F: FlashMemory>(
 ) -> Result<KeyboardProfile, &'static str> {
 	let data = flash.as_slice();
 	let length = u16::from_le_bytes([data[0], data[1]]) as usize;
-
-	info!("Profile length: {}", length);
-	info!(
-		"Profile data: {:?}",
-		&data[LENGTH_SIZE..LENGTH_SIZE + length]
-	);
 
 	KeyboardProfile::from_json_bytes(&data[LENGTH_SIZE..LENGTH_SIZE + length])
 }

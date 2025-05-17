@@ -1,0 +1,11 @@
+:root {
+    --color-primary: #60a5fa; /* Lighter Blue */
+    --color-secondary: #34d399; /* Lighter Green */
+    --color-background: #1f2937; /* Dark Gray */
+    --color-text: #f3f4f6; /* Light Gray */
+}
+
+/* Dark Theme */
+[data-theme='dark'] {
+
+}

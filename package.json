@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@headlessui/react": "^2.2.2",
+    "swr": "^2.3.3",
+    "typescript": "^5.8.3"
+  }
+}

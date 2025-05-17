@@ -6,45 +6,12 @@ use crate::profile::*;
 use crate::TagList;
 use alloc::vec::Vec;
 use cardboard_lib::input::KeyId;
-use ouroboros::self_referencing;
-
-#[self_referencing]
-pub struct CurrentProfile {
-	pub profile: KeyboardProfile,
-
-	#[borrows(profile)]
-	#[covariant]
-	pub state: KeyboardState<'this>,
-}
-
-impl CurrentProfile {
-	pub fn from(profile: KeyboardProfile) -> Self {
-		CurrentProfileBuilder {
-			profile,
-			state_builder: |profile| KeyboardState::from(profile),
-		}
-		.build()
-	}
-}
-
-impl CurrentProfile {
-	pub fn press_key(&mut self, key_id: KeyId) {
-		self.with_state_mut(|state| state.press_key(key_id));
-	}
-
-	pub fn release_key(&mut self, key_id: KeyId) {
-		self.with_state_mut(|state| state.release_key(key_id));
-	}
-
-	pub fn tick(&mut self, elapsed_ms: u32, events: &mut Vec<ActionEvent>) {
-		self.with_state_mut(|state| state.tick(elapsed_ms, events));
-	}
-}
 
 pub struct KeyboardState<'a> {
 	keys: Vec<KeyState<'a>>,
 	tags: TagList,
-	macros: Vec<MacroState<'a>>,
+	running: Vec<MacroState<'a>>,
+	macros: &'a Vec<Macro>,
 }
 
 impl<'a> KeyboardState<'a> {
@@ -52,7 +19,8 @@ impl<'a> KeyboardState<'a> {
 		let mut state = KeyboardState {
 			keys: KeyboardState::map_keys_from_profile(profile),
 			tags: TagList::new(),
-			macros: Vec::new(),
+			running: Vec::new(),
+			macros: &profile.macros,
 		};
 
 		state.update_layers();
@@ -77,7 +45,10 @@ impl<'a> KeyboardState<'a> {
 				.current_layer
 				.macros
 				.iter()
-				.map(|macro_| MacroState::from(macro_, key))
+				.map(|i| {
+					let macro_ = self.macros.get(*i as usize).unwrap();
+					MacroState::from(macro_, key)
+				})
 				.collect();
 
 			self.cut_channels(
@@ -87,7 +58,7 @@ impl<'a> KeyboardState<'a> {
 					.collect(),
 			);
 
-			self.macros.extend(macros);
+			self.running.extend(macros);
 		}
 	}
 
@@ -96,7 +67,7 @@ impl<'a> KeyboardState<'a> {
 	}
 
 	pub fn release_key(&mut self, key_id: KeyId) {
-		for macro_ in self.macros.iter_mut() {
+		for macro_ in self.running.iter_mut() {
 			if macro_.source.key == key_id {
 				macro_.stop();
 			}
@@ -106,11 +77,11 @@ impl<'a> KeyboardState<'a> {
 	pub fn tick(&mut self, elapsed_ms: u32, events: &mut Vec<ActionEvent>) {
 		let mut event_refs = Vec::new();
 
-		for macro_ in self.macros.iter_mut() {
+		for macro_ in self.running.iter_mut() {
 			macro_.tick(elapsed_ms, &mut event_refs);
 		}
 
-		self.macros.retain(|macro_| !macro_.is_finished());
+		self.running.retain(|macro_| !macro_.is_finished());
 
 		for event in event_refs {
 			events.push(event.clone());
@@ -127,6 +98,10 @@ impl<'a> KeyboardState<'a> {
 		self.update_layers();
 	}
 
+	pub fn get_external_tags(&self) -> &[LayerTag] {
+		&self.tags.external
+	}
+
 	pub fn set_external_tags(&mut self, tags: Vec<LayerTag>) {
 		self.tags.set_external(tags);
 		self.update_layers();
@@ -139,7 +114,7 @@ impl<'a> KeyboardState<'a> {
 			if ks.current_layer.id != new_layer.id {
 				// release macros that no longer have a valid source
 				for macro_ in self
-					.macros
+					.running
 					.iter_mut()
 					.filter(|m| m.source.key == ks.key.id && m.source.layer != new_layer.id)
 				{
@@ -152,7 +127,7 @@ impl<'a> KeyboardState<'a> {
 
 	fn cut_channels(&mut self, channels: Vec<Channel>) {
 		for macro_ in self
-			.macros
+			.running
 			.iter_mut()
 			.filter(|m| match m.macro_.play_channel {
 				Some(channel) => channels.contains(&channel),
@@ -703,9 +678,9 @@ mod tests {
 		)]);
 		let mut state = KeyboardState::from(&profile);
 
-		assert_eq!(state.macros.len(), 0);
+		assert_eq!(state.running.len(), 0);
 		state.press_key(KEY_ID);
-		assert_eq!(state.macros.len(), 1);
+		assert_eq!(state.running.len(), 1);
 	}
 
 	#[test]
@@ -717,21 +692,21 @@ mod tests {
 		let mut state = KeyboardState::from(&profile);
 
 		state.press_key(KEY_ID);
-		assert_eq!(state.macros.len(), 1);
+		assert_eq!(state.running.len(), 1);
 		assert!(matches!(
-			state.macros[0].current_sequence,
+			state.running[0].current_sequence,
 			CurrentSequence::Start(_)
 		));
 
 		state.tick(100, &mut vec![]);
 		assert!(matches!(
-			state.macros[0].current_sequence,
+			state.running[0].current_sequence,
 			CurrentSequence::Loop(_)
 		));
 
 		state.tick(200, &mut vec![]);
 		assert!(matches!(
-			state.macros[0].current_sequence,
+			state.running[0].current_sequence,
 			CurrentSequence::Loop(_)
 		));
 	}
@@ -749,7 +724,7 @@ mod tests {
 
 		state.tick(100, &mut vec![]);
 		assert!(matches!(
-			state.macros[0].current_sequence,
+			state.running[0].current_sequence,
 			CurrentSequence::End(_)
 		));
 	}
@@ -763,15 +738,15 @@ mod tests {
 		let mut state = KeyboardState::from(&profile);
 
 		state.press_key(KEY_ID);
-		assert_eq!(state.macros.len(), 1);
+		assert_eq!(state.running.len(), 1);
 
 		state.press_key(KEY_ID);
-		assert_eq!(state.macros.len(), 2);
+		assert_eq!(state.running.len(), 2);
 
 		state.tick(100, &mut vec![]);
 
 		assert!(matches!(
-			state.macros[0].current_sequence,
+			state.running[0].current_sequence,
 			CurrentSequence::End(_)
 		));
 	}
@@ -798,19 +773,19 @@ mod tests {
 		let mut state = KeyboardState::from(&profile);
 
 		state.press_key(key_1);
-		assert_eq!(state.macros.len(), 1);
+		assert_eq!(state.running.len(), 1);
 
 		state.press_key(key_2);
-		assert_eq!(state.macros.len(), 2);
+		assert_eq!(state.running.len(), 2);
 
 		state.tick(100, &mut vec![]);
 
 		assert!(matches!(
-			state.macros[0].current_sequence,
+			state.running[0].current_sequence,
 			CurrentSequence::End(_)
 		));
 		assert!(matches!(
-			state.macros[1].current_sequence,
+			state.running[1].current_sequence,
 			CurrentSequence::Loop(_)
 		));
 	}
@@ -833,7 +808,7 @@ mod tests {
 
 		state.tick(100, &mut vec![]);
 		assert!(matches!(
-			state.macros[0].current_sequence,
+			state.running[0].current_sequence,
 			CurrentSequence::End(_)
 		));
 	}
@@ -874,7 +849,7 @@ mod tests {
 
 		state.press_key(KEY_ID);
 
-		assert_eq!(state.macros[0].macro_.id, expected_macro_id);
+		assert_eq!(state.running[0].macro_.id, expected_macro_id);
 	}
 
 	#[test]
@@ -913,7 +888,7 @@ mod tests {
 
 		state.press_key(KEY_ID);
 
-		assert_eq!(state.macros[0].macro_.id, expected_macro_id);
+		assert_eq!(state.running[0].macro_.id, expected_macro_id);
 	}
 
 	#[test]
@@ -950,7 +925,7 @@ mod tests {
 
 		state.press_key(KEY_ID);
 
-		assert_eq!(state.macros[0].macro_.id, expected_macro_id);
+		assert_eq!(state.running[0].macro_.id, expected_macro_id);
 	}
 
 	// ------- HELPERS --------

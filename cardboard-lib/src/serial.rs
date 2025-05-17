@@ -47,7 +47,7 @@ where
 	source: S,
 }
 
-impl<'d, S: SerialPacketReader> BufferedReader<S>
+impl<S: SerialPacketReader> BufferedReader<S>
 where
 	[(); S::SIZE]:,
 {
@@ -116,7 +116,7 @@ where
 
 pub trait SerialReaderExt: SerialReader {
 	async fn read_u8(&mut self) -> Option<u8>;
-	async fn read_u16(&mut self) -> Option<u32>;
+	async fn read_u16(&mut self) -> Option<u16>;
 
 	async fn read_u32(&mut self) -> Option<u32>;
 
@@ -141,10 +141,10 @@ impl<T: SerialReader> SerialReaderExt for T {
 		self.read_exact(&mut buf).await.ok()?;
 		Some(buf[0])
 	}
-	async fn read_u16(&mut self) -> Option<u32> {
+	async fn read_u16(&mut self) -> Option<u16> {
 		let mut buf = [0; 2];
 		self.read_exact(&mut buf).await.ok()?;
-		Some(u16::from_le_bytes(buf) as u32)
+		Some(u16::from_le_bytes(buf) as u16)
 	}
 
 	async fn read_u32(&mut self) -> Option<u32> {
@@ -176,7 +176,8 @@ impl<T: SerialWriter> SerialWriterExt for T {
 	}
 
 	async fn write_u32(&mut self, value: u32) -> Result<(), &'static str> {
-		self.write_exact(&value.to_le_bytes()).await
+		let data: [u8; 4] = value.to_le_bytes();
+		self.write_exact(&data).await
 	}
 
 	async fn write_utf8(&mut self, value: &str) -> Result<(), &'static str> {
@@ -189,44 +190,64 @@ pub mod embassy {
 	use super::*;
 	use embassy_rp::peripherals::USB;
 	use embassy_rp::usb::Driver;
+	use embassy_time::Timer;
 	use embassy_usb::class::cdc_acm::{Receiver, Sender};
 
 	pub struct EmbassySerialPacketReader<'d, const SIZE: usize> {
 		receiver: Receiver<'d, Driver<'d, USB>>,
+		timeout: Duration,
 	}
 
 	pub struct EmbassySerialPacketWriter<'d, const SIZE: usize> {
 		sender: Sender<'d, Driver<'d, USB>>,
+		timeout: Duration,
 	}
 
 	impl<'d, const SIZE: usize> EmbassySerialPacketReader<'d, SIZE> {
-		pub fn new(receiver: Receiver<'d, Driver<'d, USB>>) -> Self {
-			Self { receiver }
+		pub fn new(receiver: Receiver<'d, Driver<'d, USB>>, timeout: Duration) -> Self {
+			Self { receiver, timeout }
 		}
 	}
 
 	impl<'d, const SIZE: usize> EmbassySerialPacketWriter<'d, SIZE> {
-		pub fn new(sender: Sender<'d, Driver<'d, USB>>) -> Self {
-			Self { sender }
+		pub fn new(sender: Sender<'d, Driver<'d, USB>>, timeout: Duration) -> Self {
+			Self { sender, timeout }
 		}
 	}
 
 	impl<'d, const SIZE: usize> SerialPacketReader for EmbassySerialPacketReader<'d, SIZE> {
 		async fn read_packet(&mut self, buf: &mut [u8]) -> Result<usize, &'static str> {
-			self.receiver
-				.read_packet(buf)
-				.await
-				.map_err(|_| "Endpoint error")
+			let timer = Timer::after(self.timeout);
+
+			let result = embassy_futures::select::select(self.receiver.read_packet(buf), async {
+				timer.await
+			})
+			.await;
+
+			match result {
+				embassy_futures::select::Either::First(result) => {
+					result.map_err(|_| "Endpoint error")
+				}
+				embassy_futures::select::Either::Second(_) => Err("Read timeout"),
+			}
 		}
 		const SIZE: usize = SIZE;
 	}
 
 	impl<'d, const SIZE: usize> SerialPacketSender for EmbassySerialPacketWriter<'d, SIZE> {
 		async fn write_packet(&mut self, data: &[u8]) -> Result<(), &'static str> {
-			self.sender
-				.write_packet(data)
-				.await
-				.map_err(|_| "Endpoint error")
+			let timer = Timer::after(self.timeout);
+			let result = embassy_futures::select::select(self.sender.write_packet(data), async {
+				timer.await
+			})
+			.await;
+
+			match result {
+				embassy_futures::select::Either::First(result) => {
+					result.map_err(|_| "Endpoint error")
+				}
+				embassy_futures::select::Either::Second(_) => Err("Write timeout"),
+			}
 		}
 		const SIZE: usize = SIZE;
 	}

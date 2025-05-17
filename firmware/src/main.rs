@@ -13,10 +13,13 @@ use alloc::string::{String, ToString};
 use alloc::vec;
 use alloc::vec::Vec;
 use cardboard::context::Context;
-use cardboard::device::{DeviceId, DeviceInfo};
+use cardboard::device::{DeviceId, DeviceInfo, DeviceTypeId};
 use cardboard::hid::HidDevice;
-use cardboard::profile::ActionEvent;
-use cardboard::profile::KeyboardProfile;
+use cardboard::profile::{
+	Action, ActionEvent, DebugEvent, DeviceKey, DeviceKeyLayer, KeyboardEvent, KeyboardKey,
+	LayerId, Macro, MacroId, Sequence, TagMatchType, TaggedDeviceKeyLayer,
+};
+use cardboard::profile::{KeyboardProfile, LayerTag};
 use cardboard::state::KeyboardState;
 use cardboard::storage::{load_profile_from_flash, EmbassyFlashMemory, FlashMemory};
 use cardboard::StaticCell;
@@ -24,7 +27,7 @@ use cardboard_lib::input::{ColPin, KeyId, KeyMatrix, KeyState, RowPin};
 use cardboard_lib::serial::embassy::{EmbassySerialPacketReader, EmbassySerialPacketWriter};
 use cardboard_lib::serial::{BufferedReader, SerialReaderExt};
 use core::mem::MaybeUninit;
-use core::ops::Add;
+use core::ops::{Add, DerefMut};
 use defmt::*;
 use embassy_executor::Spawner;
 use embassy_rp::bind_interrupts;
@@ -40,13 +43,16 @@ use embassy_usb::class::hid::{HidWriter, State};
 use embassy_usb::control::{Request, RequestType};
 use embassy_usb::{Builder, Config, Handler, UsbDevice, UsbDeviceState};
 use embedded_hal_async::delay::DelayNs;
-use serde::de;
+use serde::{de, Deserialize};
 
 use {defmt_rtt as _, panic_probe as _}; // global logger
 
-use cardboard::command::{ChangeProfileCommand, Command, IdentifyCommand};
+use cardboard::command::{
+	ChangeProfileCommand, Command, GetProfileCommand, IdentifyCommand, SetExternalTagsCommand,
+};
+use cardboard::profile::ActionEvent::Keyboard;
 use embedded_alloc::LlffHeap as Heap;
-use uuid::Uuid;
+use uuid::{uuid, Uuid};
 
 const FLASH_ADDR: *const u8 = 0x10000000 as *const u8;
 const FLASH_SIZE: usize = 2 * 1024 * 1024; // 2 MB
@@ -77,28 +83,36 @@ type ConsumerImpl = cardboard::hid::ConsumerControl;
 fn create_device_info(
 	cmds: &[Box<dyn Command<CommandContext>>; CMD_COUNT],
 ) -> (&'static DeviceInfo, &'static str) {
-	let id = DeviceId::new(Uuid::from_u128(0xd6875554_8cb4_5a57_b81f_70e91a6b7841));
+	let device_info = DeviceInfo {
+		id: DeviceId::new(Uuid::from_u128(0xd6875554_8cb4_5a57_b81f_70e91a6b7841)),
+		name: "Cardboard",
+		manufacturer: "cranky",
+		r#type: DeviceTypeId::new(Uuid::from_u128(0x0407db48_ca74_5783_9b11_489637b7c615)),
+		commands: cmds.iter().map(|cmd| cmd.info()).collect(),
+	};
+
+	// fake device
+	// TODO: delete me
+	// let device_info = DeviceInfo {
+	// 	id: DeviceId::new(Uuid::from_u128(0x00a37761_41aa_496d_9a54_20d372d5e302)),
+	// 	name: "Turdboard",
+	// 	manufacturer: "bobby",
+	// 	r#type: DeviceTypeId::new(Uuid::from_u128(0xc415be22_6662_4fb3_a4a1_0c40845a9075)),
+	// 	commands: cmds.iter().map(|cmd| cmd.info()).collect(),
+	// };
 
 	let serial_number = unsafe {
 		static mut SERIAL_NUMBER: MaybeUninit<String> = MaybeUninit::uninit();
-		SERIAL_NUMBER.write(id.to_string())
+		SERIAL_NUMBER.write(device_info.id.to_string())
 	};
 
 	unsafe {
 		static mut DEVICE_INFO: MaybeUninit<DeviceInfo> = MaybeUninit::uninit();
-		(
-			DEVICE_INFO.write(DeviceInfo {
-				id,
-				name: "Cardboard",
-				manufacturer: "cranky",
-				commands: cmds.iter().map(|cmd| cmd.info()).collect(),
-			}),
-			serial_number.as_str(),
-		)
+		(DEVICE_INFO.write(device_info), serial_number.as_str())
 	}
 }
 
-const CMD_COUNT: usize = 2;
+const CMD_COUNT: usize = 4;
 
 static mut COMMANDS: MaybeUninit<[Box<dyn Command<CommandContext>>; CMD_COUNT]> =
 	MaybeUninit::uninit();
@@ -106,20 +120,31 @@ fn create_cmds() -> &'static mut [Box<dyn Command<CommandContext>>; CMD_COUNT] {
 	let cmds: [Box<dyn Command<CommandContext>>; CMD_COUNT] = [
 		Box::new(IdentifyCommand {}), // identify MUST be first
 		Box::new(ChangeProfileCommand {}),
+		Box::new(GetProfileCommand {}),
+		Box::new(SetExternalTagsCommand {}),
 	];
 
 	unsafe { COMMANDS.write(cmds) }
 }
 
 type CommandContext = Context<
-	EmbassyFlashMemory<'static, FLASH_SIZE>,
-	Signal<ThreadModeRawMutex, KeyboardProfile>,
-	BufferedReader<EmbassySerialPacketReader<'static, USB_SERIAL_PACKET_SIZE>>,
-	EmbassySerialPacketWriter<'static, USB_SERIAL_PACKET_SIZE>,
+	ContextFlashMemory,
+	ContextProfileSignal,
+	ContextSerialReader,
+	ContextSerialWriter,
+	ContextExternalTagsSignal,
 >;
+
+type ContextFlashMemory = EmbassyFlashMemory<'static, FLASH_SIZE>;
+type ContextProfileSignal = Signal<ThreadModeRawMutex, KeyboardProfile>;
+type ContextSerialReader =
+	BufferedReader<EmbassySerialPacketReader<'static, USB_SERIAL_PACKET_SIZE>>;
+type ContextSerialWriter = EmbassySerialPacketWriter<'static, USB_SERIAL_PACKET_SIZE>;
+type ContextExternalTagsSignal = Signal<ThreadModeRawMutex, Vec<LayerTag>>;
 
 static HID_SIGNAL: Signal<ThreadModeRawMutex, HidReport> = Signal::new();
 static PROFILE_CHANGED_SIGNAL: Signal<ThreadModeRawMutex, KeyboardProfile> = Signal::new();
+static EXTERNAL_TAGS_CHANGED_SIGNAL: Signal<ThreadModeRawMutex, Vec<LayerTag>> = Signal::new();
 
 bind_interrupts!(struct Irqs {
 	USBCTRL_IRQ => InterruptHandler<USB>;
@@ -235,21 +260,31 @@ async fn main(spawner: Spawner) -> () {
 	usb.serial_reader.wait_connection().await;
 	usb.serial_writer.wait_connection().await;
 
-	let serial_reader =
-		EmbassySerialPacketReader::<{ USB_SERIAL_PACKET_SIZE }>::new(usb.serial_reader);
-	let serial_reader = BufferedReader::new(serial_reader);
-	let serial_writer =
-		EmbassySerialPacketWriter::<{ USB_SERIAL_PACKET_SIZE }>::new(usb.serial_writer);
+	let serial_io_timeout = Duration::from_secs(1);
+	let serial_reset_timeout = Duration::from_millis(100);
 
-	let cmd_ctx = CommandContext::new(
-		&device_info,
-		flash.profile_flash,
-		&PROFILE_CHANGED_SIGNAL,
-		serial_reader,
-		serial_writer,
+	let serial_reader = EmbassySerialPacketReader::<{ USB_SERIAL_PACKET_SIZE }>::new(
+		usb.serial_reader,
+		serial_io_timeout,
+	);
+	let serial_reader = BufferedReader::new(serial_reader);
+	let serial_writer = EmbassySerialPacketWriter::<{ USB_SERIAL_PACKET_SIZE }>::new(
+		usb.serial_writer,
+		serial_io_timeout,
 	);
 
-	spawner.spawn(cmd_task(cmd_ctx, cmds)).unwrap();
+	spawner
+		.spawn(cmd_task(
+			cmds,
+			&device_info,
+			flash.profile_flash,
+			&PROFILE_CHANGED_SIGNAL,
+			serial_reader,
+			serial_writer,
+			&EXTERNAL_TAGS_CHANGED_SIGNAL,
+			serial_reset_timeout,
+		))
+		.unwrap();
 
 	info!("Ready");
 }
@@ -273,6 +308,7 @@ async fn keypad_task(
 ) {
 	info!("Keypad task started.");
 
+	//let mut profile: CurrentProfile = CurrentProfile::create(profile);
 	let mut profile = profile;
 	let mut state = KeyboardState::from(&profile);
 
@@ -282,13 +318,21 @@ async fn keypad_task(
 	let mut prev_timestamp = Instant::now();
 
 	loop {
+		// check for profile change
 		if let Some(new_profile) = profile_changed.try_take() {
+			let old_external_tags = state.get_external_tags().to_vec();
 			profile = new_profile;
 			state = KeyboardState::from(&profile);
+
 			hid_keyboard.reset();
 			hid_mouse.reset();
 			hid_consumer.reset();
 			info!("Profile updated");
+		}
+
+		// check for external tags change
+		if let Some(tags) = EXTERNAL_TAGS_CHANGED_SIGNAL.try_take() {
+			state.set_external_tags(tags);
 		}
 
 		let now = Instant::now();
@@ -321,12 +365,15 @@ async fn keypad_task(
 			info!("Macro events: {:?}", macro_events.len());
 		}
 
-		// process each macro event and update hid states
+		// process each macro event and update hid statess
 		for macro_event in macro_events.iter() {
 			match macro_event {
-				ActionEvent::DebugLog(event) => {
-					info!("Debug event: {:?}", event.message.as_str())
-				}
+				ActionEvent::Debug(event) => match event {
+					DebugEvent::Log(msg) => {
+						info!("Debug event: {:?}", msg.as_str())
+					}
+					_ => {}
+				},
 				ActionEvent::None => {}
 				ActionEvent::Keyboard(event) => hid_keyboard.input(event),
 				ActionEvent::Mouse(event) => hid_mouse.input(event),
@@ -399,8 +446,26 @@ async fn hid_task(
 }
 
 #[embassy_executor::task]
-async fn cmd_task(mut ctx: CommandContext, cmds: &'static mut [Box<dyn Command<CommandContext>>]) {
+async fn cmd_task(
+	cmds: &'static mut [Box<dyn Command<CommandContext>>],
+	device_info: &'static DeviceInfo,
+	profile_flash: ContextFlashMemory,
+	profile_changed_signal: &'static ContextProfileSignal,
+	serial_reader: ContextSerialReader,
+	serial_writer: ContextSerialWriter,
+	external_tags_changed_signal: &'static ContextExternalTagsSignal,
+	serial_reset_timeout: Duration,
+) {
 	info!("Serial task started.");
+
+	let mut ctx = CommandContext::new(
+		device_info,
+		profile_flash,
+		profile_changed_signal,
+		serial_reader,
+		serial_writer,
+		external_tags_changed_signal,
+	);
 
 	loop {
 		let cmd_id = match ctx.serial_rx.read_u8().await {
@@ -414,11 +479,6 @@ async fn cmd_task(mut ctx: CommandContext, cmds: &'static mut [Box<dyn Command<C
 				info!("Command {} executed successfully", cmd_id);
 			}
 			Err(e) => {
-				// TODO: DELETE!!!
-				if e != "Invalid command ID" {
-					break;
-				}
-
 				warn!("Error: {}", e);
 			}
 		}

@@ -1,0 +1,1 @@
+nswag openapi2tsclient /input:http://localhost:5000/swagger/v1/swagger.json /output:react-frontend/src/api/client.ts /template:Fetch

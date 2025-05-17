@@ -1,7 +1,85 @@
-using Cardboard.Controller;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Cardboard.Device;
+using Cardboard.Events.Windows;
+using Cardboard.HttpApi;
+using Cardboard.Repositories;
+using Cardboard.Serial.Windows;
+using Cardboard.TagSwitcher;
+using Cardboard.Windows;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http.Json;
 
-var builder = Host.CreateApplicationBuilder(args);
-builder.Services.AddHostedService<Worker>();
+var builder = WebApplication.CreateBuilder(args);
 
-var host = builder.Build();
-host.Run();
+builder
+	.WebHost
+	.ConfigureKestrel(options =>
+	{
+		// TODO: configure connection limits?
+	});
+
+builder
+	.Services
+	.Configure<JsonOptions>(options =>
+	{
+		options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault;
+		options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+		options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+	});
+
+// todo: configure in TagRepository
+builder.Services.Configure<TagRepositoryConfiguration>(builder.Configuration.GetSection("Paths"));
+
+builder.Services.AddSwaggerGen().AddEndpointsApiExplorer();
+
+builder
+	.Services
+	.AddDeviceServices()
+	.AddCardboardWindowsEvents()
+	.AddRepositories()
+	.AddTagSwitcher()
+	.AddWindowsSerialPort()
+	.AddWindowsService();
+
+// builder.Services.AddHostedService<Worker>();
+
+if (builder.Environment.IsDevelopment())
+{
+	builder
+		.Services
+		.AddCors(options =>
+		{
+			options.AddPolicy(
+				"AllowReactApp",
+				policy =>
+				{
+					policy.WithOrigins("http://localhost:5173").AllowAnyMethod().AllowAnyHeader();
+				}
+			);
+		});
+}
+
+var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+	app.UseSwagger();
+	app.UseSwaggerUI(c =>
+	{
+		c.SwaggerEndpoint("/swagger/v1/swagger.json", "v1");
+	});
+
+	app.UseCors("AllowReactApp");
+}
+
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+app.UseRouting();
+
+app.MapFallbackToFile("index.html");
+
+app.MapEndpoints();
+
+app.Run();

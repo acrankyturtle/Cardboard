@@ -23,6 +23,15 @@ impl Display for DeviceId {
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone, PartialEq)]
+pub struct DeviceTypeId(Uuid);
+
+impl DeviceTypeId {
+	pub const fn new(id: Uuid) -> Self {
+		DeviceTypeId(id)
+	}
+}
+
+#[derive(Serialize, Deserialize, Copy, Clone, PartialEq)]
 pub struct CommandId(pub Uuid);
 
 impl Display for CommandId {
@@ -41,6 +50,7 @@ impl Format for CommandId {
 pub struct DeviceInfo {
 	pub id: DeviceId,
 	pub name: &'static str,
+	pub r#type: DeviceTypeId,
 	pub manufacturer: &'static str,
 	pub commands: Vec<CommandInfo>,
 }

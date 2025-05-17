@@ -2,15 +2,16 @@ using StronglyTypedIds;
 
 namespace Cardboard.Device;
 
-public class DeviceInfo
+public sealed class DeviceInfo
 {
 	public required DeviceId Id { get; init; }
 	public required string Name { get; init; }
-	public required string Manufacturer { get; init; }
-	public required IReadOnlyCollection<CommandInfo> Commands { get; init; }
+	public string? Manufacturer { get; init; }
+	public required DeviceTypeId Type { get; init; }
+	public required IReadOnlyList<CommandInfo> Commands { get; init; }
 }
 
-public class CommandInfo
+public sealed class CommandInfo
 {
 	public required CommandId Id { get; init; }
 	public required string Name { get; init; }
@@ -21,6 +22,10 @@ public class CommandInfo
 /// </summary>
 [StronglyTypedId]
 public readonly partial struct DeviceId;
+
+// use to match with display-only information
+[StronglyTypedId]
+public readonly partial struct DeviceTypeId;
 
 [StronglyTypedId]
 public readonly partial struct CommandId;

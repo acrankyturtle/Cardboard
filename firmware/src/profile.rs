@@ -1,17 +1,20 @@
 extern crate alloc;
 
 use alloc::string::String;
+use alloc::vec;
 use alloc::vec::Vec;
 use defmt::{error, Format};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::profile::ConsumerControlEvent::MUTE;
 use crate::TagList;
 use cardboard_lib::input::KeyId;
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct KeyboardProfile {
 	pub keys: Vec<DeviceKey>,
+	pub macros: Vec<Macro>,
 }
 
 impl KeyboardProfile {
@@ -59,18 +62,23 @@ impl TaggedDeviceKeyLayer {
 
 #[derive(Serialize, Deserialize)]
 pub struct DeviceKeyLayer {
+	// TODO: remove this and modify state to keep track of active layer with something like Option<usize | ()>, where usize is the layer index, or where () is default layer
 	pub id: LayerId,
-	pub macros: Vec<Macro>,
+	pub macros: Vec<u32>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Macro {
 	pub id: MacroId,
 	pub name: String,
+	#[serde(default)]
 	pub play_channel: Option<Channel>,
 	pub cut_channels: Vec<Channel>,
+	#[serde(default)]
 	pub start_sequence: Sequence,
+	#[serde(default)]
 	pub loop_sequence: Sequence,
+	#[serde(default)]
 	pub end_sequence: Sequence,
 }
 
@@ -79,8 +87,15 @@ pub struct Sequence {
 	pub actions: Vec<Action>,
 }
 
+impl Default for Sequence {
+	fn default() -> Self {
+		Self { actions: vec![] }
+	}
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct Action {
+	#[serde(default)]
 	pub predelay_ms: u32,
 	pub action_event: ActionEvent,
 }
@@ -92,7 +107,7 @@ pub enum ActionEvent {
 	Mouse(MouseEvent),
 	ConsumerControl(ConsumerControlEvent),
 	Layer(LayerEvent),
-	DebugLog(DebugLogEvent),
+	Debug(DebugEvent),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -323,6 +338,6 @@ pub enum LayerEvent {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct DebugLogEvent {
-	pub message: String,
+pub enum DebugEvent {
+	Log(String),
 }
