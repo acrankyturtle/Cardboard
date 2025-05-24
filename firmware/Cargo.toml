@@ -46,6 +46,9 @@ embedded-io-async = { version = "0.6.1", features = ["defmt-03"] }
 embedded-storage = { version = "0.3" }
 portable-atomic = { version = "1.11.0", features = ["critical-section"] }
 
+[features]
+reboot-on-panic = []
+
 # necessary for getting delog (littlefs2 dependency) to build
 [patch.crates-io]
 delog = { git = "https://github.com/LechevSpace/delog.git", rev = "869167f7ff0630518c86f30afd215fee124d19c1" }

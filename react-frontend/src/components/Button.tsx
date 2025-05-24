@@ -4,7 +4,7 @@ import clsx, { ClassValue } from "clsx";
 interface ButtonStyleOptions {
   animation?: "normal" | "none";
   focusRing?: "normal" | "dark";
-  variant?: "normal" | "submit" | "panelGhost" | "navbar";
+  variant?: "normal" | "submit" | "panelGhost" | "navbar" | "toolbar";
 }
 
 export function Button({
@@ -44,12 +44,16 @@ export const getButtonClassName = ({
           ? PanelGhostVariant
           : variant === "navbar"
             ? NavBarVariant
-            : undefined,
+            : variant === "toolbar"
+              ? ToolbarVariant
+              : undefined,
   );
 };
 
 const Base: ClassValue =
-  "inline-flex items-center rounded-full p-2 text-sm font-medium justify-center";
+  "inline-flex items-center rounded-full text-sm font-medium justify-center";
+
+const Padding: ClassValue = "p-2";
 
 const DarkFocusRing: ClassValue =
   "focus:ring-1 focus:ring-stone-600/50 focus:ring-offset-1 focus:ring-offset-stone-700/50 focus:outline-none";
@@ -60,16 +64,24 @@ const FocusRing: ClassValue =
 const NormalVariant: ClassValue = clsx(
   "bg-stone-800 text-stone-300 hover:bg-stone-700 hover:text-white active:text-white active:bg-stone-900",
   Base,
+  Padding,
 );
 const SubmitVariant: ClassValue = clsx(
-  "bg-violet-950 text-stone-200 hover:bg-violet-900 hover:text-white active:text-white active:bg-violet-800",
+  "bg-violet-900 text-stone-200 hover:bg-violet-800 hover:text-white active:text-white active:bg-violet-950",
   Base,
+  Padding,
 );
 const PanelGhostVariant: ClassValue = clsx(
   "text-stone-300 hover:bg-stone-800 hover:text-white active:text-white active:bg-stone-600",
   Base,
+  Padding,
 );
 const NavBarVariant: ClassValue = clsx(
   "text-stone-300 hover:bg-stone-700 hover:text-white active:text-white active:bg-stone-600 data-selected:bg-stone-900 data-selected:text-white",
+  Base,
+  Padding,
+);
+const ToolbarVariant: ClassValue = clsx(
+  "text-stone-300 hover:bg-stone-800 hover:text-white active:text-white active:bg-stone-600",
   Base,
 );

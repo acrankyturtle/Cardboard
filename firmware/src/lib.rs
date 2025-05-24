@@ -3,12 +3,17 @@
 
 extern crate alloc;
 
-use core::{cell::UnsafeCell, mem::MaybeUninit};
+use core::{
+	alloc::{GlobalAlloc, Layout},
+	cell::{Cell, UnsafeCell},
+	mem::MaybeUninit,
+};
 
 use alloc::vec::Vec;
+use cortex_m::interrupt::Mutex;
 use defmt::Format;
 use portable_atomic::{AtomicBool, Ordering};
-use profile::LayerTag;
+use profile::{LayerTag, TagMatchType};
 
 pub mod command;
 pub mod context;
@@ -40,19 +45,9 @@ impl TagList {
 		self.internal.push(tag);
 	}
 
-	pub fn add_many_internal(&mut self, tags: Vec<LayerTag>) {
-		self.internal.extend(tags);
-	}
-
 	pub fn remove_internal(&mut self, tag: LayerTag) {
 		if let Some(index) = self.internal.iter().position(|t| *t == tag) {
 			self.internal.remove(index);
-		}
-	}
-
-	pub fn remove_many_internal(&mut self, tags: Vec<LayerTag>) {
-		for tag in tags {
-			self.remove_internal(tag);
 		}
 	}
 
@@ -64,14 +59,18 @@ impl TagList {
 		self.external = tags;
 	}
 
-	pub fn contains_all(&self, tags: &[LayerTag]) -> bool {
-		tags.iter()
-			.all(|tag| self.internal.contains(tag) || self.external.contains(tag))
+	pub fn matches(&self, tags: &[LayerTag], match_type: &TagMatchType) -> bool {
+		match match_type {
+			TagMatchType::All => tags.iter().all(|t| self.contains(t)),
+			TagMatchType::Any => tags.iter().any(|t| self.contains(t)),
+		}
 	}
 
-	pub fn contains_any(&self, tags: &[LayerTag]) -> bool {
-		tags.iter()
-			.any(|tag| self.internal.contains(tag) || self.external.contains(tag))
+	fn contains(&self, value: &LayerTag) -> bool {
+		self.internal
+			.iter()
+			.chain(self.external.iter())
+			.any(|tag| *tag == *value)
 	}
 }
 
@@ -268,5 +267,83 @@ impl<T> ConstStaticCell<T> {
 		} else {
 			None
 		}
+	}
+}
+
+// Tracking allocator wrapper
+pub struct TrackingAllocator<A: GlobalAlloc> {
+	pub inner: A,
+	current: Mutex<Cell<usize>>, // Current allocated bytes
+	max: Mutex<Cell<usize>>,     // Maximum allocated bytes ever
+}
+
+impl<A: GlobalAlloc> TrackingAllocator<A> {
+	pub const fn new(inner: A) -> Self {
+		TrackingAllocator {
+			inner,
+			current: Mutex::new(Cell::new(0)),
+			max: Mutex::new(Cell::new(0)),
+		}
+	}
+
+	// Get current allocated bytes
+	pub fn current(&self) -> usize {
+		cortex_m::interrupt::free(|cs| self.current.borrow(cs).get())
+	}
+
+	// Get maximum allocated bytes
+	pub fn max(&self) -> usize {
+		cortex_m::interrupt::free(|cs| self.max.borrow(cs).get())
+	}
+
+	// Reset min and max to current value
+	pub fn reset_stats(&self) {
+		cortex_m::interrupt::free(|cs| {
+			let current = self.current.borrow(cs).get();
+			self.max.borrow(cs).set(current);
+		});
+	}
+}
+
+unsafe impl<A: GlobalAlloc> GlobalAlloc for TrackingAllocator<A> {
+	unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+		let ptr = self.inner.alloc(layout);
+		if !ptr.is_null() {
+			let size = layout.size();
+			cortex_m::interrupt::free(|cs| {
+				let new_current = self.current.borrow(cs).get() + size;
+				self.current.borrow(cs).set(new_current);
+				self.max
+					.borrow(cs)
+					.set(self.max.borrow(cs).get().max(new_current));
+			});
+		}
+		ptr
+	}
+
+	unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+		if !ptr.is_null() {
+			let size = layout.size();
+			cortex_m::interrupt::free(|cs| {
+				let new_current = self.current.borrow(cs).get().saturating_sub(size);
+				self.current.borrow(cs).set(new_current);
+			});
+		}
+		self.inner.dealloc(ptr, layout);
+	}
+
+	unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+		let old_size = layout.size();
+		let new_ptr = self.inner.realloc(ptr, layout, new_size);
+		if !new_ptr.is_null() && !ptr.is_null() {
+			cortex_m::interrupt::free(|cs| {
+				let new_current = self.current.borrow(cs).get() - old_size + new_size;
+				self.current.borrow(cs).set(new_current);
+				self.max
+					.borrow(cs)
+					.set(self.max.borrow(cs).get().max(new_current));
+			});
+		}
+		new_ptr
 	}
 }

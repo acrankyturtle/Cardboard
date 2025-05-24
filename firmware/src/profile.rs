@@ -53,10 +53,7 @@ pub struct TaggedDeviceKeyLayer {
 
 impl TaggedDeviceKeyLayer {
 	fn is_match(&self, tags: &TagList) -> bool {
-		match self.match_type {
-			TagMatchType::All => tags.contains_all(&self.tags),
-			TagMatchType::Any => tags.contains_any(&self.tags),
-		}
+		tags.matches(self.tags.as_slice(), &self.match_type)
 	}
 }
 

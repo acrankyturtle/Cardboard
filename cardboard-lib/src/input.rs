@@ -7,6 +7,7 @@ use uuid::Uuid;
 
 #[cfg(not(test))]
 use defmt::Format;
+
 #[cfg(all(not(test), feature = "embassy"))]
 use embassy_rp::gpio::{Input, Output};
 
@@ -76,7 +77,7 @@ impl<const ROWS: usize, const COLS: usize, const KEY_COUNT: usize>
 					true => KeyState::Pressed,
 					false => KeyState::Released,
 				};
-				let key = self.keys.get_mut(r * ROWS + c).unwrap();
+				let key = self.keys.get_mut(Self::get_key_index(r, c)).unwrap();
 				let event = key.update(state, dt);
 
 				if let Some(event) = event {
@@ -89,6 +90,10 @@ impl<const ROWS: usize, const COLS: usize, const KEY_COUNT: usize>
 
 			row_pin.set_low();
 		}
+	}
+
+	fn get_key_index(r: usize, c: usize) -> usize {
+		r * COLS + c
 	}
 }
 
@@ -204,6 +209,7 @@ pub enum KeyState {
 mod tests {
 	use alloc::rc::Rc;
 	use core::cell::RefCell;
+	use serde_json_core::heapless::sorted_linked_list::LinkedIndexUsize;
 
 	use super::*;
 
@@ -379,19 +385,133 @@ mod tests {
 		assert_eq!(result, None);
 	}
 
-	struct MockRowPin {}
+	pub struct MockKeyMatrixState<const ROWS: usize, const COLS: usize> {
+		// The physical state of keys: true = pressed, false = released
+		key_states: [[bool; COLS]; ROWS],
+		// Current state of row pins: true = high, false = low
+		row_states: [bool; ROWS],
+	}
 
-	impl RowPin for MockRowPin {
+	impl<const ROWS: usize, const COLS: usize> MockKeyMatrixState<ROWS, COLS> {
+		pub fn new() -> Self {
+			Self {
+				key_states: [[false; COLS]; ROWS],
+				row_states: [false; ROWS],
+			}
+		}
+
+		pub fn set_key_states(&mut self, states: [[bool; COLS]; ROWS]) {
+			self.key_states = states;
+		}
+
+		pub fn set_key(&mut self, row: usize, col: usize, pressed: bool) {
+			if row < ROWS && col < COLS {
+				self.key_states[row][col] = pressed;
+			}
+		}
+
+		pub fn get_key(&self, row: usize, col: usize) -> bool {
+			if row < ROWS && col < COLS {
+				self.key_states[row][col]
+			} else {
+				false
+			}
+		}
+
+		fn set_row_state(&mut self, row: usize, high: bool) {
+			if row < ROWS {
+				self.row_states[row] = high;
+			}
+		}
+
+		fn get_row_state(&self, row: usize) -> bool {
+			if row < ROWS {
+				self.row_states[row]
+			} else {
+				false
+			}
+		}
+	}
+
+	pub struct MockRowPin<const ROWS: usize, const COLS: usize> {
+		row_index: usize,
+		state: Rc<RefCell<MockKeyMatrixState<ROWS, COLS>>>,
+	}
+
+	impl<const ROWS: usize, const COLS: usize> MockRowPin<ROWS, COLS> {
+		pub fn new(row_index: usize, state: Rc<RefCell<MockKeyMatrixState<ROWS, COLS>>>) -> Self {
+			Self { row_index, state }
+		}
+	}
+
+	impl<const ROWS: usize, const COLS: usize> RowPin for MockRowPin<ROWS, COLS> {
+		fn set_high(&mut self) {
+			self.state.borrow_mut().set_row_state(self.row_index, true);
+		}
+
+		fn set_low(&mut self) {
+			self.state.borrow_mut().set_row_state(self.row_index, false);
+		}
+	}
+
+	pub struct MockColPin<const ROWS: usize, const COLS: usize> {
+		col_index: usize,
+		state: Rc<RefCell<MockKeyMatrixState<ROWS, COLS>>>,
+	}
+
+	impl<const ROWS: usize, const COLS: usize> MockColPin<ROWS, COLS> {
+		pub fn new(col_index: usize, state: Rc<RefCell<MockKeyMatrixState<ROWS, COLS>>>) -> Self {
+			Self { col_index, state }
+		}
+	}
+
+	impl<const ROWS: usize, const COLS: usize> ColPin for MockColPin<ROWS, COLS> {
+		fn is_high(&self) -> bool {
+			let state = self.state.borrow();
+
+			// Check if any row that is currently high has a pressed key in this column
+			for row in 0..ROWS {
+				if state.get_row_state(row) && state.get_key(row, self.col_index) {
+					return true;
+				}
+			}
+			false
+		}
+	}
+
+	pub fn create_mock_matrix<const ROWS: usize, const COLS: usize>() -> (
+		Rc<RefCell<MockKeyMatrixState<ROWS, COLS>>>,
+		[Box<dyn RowPin>; ROWS],
+		[Box<dyn ColPin>; COLS],
+	) {
+		let state = Rc::new(RefCell::new(MockKeyMatrixState::new()));
+
+		// Create row pins
+		let rows: [Box<dyn RowPin>; ROWS] = std::array::from_fn(|i| {
+			Box::new(MockRowPin::new(i, Rc::clone(&state))) as Box<dyn RowPin>
+		});
+
+		// Create column pins
+		let cols: [Box<dyn ColPin>; COLS] = std::array::from_fn(|i| {
+			Box::new(MockColPin::new(i, Rc::clone(&state))) as Box<dyn ColPin>
+		});
+
+		(state, rows, cols)
+	}
+
+	struct OldMockRowPin {}
+
+	impl RowPin for OldMockRowPin {
 		fn set_high(&mut self) {}
 
 		fn set_low(&mut self) {}
 	}
 
-	struct MockColPin {
+	struct OldMockColPin {
 		state: Rc<RefCell<bool>>,
 	}
 
-	impl ColPin for MockColPin {
+	impl ColPin for OldMockColPin {
 		fn is_high(&self) -> bool {
 			*self.state.borrow()
 		}
@@ -400,9 +520,9 @@ mod tests {
 	#[test]
 	fn empty_matrix_returns_no_actions() {
 		let key_id = KeyId::new(Uuid::from_u128(0));
-		let row_pin = Box::new(MockRowPin {});
+		let row_pin = Box::new(OldMockRowPin {});
 		let state = Rc::new(RefCell::new(false));
-		let col_pin = Box::new(MockColPin {
+		let col_pin = Box::new(OldMockColPin {
 			state: state.clone(),
 		});
 		let debounce_time = Duration::from_millis(0);
@@ -420,9 +540,9 @@ mod tests {
 	#[test]
 	fn pressed_key_returns_pressed_action() {
 		let key_id = KeyId::new(Uuid::from_u128(0));
-		let row_pin = Box::new(MockRowPin {});
+		let row_pin = Box::new(OldMockRowPin {});
 		let state = Rc::new(RefCell::new(true));
-		let col_pin = Box::new(MockColPin {
+		let col_pin = Box::new(OldMockColPin {
 			state: state.clone(),
 		});
 		let debounce_time = Duration::from_millis(0);
@@ -440,9 +560,9 @@ mod tests {
 	#[test]
 	fn subsequent_updates_dont_return_pressed_actions() {
 		let key_id = KeyId::new(Uuid::from_u128(0));
-		let row_pin = Box::new(MockRowPin {});
+		let row_pin = Box::new(OldMockRowPin {});
 		let state = Rc::new(RefCell::new(true));
-		let col_pin = Box::new(MockColPin {
+		let col_pin = Box::new(OldMockColPin {
 			state: state.clone(),
 		});
 		let debounce_time = Duration::from_millis(0);
@@ -467,9 +587,9 @@ mod tests {
 	#[test]
 	fn subsequent_updates_dont_return_released_actions() {
 		let key_id = KeyId::new(Uuid::from_u128(0));
-		let row_pin = Box::new(MockRowPin {});
+		let row_pin = Box::new(OldMockRowPin {});
 		let state = Rc::new(RefCell::new(false));
-		let col_pin = Box::new(MockColPin {
+		let col_pin = Box::new(OldMockColPin {
 			state: state.clone(),
 		});
 		let debounce_time = Duration::from_millis(0);
@@ -489,9 +609,9 @@ mod tests {
 	#[test]
 	fn released_key_returns_released_action() {
 		let key_id = KeyId::new(Uuid::from_u128(0));
-		let row_pin = Box::new(MockRowPin {});
+		let row_pin = Box::new(OldMockRowPin {});
 		let state = Rc::new(RefCell::new(true));
-		let col_pin = Box::new(MockColPin {
+		let col_pin = Box::new(OldMockColPin {
 			state: state.clone(),
 		});
 		let debounce_time = Duration::from_millis(0);
@@ -513,9 +633,9 @@ mod tests {
 	#[test]
 	fn debounce_released_key() {
 		let key_id = KeyId::new(Uuid::from_u128(0));
-		let row_pin = Box::new(MockRowPin {});
+		let row_pin = Box::new(OldMockRowPin {});
 		let state = Rc::new(RefCell::new(false));
-		let col_pin = Box::new(MockColPin {
+		let col_pin = Box::new(OldMockColPin {
 			state: state.clone(),
 		});
 		let debounce_time = Duration::from_millis(5);
@@ -531,5 +651,73 @@ mod tests {
 		matrix.update(dt, output);
 
 		assert_eq!(output.len(), 0);
+	}
+
+	#[test]
+	fn resolve_index_from_row_col_correctly_when_wrapping() {
+		let index = KeyMatrix::<5, 6, 30>::get_key_index(1, 0);
+		assert_eq!(index, 6);
+	}
+
+	#[test]
+	fn key_index_6_and_13_dont_register_key_index_12() {
+		let button_states: [[bool; 6]; 5] = [
+			[false, false, false, false, false, false],
+			[true, false, false, false, false, false],
+			[false, true, false, false, false, false],
+			[false, false, false, false, false, false],
+			[false, false, false, false, false, false],
+		];
+
+		let (state, rows, cols) = create_mock_matrix::<5, 6>();
+		state.borrow_mut().set_key_states(button_states);
+
+		let key_ids: [KeyId; 30] = [
+			KeyId::new(Uuid::from_u128(0)), // 0
+			KeyId::new(Uuid::from_u128(0)), // 1
+			KeyId::new(Uuid::from_u128(0)), // 2
+			KeyId::new(Uuid::from_u128(0)), // 3
+			KeyId::new(Uuid::from_u128(0)), // 4
+			KeyId::new(Uuid::from_u128(0)), // 5
+			KeyId::new(Uuid::from_u128(1)), // 6
+			KeyId::new(Uuid::from_u128(0)), // 7
+			KeyId::new(Uuid::from_u128(0)), // 8
+			KeyId::new(Uuid::from_u128(0)), // 9
+			KeyId::new(Uuid::from_u128(0)), // 10
+			KeyId::new(Uuid::from_u128(0)), // 11
+			KeyId::new(Uuid::from_u128(2)), // 12
+			KeyId::new(Uuid::from_u128(3)), // 13
+			KeyId::new(Uuid::from_u128(0)), // 14
+			KeyId::new(Uuid::from_u128(0)), // 15
+			KeyId::new(Uuid::from_u128(0)), // 16
+			KeyId::new(Uuid::from_u128(0)), // 17
+			KeyId::new(Uuid::from_u128(0)), // 18
+			KeyId::new(Uuid::from_u128(0)), // 19
+			KeyId::new(Uuid::from_u128(0)), // 20
+			KeyId::new(Uuid::from_u128(0)), // 21
+			KeyId::new(Uuid::from_u128(0)), // 22
+			KeyId::new(Uuid::from_u128(0)), // 23
+			KeyId::new(Uuid::from_u128(0)), // 24
+			KeyId::new(Uuid::from_u128(0)), // 25
+			KeyId::new(Uuid::from_u128(0)), // 26
+			KeyId::new(Uuid::from_u128(0)), // 27
+			KeyId::new(Uuid::from_u128(0)), // 28
+			KeyId::new(Uuid::from_u128(0)), // 29
+		];
+
+		let mut matrix = KeyMatrix::<5, 6, 30>::new(key_ids, rows, cols, Duration::from_millis(0));
+
+		let dt = Duration::from_millis(1);
+		let output = &mut Vec::new();
+		matrix.update(dt, output);
+
+		assert_eq!(output.len(), 2);
+
+		assert!(output.iter().any(|action| {
+			action.key_id == KeyId::new(Uuid::from_u128(1)) && action.action == KeyState::Pressed
+		}));
+		assert!(output.iter().any(|action| {
+			action.key_id == KeyId::new(Uuid::from_u128(3)) && action.action == KeyState::Pressed
+		}));
 	}
 }

@@ -3,6 +3,7 @@ using Cardboard.Repositories;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 
 namespace Cardboard.HttpApi;
@@ -15,13 +16,13 @@ public static class Devices
 
 		group.MapGet("/", GetDevices).WithName("Get Devices").Produces<DeviceListResponse>().WithOpenApi();
 		group
-			.MapGet("/{id}/details", GetDeviceDetails)
+			.MapGet("/{id}", GetDeviceDetails)
 			.WithName("Get Device Details")
 			.Produces<DeviceDetailsResponse>()
 			.Produces(StatusCodes.Status404NotFound)
 			.WithOpenApi();
 		group
-			.MapGet("/{id}", GetDeviceProfile)
+			.MapGet("/{id}/profile", GetDeviceProfile)
 			.WithName("Get Device Profile")
 			.Produces<GetDeviceProfileResponse>()
 			.Produces(StatusCodes.Status404NotFound)
@@ -31,6 +32,12 @@ public static class Devices
 			.WithName("Update Device Profile")
 			.Produces(StatusCodes.Status204NoContent)
 			.Produces(StatusCodes.Status400BadRequest)
+			.WithOpenApi();
+		group
+			.MapPost("/{id}/bootloader", EnterBootloader)
+			.WithName("Enter Bootloader")
+			.Produces(StatusCodes.Status204NoContent)
+			.Produces(StatusCodes.Status404NotFound)
 			.WithOpenApi();
 	}
 
@@ -44,7 +51,7 @@ public static class Devices
 
 	private static async Task<Results<Ok<DeviceDetailsResponse>, NotFound>> GetDeviceDetails(
 		IDeviceRepository deviceRepository,
-		DeviceId id,
+		[FromRoute] DeviceId id,
 		CancellationToken cancellationToken
 	) =>
 		await deviceRepository.GetDeviceDetails(id, cancellationToken) is { } deviceDetails
@@ -53,7 +60,7 @@ public static class Devices
 
 	private static async Task<Results<Ok<GetDeviceProfileResponse>, NotFound>> GetDeviceProfile(
 		IDeviceRepository deviceRepository,
-		DeviceId id,
+		[FromRoute] DeviceId id,
 		CancellationToken cancellationToken
 	) =>
 		await deviceRepository.GetDeviceProfile(id, cancellationToken) is { } deviceProfile
@@ -64,7 +71,7 @@ public static class Devices
 		Results<NoContent, NotFound, BadRequest, InternalServerError>
 	> UpdateDeviceProfile(
 		IDeviceRepository deviceRepository,
-		DeviceId id,
+		[FromRoute] DeviceId id,
 		DeviceProfile deviceProfile,
 		CancellationToken cancellationToken
 	) =>
@@ -76,6 +83,15 @@ public static class Devices
 			UpdateDeviceProfileResult.DeviceError => TypedResults.InternalServerError(),
 			_ => throw new InvalidOperationException(),
 		};
+
+	private static async Task<Results<NoContent, NotFound>> EnterBootloader(
+		IDeviceRepository deviceRepository,
+		[FromRoute] DeviceId id,
+		CancellationToken cancellationToken
+	) =>
+		await deviceRepository.EnterBootloader(id, cancellationToken)
+			? TypedResults.NoContent()
+			: TypedResults.NotFound();
 }
 
 public sealed class DeviceListResponse

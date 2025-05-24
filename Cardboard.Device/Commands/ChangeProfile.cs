@@ -19,12 +19,22 @@ public sealed class ChangeProfileCommand : ICommand<DeviceProfile, Unit>
 		stream.Writer.Write(bytes);
 		stream.Writer.Flush();
 
-		var ack = stream.Reader.ReadByte();
+		// extend our read timeout because it's normal to wait for a response when sending large profiles
+		var readTimeout = stream.Reader.BaseStream.ReadTimeout;
+		try
+		{
+			stream.Reader.BaseStream.ReadTimeout = 60_000;
 
-		if (ack != 0xFF)
-			throw new InvalidOperationException(
-				$"Failed to change profile. Received `0x{ack:x}` instead of `0xFF`."
-			);
+			var ack = stream.Reader.ReadByte();
+			if (ack != 0xFF)
+				throw new InvalidOperationException(
+					$"Failed to change profile. Received `0x{ack:x}` instead of `0xFF`."
+				);
+		}
+		finally
+		{
+			stream.Reader.BaseStream.ReadTimeout = readTimeout;
+		}
 
 		return Unit.Value;
 	}

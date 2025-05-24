@@ -1,10 +1,82 @@
 import useSWR from "swr";
 
+export const useDeviceList = (): {
+  devices: readonly DeviceSummary[];
+  isLoading?: boolean;
+  error?: Error;
+} => {
+  const { data, isLoading, error } = useSWR<{
+    devices: readonly DeviceSummary[];
+  }>("/devices");
+
+  return {
+    devices: data?.devices ?? [],
+    //devices: fakeDevices,
+    isLoading,
+    error,
+  };
+};
+
+export const useDeviceDetails = (deviceId: string) => {
+  const { data, isLoading, error } = useSWR<{ deviceDetails: DeviceDetails }>(
+    `/devices/${deviceId}`,
+  );
+
+  return {
+    device: data?.deviceDetails,
+    isLoading,
+    error,
+  };
+};
+
+export const useDeviceProfile = (
+  deviceId: string,
+): {
+  deviceProfile: DeviceProfile;
+  isLoading?: boolean;
+  error?: Error;
+} => {
+  const { data, isLoading, error } = useSWR<{ deviceProfile: DeviceProfile }>(
+    `/devices/${deviceId}/profile`,
+  );
+
+  return {
+    deviceProfile: data?.deviceProfile ?? {
+      keys: [],
+      macros: [],
+    },
+    isLoading,
+    error,
+  };
+};
+
 export interface DeviceSummary {
   id: string;
   name: string;
   model: string;
   iconUrl?: string;
+}
+
+export interface DeviceDetails {
+  id: string;
+  name: string;
+  type: string;
+  model: string;
+  iconUrl?: string;
+  commands: readonly CommandInfo[];
+  keyMap: readonly KeyInfo[];
+}
+
+export interface CommandInfo {
+  id: string;
+  name: string;
+}
+
+export interface KeyInfo {
+  keyId: string;
+  name: string;
+  offset: { x: number; y: number };
+  size: { width: number; height: number };
 }
 
 export interface DeviceProfile {
@@ -20,7 +92,7 @@ interface DeviceKey {
 
 interface TaggedDeviceLayer {
   layer: DeviceKeyLayer;
-  tag: readonly string[];
+  tags: readonly string[];
   matchType: TagMatchType;
 }
 
@@ -99,43 +171,6 @@ interface MouseMove {
   x: number;
   y: number;
 }
-
-export const useDeviceList = (): {
-  devices: readonly DeviceSummary[];
-  isLoading?: boolean;
-  error?: Error;
-} => {
-  const { data, isLoading, error } = useSWR<{
-    devices: readonly DeviceSummary[];
-  }>("/devices");
-
-  return {
-    devices: data?.devices ?? [],
-    isLoading,
-    error,
-  };
-};
-
-export const useDeviceProfile = (
-  deviceId: string,
-): {
-  deviceProfile: DeviceProfile;
-  isLoading?: boolean;
-  error?: Error;
-} => {
-  const { data, isLoading, error } = useSWR<{ deviceProfile: DeviceProfile }>(
-    `/devices/${deviceId}`,
-  );
-
-  return {
-    deviceProfile: data?.deviceProfile ?? {
-      keys: [],
-      macros: [],
-    },
-    isLoading,
-    error,
-  };
-};
 
 enum KeyboardKey {
   A = "A",
@@ -285,3 +320,106 @@ enum ConsumerControlEvent {
   VOLUME_DECREMENT = "VOLUME_DECREMENT",
   VOLUME_INCREMENT = "VOLUME_INCREMENT",
 }
+
+const fakeDevices = [
+  {
+    id: "0",
+    name: "Device 1",
+    model: "Model 1",
+  },
+  {
+    id: "1",
+    name: "Device 2",
+    model: "Model 2",
+  },
+  {
+    id: "2",
+    name: "Device 3",
+    model: "Model 3",
+  },
+  {
+    id: "3",
+    name: "Device 4",
+    model: "Model 4",
+  },
+  {
+    id: "4",
+    name: "Device 5",
+    model: "Model 5",
+  },
+  {
+    id: "5",
+    name: "Device 6",
+    model: "Model 6",
+  },
+  {
+    id: "6",
+    name: "Device 7",
+    model: "Model 7",
+  },
+  {
+    id: "7",
+    name: "Device 8",
+    model: "Model 8",
+  },
+  {
+    id: "8",
+    name: "Device 9",
+    model: "Model 9",
+  },
+  {
+    id: "9",
+    name: "Device 10",
+    model: "Model 10",
+  },
+  {
+    id: "10",
+    name: "Device 11",
+    model: "Model 11",
+  },
+  {
+    id: "11",
+    name: "Device 12",
+    model: "Model 12",
+  },
+  {
+    id: "12",
+    name: "Device 13",
+    model: "Model 13",
+  },
+  {
+    id: "13",
+    name: "Device 14",
+    model: "Model 14",
+  },
+  {
+    id: "14",
+    name: "Device 15",
+    model: "Model 15",
+  },
+  {
+    id: "15",
+    name: "Device 16",
+    model: "Model 16",
+  },
+  {
+    id: "16",
+    name: "Device 17",
+    model: "Model 17",
+  },
+  {
+    id: "17",
+    name: "Device 18",
+    model: "Model 18",
+  },
+  {
+    id: "18",
+    name: "Device 19",
+    model: "Model 19",
+  },
+  {
+    id: "19",
+    name: "Device 20",
+    model: "Model 20",
+  },
+];

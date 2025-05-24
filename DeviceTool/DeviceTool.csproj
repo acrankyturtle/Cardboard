@@ -9,6 +9,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Cardboard.Events.Windows\Cardboard.Events.Windows.csproj" />
+      <ProjectReference Include="..\Cardboard.Repositories\Cardboard.Repositories.csproj" />
       <ProjectReference Include="..\Cardboard.Serial.Windows\Cardboard.Serial.Windows.csproj" />
     </ItemGroup>
 

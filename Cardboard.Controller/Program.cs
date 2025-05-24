@@ -24,7 +24,7 @@ builder
 	.Services
 	.Configure<JsonOptions>(options =>
 	{
-		options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault;
+		options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
 		options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
 		options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
 	});

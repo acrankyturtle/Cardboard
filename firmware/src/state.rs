@@ -88,13 +88,13 @@ impl<'a> KeyboardState<'a> {
 		}
 	}
 
-	pub fn add_internal_tags(&mut self, tags: Vec<LayerTag>) {
-		self.tags.add_many_internal(tags);
+	pub fn add_internal_tag(&mut self, tag: LayerTag) {
+		self.tags.add_internal(tag);
 		self.update_layers();
 	}
 
-	pub fn remove_internal_tags(&mut self, tags: Vec<LayerTag>) {
-		self.tags.remove_many_internal(tags);
+	pub fn remove_internal_tag(&mut self, tag: LayerTag) {
+		self.tags.remove_internal(tag);
 		self.update_layers();
 	}
 
@@ -931,7 +931,10 @@ mod tests {
 	// ------- HELPERS --------
 
 	fn new_test_profile(keys: Vec<DeviceKey>) -> KeyboardProfile {
-		KeyboardProfile { keys }
+		KeyboardProfile {
+			keys,
+			macros: vec![],
+		}
 	}
 
 	fn new_test_device_key(id: KeyId, macros: Vec<Macro>) -> DeviceKey {

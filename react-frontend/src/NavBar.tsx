@@ -11,7 +11,7 @@ export function NavBar({ className }: { className?: string }) {
           <Logo />
         </div>
         <TabList className="mt-10 flex h-full flex-col items-center space-y-4">
-          <NavBarButton>
+          <NavBarButton className="flex items-center">
             {(selected) => <DashboardIcon selected={selected} />}
           </NavBarButton>
           <NavBarButton>
@@ -120,10 +120,12 @@ function ToggledIcon({
   activeComponent: ReactNode;
   selected?: boolean;
 }) {
+  const baseClass =
+    "absolute flex size-full items-center justify-center transition duration-250";
   return (
-    <div className="size-full">
+    <div className="relative size-full">
       <div
-        className={clsx("absolute flex size-full transition duration-250", {
+        className={clsx(baseClass, {
           "opacity-0": selected,
           "opacity-100": !selected,
         })}
@@ -131,7 +133,7 @@ function ToggledIcon({
         {normalComponent}
       </div>
       <div
-        className={clsx("absolute flex size-full transition duration-250", {
+        className={clsx(baseClass, {
           "opacity-0": !selected,
           "opacity-100": selected,
         })}

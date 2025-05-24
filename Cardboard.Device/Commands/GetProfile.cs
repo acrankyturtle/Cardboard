@@ -20,13 +20,24 @@ public sealed class GetProfileCommand : ICommand<Unit, DeviceProfile>
 		if (!isValid)
 			return new() { Keys = [], Macros = [] };
 
-		var length = stream.Reader.ReadUInt16();
-		var bytes = stream.Reader.ReadBytes(length);
+		// extend our read timeout because it's normal to wait for a response when sending large profiles
+		var readTimeout = stream.Reader.BaseStream.ReadTimeout;
+		try
+		{
+			stream.Reader.BaseStream.ReadTimeout = 60_000;
 
-		var profile =
-			JsonSerializer.Deserialize<JsonDeviceProfile>(bytes, DeviceJson.SerializerOptions)
-			?? throw new JsonException();
+			var length = stream.Reader.ReadUInt16();
+			var bytes = stream.Reader.ReadBytes(length);
 
-		return profile.ToDeviceProfile();
+			var profile =
+				JsonSerializer.Deserialize<JsonDeviceProfile>(bytes, DeviceJson.SerializerOptions)
+				?? throw new JsonException();
+
+			return profile.ToDeviceProfile();
+		}
+		finally
+		{
+			stream.Reader.BaseStream.ReadTimeout = readTimeout;
+		}
 	}
 }

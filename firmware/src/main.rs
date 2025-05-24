@@ -10,49 +10,44 @@ extern crate usbd_human_interface_device;
 
 use alloc::boxed::Box;
 use alloc::string::{String, ToString};
-use alloc::vec;
 use alloc::vec::Vec;
 use cardboard::context::Context;
 use cardboard::device::{DeviceId, DeviceInfo, DeviceTypeId};
 use cardboard::hid::HidDevice;
-use cardboard::profile::{
-	Action, ActionEvent, DebugEvent, DeviceKey, DeviceKeyLayer, KeyboardEvent, KeyboardKey,
-	LayerId, Macro, MacroId, Sequence, TagMatchType, TaggedDeviceKeyLayer,
-};
+use cardboard::profile::{ActionEvent, DebugEvent, LayerEvent};
 use cardboard::profile::{KeyboardProfile, LayerTag};
 use cardboard::state::KeyboardState;
 use cardboard::storage::{load_profile_from_flash, EmbassyFlashMemory, FlashMemory};
-use cardboard::StaticCell;
+use cardboard::{StaticCell, TrackingAllocator};
 use cardboard_lib::input::{ColPin, KeyId, KeyMatrix, KeyState, RowPin};
 use cardboard_lib::serial::embassy::{EmbassySerialPacketReader, EmbassySerialPacketWriter};
 use cardboard_lib::serial::{BufferedReader, SerialReaderExt};
 use core::mem::MaybeUninit;
-use core::ops::{Add, DerefMut};
-use defmt::*;
+use core::ops::Add;
 use embassy_executor::Spawner;
 use embassy_rp::bind_interrupts;
 use embassy_rp::flash::{Async, Flash};
 use embassy_rp::gpio::{AnyPin, Input, Level, Output, Pin, Pull};
 use embassy_rp::peripherals::{DMA_CH0, FLASH, USB};
+use embassy_rp::rom_data::reset_to_usb_boot;
 use embassy_rp::usb::{Driver, InterruptHandler};
-use embassy_sync::blocking_mutex::raw::{NoopRawMutex, ThreadModeRawMutex};
+use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
 use embassy_sync::signal::Signal;
-use embassy_time::{Delay, Duration, Instant, Timer};
+use embassy_time::{Duration, Instant, Timer};
 use embassy_usb::class::cdc_acm::{CdcAcmClass, Receiver};
 use embassy_usb::class::hid::{HidWriter, State};
-use embassy_usb::control::{Request, RequestType};
-use embassy_usb::{Builder, Config, Handler, UsbDevice, UsbDeviceState};
-use embedded_hal_async::delay::DelayNs;
-use serde::{de, Deserialize};
-
-use {defmt_rtt as _, panic_probe as _}; // global logger
+use embassy_usb::{Builder, Config, UsbDevice};
 
 use cardboard::command::{
-	ChangeProfileCommand, Command, GetProfileCommand, IdentifyCommand, SetExternalTagsCommand,
+	ChangeProfileCommand, Command, EnterBootloaderCommand, GetProfileCommand, GetStatusCommand,
+	IdentifyCommand, SetExternalTagsCommand,
 };
-use cardboard::profile::ActionEvent::Keyboard;
+
 use embedded_alloc::LlffHeap as Heap;
-use uuid::{uuid, Uuid};
+use uuid::Uuid;
+
+#[cfg(debug_assertions)]
+use {defmt::*, defmt_rtt as _, panic_probe as _}; // global logger
 
 const FLASH_ADDR: *const u8 = 0x10000000 as *const u8;
 const FLASH_SIZE: usize = 2 * 1024 * 1024; // 2 MB
@@ -63,7 +58,7 @@ static mut PROFILE: MaybeUninit<[u8; PROFILE_SIZE]> = MaybeUninit::uninit();
 const PROFILE_SIZE: usize = 500 * 1024; // 500 KB
 
 // allocator setup
-const HEAP_SIZE: usize = 1024 * 4; // 4 KB
+const HEAP_SIZE: usize = 32 * 1024; // 32 KB
 
 // matrix
 const ROWS: usize = 5;
@@ -112,7 +107,7 @@ fn create_device_info(
 	}
 }
 
-const CMD_COUNT: usize = 4;
+const CMD_COUNT: usize = 6;
 
 static mut COMMANDS: MaybeUninit<[Box<dyn Command<CommandContext>>; CMD_COUNT]> =
 	MaybeUninit::uninit();
@@ -122,6 +117,8 @@ fn create_cmds() -> &'static mut [Box<dyn Command<CommandContext>>; CMD_COUNT] {
 		Box::new(ChangeProfileCommand {}),
 		Box::new(GetProfileCommand {}),
 		Box::new(SetExternalTagsCommand {}),
+		Box::new(EnterBootloaderCommand {}),
+		Box::new(GetStatusCommand {}),
 	];
 
 	unsafe { COMMANDS.write(cmds) }
@@ -133,6 +130,7 @@ type CommandContext = Context<
 	ContextSerialReader,
 	ContextSerialWriter,
 	ContextExternalTagsSignal,
+	Heap,
 >;
 
 type ContextFlashMemory = EmbassyFlashMemory<'static, FLASH_SIZE>;
@@ -149,9 +147,13 @@ static EXTERNAL_TAGS_CHANGED_SIGNAL: Signal<ThreadModeRawMutex, Vec<LayerTag>> =
 bind_interrupts!(struct Irqs {
 	USBCTRL_IRQ => InterruptHandler<USB>;
 });
-
 #[embassy_executor::main]
 async fn main(spawner: Spawner) -> () {
+	spawner.spawn(cardboard_task(spawner)).unwrap();
+}
+
+#[embassy_executor::task]
+async fn cardboard_task(spawner: Spawner) -> () {
 	info!("Program start");
 	initialize_allocator();
 
@@ -189,6 +191,8 @@ async fn main(spawner: Spawner) -> () {
 		KeyId::new(Uuid::parse_str("7b743c81-7260-5ae3-8c7e-fc451751a2c7").unwrap()),
 		KeyId::new(Uuid::parse_str("15c56a3d-0f31-5ebd-bcf1-63aa968be49a").unwrap()),
 	];
+
+	let bootloader_key = key_ids[0];
 
 	let matrix = create_matrix(
 		key_ids,
@@ -254,6 +258,7 @@ async fn main(spawner: Spawner) -> () {
 			consumer,
 			&PROFILE_CHANGED_SIGNAL,
 			&HID_SIGNAL,
+			bootloader_key,
 		))
 		.unwrap();
 
@@ -305,6 +310,7 @@ async fn keypad_task(
 	mut hid_consumer: ConsumerImpl,
 	profile_changed: &'static Signal<ThreadModeRawMutex, KeyboardProfile>,
 	hid_report: &'static Signal<ThreadModeRawMutex, HidReport>,
+	bootloader_key: KeyId,
 ) {
 	info!("Keypad task started.");
 
@@ -317,12 +323,22 @@ async fn keypad_task(
 
 	let mut prev_timestamp = Instant::now();
 
+	// hold esc while booting to enter bootloader
+	matrix.update(Duration::from_millis(0), &mut key_actions);
+	if key_actions.iter().any(|k| k.key_id == bootloader_key) {
+		info!("Rebooting into bootloader");
+		reboot_to_bootloader();
+	}
+	key_actions.clear();
+
 	loop {
 		// check for profile change
 		if let Some(new_profile) = profile_changed.try_take() {
+			// hang onto the old external tags to apply them to the new profile
 			let old_external_tags = state.get_external_tags().to_vec();
 			profile = new_profile;
 			state = KeyboardState::from(&profile);
+			state.set_external_tags(old_external_tags);
 
 			hid_keyboard.reset();
 			hid_mouse.reset();
@@ -345,7 +361,7 @@ async fn keypad_task(
 			match key.action {
 				KeyState::Pressed => {
 					state.press_key(key.key_id);
-					info!("Pressed!");
+					info!("Key pressed: {:?}", key.key_id);
 				}
 				KeyState::Released => {
 					state.release_key(key.key_id);
@@ -353,20 +369,12 @@ async fn keypad_task(
 			}
 		}
 
-		if !key_actions.is_empty() {
-			info!("Key actions: {:?}", key_actions.len());
-		}
-
 		// tick macros
 		macro_events.clear();
 		state.tick(dt.as_millis() as u32, &mut macro_events);
 
-		if macro_events.len() > 0 {
-			info!("Macro events: {:?}", macro_events.len());
-		}
-
 		// process each macro event and update hid statess
-		for macro_event in macro_events.iter() {
+		for macro_event in macro_events.drain(..) {
 			match macro_event {
 				ActionEvent::Debug(event) => match event {
 					DebugEvent::Log(msg) => {
@@ -375,12 +383,15 @@ async fn keypad_task(
 					_ => {}
 				},
 				ActionEvent::None => {}
-				ActionEvent::Keyboard(event) => hid_keyboard.input(event),
-				ActionEvent::Mouse(event) => hid_mouse.input(event),
+				ActionEvent::Keyboard(event) => hid_keyboard.input(&event),
+				ActionEvent::Mouse(event) => hid_mouse.input(&event),
 				ActionEvent::ConsumerControl(event) => {
-					hid_consumer.input(event);
+					hid_consumer.input(&event);
 				}
-				ActionEvent::Layer(_) => {}
+				ActionEvent::Layer(event) => match event {
+					LayerEvent::Clear(layer) => state.remove_internal_tag(layer),
+					LayerEvent::Set(layer) => state.add_internal_tag(layer),
+				},
 			}
 		}
 
@@ -431,10 +442,6 @@ async fn hid_task(
 
 		if let Some(keyboard_report) = keyboard_report {
 			keyboard.write(&keyboard_report).await.unwrap();
-
-			if keyboard_report.iter().any(|&x| x != 0) {
-				info!("Keyboard report: {:?}", keyboard_report);
-			}
 		}
 		if let Some(mouse_report) = mouse_report {
 			mouse.write(&mouse_report).await.unwrap();
@@ -465,6 +472,7 @@ async fn cmd_task(
 		serial_reader,
 		serial_writer,
 		external_tags_changed_signal,
+		&HEAP,
 	);
 
 	loop {
@@ -480,6 +488,7 @@ async fn cmd_task(
 			}
 			Err(e) => {
 				warn!("Error: {}", e);
+				Timer::after(serial_reset_timeout).await;
 			}
 		}
 	}
@@ -503,12 +512,12 @@ async fn read_cmd(
 }
 
 #[global_allocator]
-static HEAP: Heap = Heap::empty();
+static HEAP: TrackingAllocator<Heap> = TrackingAllocator::new(Heap::empty());
 
 fn initialize_allocator() {
 	use core::mem::MaybeUninit;
 	static mut HEAP_MEM: [MaybeUninit<u8>; HEAP_SIZE] = [MaybeUninit::uninit(); HEAP_SIZE];
-	unsafe { HEAP.init(HEAP_MEM.as_ptr() as usize, HEAP_SIZE) }
+	unsafe { HEAP.inner.init(HEAP_MEM.as_ptr() as usize, HEAP_SIZE) }
 }
 
 struct UsbDevices {
@@ -644,4 +653,12 @@ fn create_matrix(
 		column_pins.map(|pin| Box::new(Input::new(pin, Pull::Down)) as Box<dyn ColPin>);
 
 	KeyMatrix::new(key_ids, rows, cols, Duration::from_millis(5))
+}
+
+fn reboot_to_bootloader() -> ! {
+	reset_to_usb_boot(0, 0);
+
+	loop {
+		// wait for reset
+	}
 }

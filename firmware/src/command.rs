@@ -7,7 +7,8 @@ use core::panic;
 use core::result::Result;
 use core::result::Result::Err;
 use core::result::Result::Ok;
-use defmt::{debug, error, info};
+use defmt::{debug, error};
+use embassy_rp::rom_data::reset_to_usb_boot;
 use serde::Serialize;
 
 use alloc::boxed::Box;
@@ -15,12 +16,13 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use uuid::uuid;
 
+use crate::context::ContextAllocator;
 use crate::context::{
 	ChangeProfileSignalTx, ContextDeviceInfo, ContextProfile, ContextSerialRx, ContextSerialTx,
-	ContextTags, ExternalTagsSignalTx,
+	ContextTags,
 };
 use crate::device::{CommandId, DeviceInfo};
-use crate::profile::{KeyboardProfile, LayerTag};
+use crate::profile::LayerTag;
 use crate::storage::{load_profile_from_flash, FlashMemory};
 use cardboard_lib::serial::{SerialReader, SerialReaderExt, SerialWriter, SerialWriterExt};
 
@@ -52,7 +54,7 @@ impl<Context: ContextDeviceInfo + ContextSerialTx> Command<Context> for Identify
 		let response = IdentifyResponse {
 			info: ctx.device_info(),
 		};
-		let mut buf = [0u8; 512]; // todo: tune size?
+		let mut buf = [0u8; 1024]; // todo: tune size?
 
 		if let Ok(len) = serde_json_core::to_slice(&response, &mut buf) {
 			ctx.serial_tx().write_u16(len as u16).await?;
@@ -249,7 +251,60 @@ impl<Context: ContextSerialRx + ContextSerialTx + ContextTags> Command<Context>
 	}
 }
 
-pub struct SetLayerCommand;
+pub struct EnterBootloaderCommand;
+
+#[async_trait(?Send)]
+impl<Context> Command<Context> for EnterBootloaderCommand {
+	fn info(&self) -> CommandInfo {
+		CommandInfo {
+			id: CommandId(uuid!("6dce0823-d199-5abb-a56f-a85cdba61842")),
+			name: "Enter Bootloader",
+		}
+	}
+
+	async fn execute(&self, _: &mut Context) -> Result<(), &'static str> {
+		reset_to_usb_boot(0, 0);
+		loop {} // halt
+	}
+}
+
+pub struct GetStatusCommand;
+
+#[async_trait(?Send)]
+impl<Context: ContextSerialTx + ContextAllocator> Command<Context> for GetStatusCommand {
+	fn info(&self) -> CommandInfo {
+		CommandInfo {
+			id: CommandId(uuid!("b14aadb5-53a2-5e69-b463-603efce7c199")),
+			name: "Get Status",
+		}
+	}
+
+	async fn execute(&self, ctx: &mut Context) -> Result<(), &'static str> {
+		let allocator_current = ctx.allocator().current();
+		let allocator_max = ctx.allocator().max();
+
+		let response = StatusResponse {
+			allocator_current,
+			allocator_max,
+		};
+
+		let mut buf = [0u8; 256]; // todo: tune size?
+
+		if let Ok(len) = serde_json_core::to_slice(&response, &mut buf) {
+			ctx.serial_tx().write_u16(len as u16).await?;
+			ctx.serial_tx().write_exact(&buf[..len]).await?;
+			Ok(())
+		} else {
+			Err("Failed to serialize response")
+		}
+	}
+}
+
+#[derive(Serialize)]
+struct StatusResponse {
+	pub allocator_current: usize,
+	pub allocator_max: usize,
+}
 
 pub struct VirtualKeyCommand;
 
