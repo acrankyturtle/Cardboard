@@ -1,76 +1,21 @@
 #![cfg_attr(not(test), no_std)]
+#![feature(impl_trait_in_assoc_type)]
 #![feature(generic_const_exprs)]
 
 extern crate alloc;
 
-use core::{
-	alloc::{GlobalAlloc, Layout},
-	cell::{Cell, UnsafeCell},
-	mem::MaybeUninit,
-};
+use alloc::string::{String, ToString};
+use core::{cell::UnsafeCell, mem::MaybeUninit};
 
-use alloc::vec::Vec;
-use cortex_m::interrupt::Mutex;
-use defmt::Format;
+use cardboard_lib::device::DeviceId;
 use portable_atomic::{AtomicBool, Ordering};
-use profile::{LayerTag, TagMatchType};
 
-pub mod command;
-pub mod context;
-pub mod device;
-pub mod hid;
-pub mod profile;
-pub mod state;
-pub mod storage;
+pub mod rp2040;
 
-#[derive(Debug, Format)]
-pub enum Error {
-	Unknown,
-}
-
-pub struct TagList {
-	internal: Vec<LayerTag>,
-	external: Vec<LayerTag>,
-}
-
-impl TagList {
-	pub fn new() -> Self {
-		TagList {
-			internal: Vec::new(),
-			external: Vec::new(),
-		}
-	}
-
-	pub fn add_internal(&mut self, tag: LayerTag) {
-		self.internal.push(tag);
-	}
-
-	pub fn remove_internal(&mut self, tag: LayerTag) {
-		if let Some(index) = self.internal.iter().position(|t| *t == tag) {
-			self.internal.remove(index);
-		}
-	}
-
-	pub fn clear_internal(&mut self) {
-		self.internal.clear();
-	}
-
-	pub fn set_external(&mut self, tags: Vec<LayerTag>) {
-		self.external = tags;
-	}
-
-	pub fn matches(&self, tags: &[LayerTag], match_type: &TagMatchType) -> bool {
-		match match_type {
-			TagMatchType::All => tags.iter().all(|t| self.contains(t)),
-			TagMatchType::Any => tags.iter().any(|t| self.contains(t)),
-		}
-	}
-
-	fn contains(&self, value: &LayerTag) -> bool {
-		self.internal
-			.iter()
-			.chain(self.external.iter())
-			.any(|tag| *tag == *value)
+pub fn get_serial_number<'a>(device_id: &DeviceId) -> &'static str {
+	unsafe {
+		static mut SERIAL_NUMBER: MaybeUninit<String> = MaybeUninit::uninit();
+		SERIAL_NUMBER.write(device_id.to_string())
 	}
 }
 
@@ -198,152 +143,5 @@ impl<T> StaticCell<T> {
 		} else {
 			None
 		}
-	}
-}
-
-// ---
-
-/// Statically allocated and initialized, taken at runtime cell.
-///
-/// It has two states: "untaken" and "taken". It is created "untaken", and obtaining a reference
-/// to the contents permanently changes it to "taken". This allows that reference to be valid
-/// forever.
-///
-/// If your value can be const defined, for example a large, zero filled buffer used for DMA
-/// or other scratch memory usage, `ConstStaticCell` can be used to guarantee the initializer
-/// will never take up stack memory.
-///
-/// If your values are all zero initialized, the resulting `ConstStaticCell` should be placed
-/// in `.bss`, not taking flash space for initialization either.
-///
-/// See the [crate-level docs](crate) for usage.
-pub struct ConstStaticCell<T> {
-	taken: AtomicBool,
-	val: UnsafeCell<T>,
-}
-
-unsafe impl<T> Send for ConstStaticCell<T> {}
-unsafe impl<T> Sync for ConstStaticCell<T> {}
-
-impl<T> ConstStaticCell<T> {
-	/// Create a new, empty `ConstStaticCell`.
-	///
-	/// It can be taken at runtime with [`ConstStaticCell::take()`] or similar methods.
-	#[inline]
-	pub const fn new(value: T) -> Self {
-		Self {
-			taken: AtomicBool::new(false),
-			val: UnsafeCell::new(value),
-		}
-	}
-
-	/// Take the `ConstStaticCell`, returning a mutable reference to it.
-	///
-	/// # Panics
-	///
-	/// Panics if this `ConstStaticCell` was already taken.
-	#[inline]
-	#[allow(clippy::mut_from_ref)]
-	pub fn take(&'static self) -> &'static mut T {
-		if let Some(val) = self.try_take() {
-			val
-		} else {
-			panic!("`ConstStaticCell` is already taken, it can't be taken twice")
-		}
-	}
-
-	/// Try to take the `ConstStaticCell`, returning None if it was already taken
-	#[inline]
-	#[allow(clippy::mut_from_ref)]
-	pub fn try_take(&'static self) -> Option<&'static mut T> {
-		if self
-			.taken
-			.compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
-			.is_ok()
-		{
-			// SAFETY: We just checked that the value is not yet taken and marked it as taken.
-			let val = unsafe { &mut *self.val.get() };
-			Some(val)
-		} else {
-			None
-		}
-	}
-}
-
-// Tracking allocator wrapper
-pub struct TrackingAllocator<A: GlobalAlloc> {
-	pub inner: A,
-	current: Mutex<Cell<usize>>, // Current allocated bytes
-	max: Mutex<Cell<usize>>,     // Maximum allocated bytes ever
-}
-
-impl<A: GlobalAlloc> TrackingAllocator<A> {
-	pub const fn new(inner: A) -> Self {
-		TrackingAllocator {
-			inner,
-			current: Mutex::new(Cell::new(0)),
-			max: Mutex::new(Cell::new(0)),
-		}
-	}
-
-	// Get current allocated bytes
-	pub fn current(&self) -> usize {
-		cortex_m::interrupt::free(|cs| self.current.borrow(cs).get())
-	}
-
-	// Get maximum allocated bytes
-	pub fn max(&self) -> usize {
-		cortex_m::interrupt::free(|cs| self.max.borrow(cs).get())
-	}
-
-	// Reset min and max to current value
-	pub fn reset_stats(&self) {
-		cortex_m::interrupt::free(|cs| {
-			let current = self.current.borrow(cs).get();
-			self.max.borrow(cs).set(current);
-		});
-	}
-}
-
-unsafe impl<A: GlobalAlloc> GlobalAlloc for TrackingAllocator<A> {
-	unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-		let ptr = self.inner.alloc(layout);
-		if !ptr.is_null() {
-			let size = layout.size();
-			cortex_m::interrupt::free(|cs| {
-				let new_current = self.current.borrow(cs).get() + size;
-				self.current.borrow(cs).set(new_current);
-				self.max
-					.borrow(cs)
-					.set(self.max.borrow(cs).get().max(new_current));
-			});
-		}
-		ptr
-	}
-
-	unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-		if !ptr.is_null() {
-			let size = layout.size();
-			cortex_m::interrupt::free(|cs| {
-				let new_current = self.current.borrow(cs).get().saturating_sub(size);
-				self.current.borrow(cs).set(new_current);
-			});
-		}
-		self.inner.dealloc(ptr, layout);
-	}
-
-	unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
-		let old_size = layout.size();
-		let new_ptr = self.inner.realloc(ptr, layout, new_size);
-		if !new_ptr.is_null() && !ptr.is_null() {
-			cortex_m::interrupt::free(|cs| {
-				let new_current = self.current.borrow(cs).get() - old_size + new_size;
-				self.current.borrow(cs).set(new_current);
-				self.max
-					.borrow(cs)
-					.set(self.max.borrow(cs).get().max(new_current));
-			});
-		}
-		new_ptr
 	}
 }

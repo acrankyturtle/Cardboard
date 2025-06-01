@@ -43,8 +43,6 @@ builder
 	.AddWindowsSerialPort()
 	.AddWindowsService();
 
-// builder.Services.AddHostedService<Worker>();
-
 if (builder.Environment.IsDevelopment())
 {
 	builder

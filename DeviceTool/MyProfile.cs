@@ -80,6 +80,85 @@ public static class MyProfile
 			},
 		};
 
+		// oblivion
+		var rapidFMacro = new Macro
+		{
+			Id = MacroId.New(),
+			Name = "Rapid F",
+			CutChannels = [],
+			StartSequence = new()
+			{
+				Actions = [new() { ActionEvent = new() { Keyboard = new() { KeyDown = KeyboardKey.F } } },],
+			},
+			LoopSequence = new()
+			{
+				Actions =
+				[
+					new()
+					{
+						PredelayMs = 10,
+						ActionEvent = new() { Keyboard = new() { KeyUp = KeyboardKey.F } },
+					},
+					new()
+					{
+						PredelayMs = 10,
+						ActionEvent = new() { Keyboard = new() { KeyDown = KeyboardKey.F } },
+					},
+				],
+			},
+			EndSequence = new()
+			{
+				Actions =
+				[
+					new()
+					{
+						PredelayMs = 10,
+						ActionEvent = new() { Keyboard = new() { KeyUp = KeyboardKey.F } },
+					}
+				],
+			},
+		};
+		var rapidSpaceMacro = new Macro()
+		{
+			Id = MacroId.New(),
+			Name = "Rapid Space",
+			CutChannels = [],
+			StartSequence = new()
+			{
+				Actions =
+				[
+					new() { ActionEvent = new() { Keyboard = new() { KeyDown = KeyboardKey.SPACEBAR } } },
+				],
+			},
+			LoopSequence = new()
+			{
+				Actions =
+				[
+					new()
+					{
+						PredelayMs = 50,
+						ActionEvent = new() { Keyboard = new() { KeyUp = KeyboardKey.SPACEBAR } },
+					},
+					new()
+					{
+						PredelayMs = 50,
+						ActionEvent = new() { Keyboard = new() { KeyDown = KeyboardKey.SPACEBAR } },
+					},
+				],
+			},
+			EndSequence = new()
+			{
+				Actions =
+				[
+					new()
+					{
+						PredelayMs = 50,
+						ActionEvent = new() { Keyboard = new() { KeyUp = KeyboardKey.SPACEBAR } },
+					},
+				],
+			},
+		};
+
 		Macro[] macros =
 		[
 			escMacro,
@@ -113,6 +192,9 @@ public static class MyProfile
 			spaceMacro,
 			fnMacro,
 			recordLastMinuteMacro,
+			// oblivion
+			rapidFMacro,
+			rapidSpaceMacro,
 		];
 
 		DeviceKey[] keys =
@@ -261,13 +343,31 @@ public static class MyProfile
 			{
 				Id = DeviceKeyId.Parse("e18caa6c-d922-558e-b146-0262173a28bd"),
 				Layers = [],
-				DefaultLayer = new() { Id = LayerId.New(), Macros = [vMacro.Id] },
+				DefaultLayer = new()
+				{
+					Id = LayerId.New(),
+					Macros =
+					[
+						// vMacro.Id,
+						// oblivion
+						rapidFMacro.Id,
+					],
+				},
 			},
 			new()
 			{
 				Id = DeviceKeyId.Parse("7b3285ea-4be6-5eae-9125-cec547fa3fb1"),
 				Layers = [],
-				DefaultLayer = new() { Id = LayerId.New(), Macros = [bMacro.Id] },
+				DefaultLayer = new()
+				{
+					Id = LayerId.New(),
+					Macros =
+					[
+						// bMacro.Id
+						// oblivion
+						rapidSpaceMacro.Id,
+					]
+				},
 			},
 			new()
 			{

@@ -1,11 +1,11 @@
 use core::fmt::Display;
 
-use alloc::{string::ToString, vec::Vec};
+use alloc::{boxed::Box, string::ToString, vec::Vec};
 use defmt::Format;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::command::CommandInfo;
+use crate::command::{Command, CommandInfo};
 
 #[derive(Serialize, Deserialize, Copy, Clone, PartialEq)]
 pub struct DeviceId(Uuid);

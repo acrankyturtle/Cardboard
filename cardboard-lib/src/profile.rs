@@ -3,13 +3,12 @@ extern crate alloc;
 use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
-use defmt::{error, Format};
+use defmt::{Format, error};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::profile::ConsumerControlEvent::MUTE;
-use crate::TagList;
-use cardboard_lib::input::KeyId;
+use crate::input::KeyId;
+use crate::state::TagList;
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct KeyboardProfile {
@@ -93,11 +92,11 @@ impl Default for Sequence {
 #[derive(Serialize, Deserialize)]
 pub struct Action {
 	#[serde(default)]
-	pub predelay_ms: u32,
+	pub predelay_ms: u64,
 	pub action_event: ActionEvent,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum ActionEvent {
 	None,
 	Keyboard(KeyboardEvent),
@@ -117,7 +116,7 @@ pub enum TagMatchType {
 pub struct LayerId(Uuid);
 
 impl LayerId {
-	pub fn new(id: Uuid) -> Self {
+	pub const fn new(id: Uuid) -> Self {
 		LayerId(id)
 	}
 }
@@ -126,7 +125,7 @@ impl LayerId {
 pub struct MacroId(Uuid);
 
 impl MacroId {
-	pub fn new(id: Uuid) -> Self {
+	pub const fn new(id: Uuid) -> Self {
 		MacroId(id)
 	}
 }
@@ -135,7 +134,7 @@ impl MacroId {
 pub struct Channel(Uuid);
 
 impl Channel {
-	pub fn new(id: Uuid) -> Self {
+	pub const fn new(id: Uuid) -> Self {
 		Channel(id)
 	}
 }
@@ -283,7 +282,7 @@ pub enum KeyboardKey {
 	RIGHT_GUI = 0xE7,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum MouseEvent {
 	ButtonDown(MouseButton),
 	ButtonUp(MouseButton),
@@ -291,7 +290,7 @@ pub enum MouseEvent {
 	Move(MouseMove),
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum MouseButton {
 	Left,
 	Right,
@@ -300,19 +299,19 @@ pub enum MouseButton {
 	Forward,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MouseScroll {
 	pub x: i32,
 	pub y: i32,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MouseMove {
 	pub x: i32,
 	pub y: i32,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum ConsumerControlEvent {
 	RECORD = 0xB2,
 	FAST_FORWARD = 0xB3,
@@ -328,13 +327,13 @@ pub enum ConsumerControlEvent {
 	// todo: add more
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum LayerEvent {
 	Clear(LayerTag),
 	Set(LayerTag),
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum DebugEvent {
 	Log(String),
 }

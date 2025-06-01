@@ -4,18 +4,25 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-embassy = ["dep:embassy-rp", "dep:embassy-futures", "dep:embassy-usb"]
+embassy = ["embassy-time", "embassy-futures", "embassy-usb", "embassy-sync", "embassy-rp"]
+default = ["embassy"]
+embassy-sync = ["dep:embassy-sync"]
 
 [dependencies]
 async-trait = "0.1.88"
 defmt = { version = "1.0.1", features = ["alloc"] }
-embassy-time = { version = "0.4.0" }
-embassy-rp = { version = "0.4.0", features = ["defmt", "unstable-pac", "time-driver", "critical-section-impl", "rp2040"], optional = true }
+embassy-time = { version = "0.4.0", optional = true }
 embassy-futures = { version = "0.1.0", optional = true }
 embassy-usb = { version = "0.4.0", optional = true }
+embassy-sync = { version = "0.6.1", features = ["defmt"], optional = true }
+embassy-rp = { version = "0.4.0", features = ["defmt", "rp2040"], optional = true }
 serde = { version = "1.0.210", default-features = false, features = ["alloc"] }
-serde-json-core = { version = "0.6.0"}
+serde-json-core = { version = "0.6.0", features = ["defmt"] }
 uuid = { version = "1.10.0", default-features = false, features = ["serde"] }
+cortex-m = "0.7.6"
+bitflags = "2.9.1"
+fugit = { version = "0.3.7", features = ["defmt"] }
 
 [dev-dependencies]
-tokio = { version = "1.44.2", features = ["macros", "rt"]}
+defmt-test = "0.4.0"
+tokio = { version = "1.44.2", features = ["macros", "rt"] }

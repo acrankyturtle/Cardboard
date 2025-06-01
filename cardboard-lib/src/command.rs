@@ -1,5 +1,5 @@
+use crate::input::KeyId;
 use async_trait::async_trait;
-use cardboard_lib::input::KeyId;
 use core::cmp::Ord;
 use core::module_path;
 use core::option_env;
@@ -8,7 +8,6 @@ use core::result::Result;
 use core::result::Result::Err;
 use core::result::Result::Ok;
 use defmt::{debug, error};
-use embassy_rp::rom_data::reset_to_usb_boot;
 use serde::Serialize;
 
 use alloc::boxed::Box;
@@ -16,15 +15,15 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use uuid::uuid;
 
-use crate::context::ContextAllocator;
 use crate::context::{
 	ChangeProfileSignalTx, ContextDeviceInfo, ContextProfile, ContextSerialRx, ContextSerialTx,
 	ContextTags,
 };
+use crate::context::{ContextAllocator, ContextBootloader};
 use crate::device::{CommandId, DeviceInfo};
 use crate::profile::LayerTag;
-use crate::storage::{load_profile_from_flash, FlashMemory};
-use cardboard_lib::serial::{SerialReader, SerialReaderExt, SerialWriter, SerialWriterExt};
+use crate::serial::{SerialReader, SerialReaderExt, SerialWriter, SerialWriterExt};
+use crate::storage::{FlashMemory, load_profile_from_flash};
 
 const CHUNK_SIZE: usize = 256; // todo: tune
 
@@ -254,7 +253,7 @@ impl<Context: ContextSerialRx + ContextSerialTx + ContextTags> Command<Context>
 pub struct EnterBootloaderCommand;
 
 #[async_trait(?Send)]
-impl<Context> Command<Context> for EnterBootloaderCommand {
+impl<Context: ContextBootloader> Command<Context> for EnterBootloaderCommand {
 	fn info(&self) -> CommandInfo {
 		CommandInfo {
 			id: CommandId(uuid!("6dce0823-d199-5abb-a56f-a85cdba61842")),
@@ -262,9 +261,8 @@ impl<Context> Command<Context> for EnterBootloaderCommand {
 		}
 	}
 
-	async fn execute(&self, _: &mut Context) -> Result<(), &'static str> {
-		reset_to_usb_boot(0, 0);
-		loop {} // halt
+	async fn execute(&self, ctx: &mut Context) -> Result<(), &'static str> {
+		ctx.reboot_to_bootloader();
 	}
 }
 
@@ -322,4 +320,5 @@ pub struct GetKeysResponse<'a> {
 pub struct CommandInfo {
 	pub id: CommandId,
 	pub name: &'static str,
+	// TODO: add fingerprint boolean (if true, command must write id after cmd index to confirm command execution)
 }

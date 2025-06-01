@@ -1,15 +1,13 @@
+#[cfg(not(test))]
+use crate::alloc::string::ToString;
+use crate::time::Duration;
 use alloc::boxed::Box;
-use alloc::string::ToString;
 use alloc::vec::Vec;
-use embassy_time::Duration;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[cfg(not(test))]
 use defmt::Format;
-
-#[cfg(all(not(test), feature = "embassy"))]
-use embassy_rp::gpio::{Input, Output};
 
 pub trait RowPin {
 	fn set_high(&mut self);
@@ -20,35 +18,26 @@ pub trait ColPin {
 	fn is_high(&self) -> bool;
 }
 
-#[cfg(all(not(test), feature = "embassy"))]
-impl RowPin for Output<'_> {
-	fn set_high(&mut self) {
-		self.set_high();
-	}
-
-	fn set_low(&mut self) {
-		self.set_low();
-	}
+pub trait UpdateMatrix {
+	fn update(&mut self, dt: Duration, output: &mut Vec<KeyboardAction>);
+	const SIZE: usize;
 }
 
-#[cfg(all(not(test), feature = "embassy"))]
-impl ColPin for Input<'_> {
-	fn is_high(&self) -> bool {
-		self.is_high()
-	}
-}
-
-pub struct KeyMatrix<const ROWS: usize, const COLS: usize, const KEY_COUNT: usize> {
+pub struct KeyMatrix<const ROWS: usize, const COLS: usize>
+where
+	[(); ROWS * COLS]:,
+{
 	rows: [Box<dyn RowPin>; ROWS],
 	cols: [Box<dyn ColPin>; COLS],
-	keys: [InputKey; KEY_COUNT],
+	keys: [InputKey; ROWS * COLS],
 }
 
-impl<const ROWS: usize, const COLS: usize, const KEY_COUNT: usize>
-	KeyMatrix<ROWS, COLS, KEY_COUNT>
+impl<const ROWS: usize, const COLS: usize> KeyMatrix<ROWS, COLS>
+where
+	[(); ROWS * COLS]:,
 {
 	pub fn new(
-		key_ids: [KeyId; KEY_COUNT],
+		key_ids: [KeyId; ROWS * COLS],
 		rows: [Box<dyn RowPin>; ROWS],
 		cols: [Box<dyn ColPin>; COLS],
 		debounce_time: Duration,
@@ -62,7 +51,7 @@ impl<const ROWS: usize, const COLS: usize, const KEY_COUNT: usize>
 				prev_actual_state: KeyState::Released,
 				reported_state: KeyState::Released,
 				prev_reported_state: KeyState::Released,
-				keydown_time: Duration::from_millis(0),
+				keydown_time: Duration::from_ticks(0),
 				debounce_time,
 			}),
 		}
@@ -97,6 +86,16 @@ impl<const ROWS: usize, const COLS: usize, const KEY_COUNT: usize>
 	}
 }
 
+impl<const ROWS: usize, const COLS: usize> UpdateMatrix for KeyMatrix<ROWS, COLS>
+where
+	[(); ROWS * COLS]:,
+{
+	fn update(&mut self, dt: Duration, output: &mut Vec<KeyboardAction>) {
+		self.update(dt, output);
+	}
+	const SIZE: usize = ROWS * COLS;
+}
+
 pub struct InputKey {
 	id: KeyId,
 	prev_actual_state: KeyState,
@@ -118,12 +117,12 @@ impl InputKey {
 		match (prev_actual_state, state) {
 			(KeyState::Released, KeyState::Pressed) => {
 				if self.prev_reported_state == KeyState::Released {
-					self.keydown_time = Duration::from_millis(0);
+					self.keydown_time = Duration::from_ticks(0);
 				}
 				self.prev_actual_state = KeyState::Pressed;
 			}
 			(KeyState::Pressed, KeyState::Released) => {
-				// self.keydown_time = Duration::from_millis(0); // probably unnecessary
+				// self.keydown_time = Duration::from_ticks(0); // probably unnecessary
 				self.prev_actual_state = KeyState::Released;
 			}
 			_ => {
@@ -155,7 +154,7 @@ impl InputKey {
 pub struct KeyId(Uuid);
 
 impl KeyId {
-	pub fn new(id: Uuid) -> Self {
+	pub const fn new(id: Uuid) -> Self {
 		KeyId(id)
 	}
 }
@@ -209,7 +208,6 @@ pub enum KeyState {
 mod tests {
 	use alloc::rc::Rc;
 	use core::cell::RefCell;
-	use serde_json_core::heapless::sorted_linked_list::LinkedIndexUsize;
 
 	use super::*;
 
@@ -235,11 +233,11 @@ mod tests {
 			prev_actual_state: KeyState::Released,
 			reported_state: KeyState::Released,
 			prev_reported_state: KeyState::Released,
-			keydown_time: Duration::from_millis(0),
-			debounce_time: Duration::from_millis(0),
+			keydown_time: Duration::from_ticks(0),
+			debounce_time: Duration::from_ticks(0),
 		};
 
-		let result = input_key.update(KeyState::Released, Duration::from_millis(1));
+		let result = input_key.update(KeyState::Released, Duration::from_ticks(1));
 
 		assert_eq!(result, None);
 	}
@@ -252,11 +250,11 @@ mod tests {
 			prev_actual_state: KeyState::Released,
 			reported_state: KeyState::Released,
 			prev_reported_state: KeyState::Released,
-			keydown_time: Duration::from_millis(0),
-			debounce_time: Duration::from_millis(0),
+			keydown_time: Duration::from_ticks(0),
+			debounce_time: Duration::from_ticks(0),
 		};
 
-		let result = input_key.update(KeyState::Pressed, Duration::from_millis(1));
+		let result = input_key.update(KeyState::Pressed, Duration::from_ticks(1));
 
 		assert_eq!(result, Some(KeyState::Pressed));
 	}
@@ -269,11 +267,11 @@ mod tests {
 			prev_actual_state: KeyState::Pressed,
 			reported_state: KeyState::Pressed,
 			prev_reported_state: KeyState::Pressed,
-			keydown_time: Duration::from_millis(0),
-			debounce_time: Duration::from_millis(0),
+			keydown_time: Duration::from_ticks(0),
+			debounce_time: Duration::from_ticks(0),
 		};
 
-		let result = input_key.update(KeyState::Released, Duration::from_millis(1));
+		let result = input_key.update(KeyState::Released, Duration::from_ticks(1));
 
 		assert_eq!(result, Some(KeyState::Released));
 	}
@@ -286,12 +284,12 @@ mod tests {
 			prev_actual_state: KeyState::Released,
 			reported_state: KeyState::Released,
 			prev_reported_state: KeyState::Released,
-			keydown_time: Duration::from_millis(0),
-			debounce_time: Duration::from_millis(0),
+			keydown_time: Duration::from_ticks(0),
+			debounce_time: Duration::from_ticks(0),
 		};
 
-		_ = input_key.update(KeyState::Pressed, Duration::from_millis(1));
-		let result = input_key.update(KeyState::Released, Duration::from_millis(1));
+		_ = input_key.update(KeyState::Pressed, Duration::from_ticks(1));
+		let result = input_key.update(KeyState::Released, Duration::from_ticks(1));
 
 		assert_eq!(result, Some(KeyState::Released));
 	}
@@ -304,10 +302,10 @@ mod tests {
 			prev_actual_state: KeyState::Pressed,
 			reported_state: KeyState::Pressed,
 			prev_reported_state: KeyState::Pressed,
-			keydown_time: Duration::from_millis(0),
-			debounce_time: Duration::from_millis(0),
+			keydown_time: Duration::from_ticks(0),
+			debounce_time: Duration::from_ticks(0),
 		};
-		let result = input_key.update(KeyState::Pressed, Duration::from_millis(1));
+		let result = input_key.update(KeyState::Pressed, Duration::from_ticks(1));
 
 		assert_eq!(result, None);
 	}
@@ -320,10 +318,10 @@ mod tests {
 			prev_actual_state: KeyState::Pressed,
 			reported_state: KeyState::Pressed,
 			prev_reported_state: KeyState::Pressed,
-			keydown_time: Duration::from_millis(0),
-			debounce_time: Duration::from_millis(0),
+			keydown_time: Duration::from_ticks(0),
+			debounce_time: Duration::from_ticks(0),
 		};
-		let result = input_key.update(KeyState::Pressed, Duration::from_millis(0));
+		let result = input_key.update(KeyState::Pressed, Duration::from_ticks(0));
 
 		assert_eq!(result, None);
 	}
@@ -336,11 +334,11 @@ mod tests {
 			prev_actual_state: KeyState::Released,
 			reported_state: KeyState::Released,
 			prev_reported_state: KeyState::Released,
-			keydown_time: Duration::from_millis(0),
-			debounce_time: Duration::from_millis(5),
+			keydown_time: Duration::from_ticks(0),
+			debounce_time: Duration::from_ticks(5),
 		};
-		_ = input_key.update(KeyState::Pressed, Duration::from_millis(0));
-		let result = input_key.update(KeyState::Released, Duration::from_millis(1));
+		_ = input_key.update(KeyState::Pressed, Duration::from_ticks(0));
+		let result = input_key.update(KeyState::Released, Duration::from_ticks(1));
 
 		assert_eq!(result, None);
 	}
@@ -353,13 +351,13 @@ mod tests {
 			prev_actual_state: KeyState::Released,
 			reported_state: KeyState::Released,
 			prev_reported_state: KeyState::Released,
-			keydown_time: Duration::from_millis(0),
-			debounce_time: Duration::from_millis(5),
+			keydown_time: Duration::from_ticks(0),
+			debounce_time: Duration::from_ticks(5),
 		};
-		_ = input_key.update(KeyState::Pressed, Duration::from_millis(0));
+		_ = input_key.update(KeyState::Pressed, Duration::from_ticks(0));
 		let result = input_key.update(
 			KeyState::Released,
-			input_key.debounce_time + Duration::from_millis(1),
+			input_key.debounce_time + Duration::from_ticks(1),
 		);
 
 		assert_eq!(result, None);
@@ -373,13 +371,13 @@ mod tests {
 			prev_actual_state: KeyState::Released,
 			reported_state: KeyState::Released,
 			prev_reported_state: KeyState::Released,
-			keydown_time: Duration::from_millis(0),
-			debounce_time: Duration::from_millis(5),
+			keydown_time: Duration::from_ticks(0),
+			debounce_time: Duration::from_ticks(5),
 		};
-		_ = input_key.update(KeyState::Pressed, Duration::from_millis(0));
+		_ = input_key.update(KeyState::Pressed, Duration::from_ticks(0));
 		let result = input_key.update(
 			KeyState::Released,
-			input_key.debounce_time + Duration::from_millis(1),
+			input_key.debounce_time + Duration::from_ticks(1),
 		);
 
 		assert_eq!(result, None);
@@ -525,11 +523,11 @@ mod tests {
 		let col_pin = Box::new(OldMockColPin {
 			state: state.clone(),
 		});
-		let debounce_time = Duration::from_millis(0);
+		let debounce_time = Duration::from_ticks(0);
 
 		let mut matrix = KeyMatrix::new([key_id], [row_pin], [col_pin], debounce_time);
 
-		let dt = Duration::from_millis(1);
+		let dt = Duration::from_ticks(1);
 		let output = &mut Vec::new();
 
 		matrix.update(dt, output);
@@ -545,11 +543,11 @@ mod tests {
 		let col_pin = Box::new(OldMockColPin {
 			state: state.clone(),
 		});
-		let debounce_time = Duration::from_millis(0);
+		let debounce_time = Duration::from_ticks(0);
 
 		let mut matrix = KeyMatrix::new([key_id], [row_pin], [col_pin], debounce_time);
 
-		let dt = Duration::from_millis(1);
+		let dt = Duration::from_ticks(1);
 		let output = &mut Vec::new();
 		matrix.update(dt, output);
 
@@ -565,11 +563,11 @@ mod tests {
 		let col_pin = Box::new(OldMockColPin {
 			state: state.clone(),
 		});
-		let debounce_time = Duration::from_millis(0);
+		let debounce_time = Duration::from_ticks(0);
 
 		let mut matrix = KeyMatrix::new([key_id], [row_pin], [col_pin], debounce_time);
 
-		let dt = Duration::from_millis(1);
+		let dt = Duration::from_ticks(1);
 		let output = &mut Vec::new();
 
 		matrix.update(dt, output);
@@ -592,11 +590,11 @@ mod tests {
 		let col_pin = Box::new(OldMockColPin {
 			state: state.clone(),
 		});
-		let debounce_time = Duration::from_millis(0);
+		let debounce_time = Duration::from_ticks(0);
 
 		let mut matrix = KeyMatrix::new([key_id], [row_pin], [col_pin], debounce_time);
 
-		let dt = Duration::from_millis(1);
+		let dt = Duration::from_ticks(1);
 		let output = &mut Vec::new();
 
 		matrix.update(dt, output);
@@ -614,11 +612,11 @@ mod tests {
 		let col_pin = Box::new(OldMockColPin {
 			state: state.clone(),
 		});
-		let debounce_time = Duration::from_millis(0);
+		let debounce_time = Duration::from_ticks(0);
 
 		let mut matrix = KeyMatrix::new([key_id], [row_pin], [col_pin], debounce_time);
 
-		let dt = Duration::from_millis(1);
+		let dt = Duration::from_ticks(1);
 		let output = &mut Vec::new();
 
 		matrix.update(dt, output);
@@ -638,11 +636,11 @@ mod tests {
 		let col_pin = Box::new(OldMockColPin {
 			state: state.clone(),
 		});
-		let debounce_time = Duration::from_millis(5);
+		let debounce_time = Duration::from_ticks(5);
 
 		let mut matrix = KeyMatrix::new([key_id], [row_pin], [col_pin], debounce_time);
 
-		let dt = Duration::from_millis(1);
+		let dt = Duration::from_ticks(1);
 		let output = &mut Vec::new();
 
 		matrix.update(dt, output);
@@ -655,7 +653,7 @@ mod tests {
 
 	#[test]
 	fn resolve_index_from_row_col_correctly_when_wrapping() {
-		let index = KeyMatrix::<5, 6, 30>::get_key_index(1, 0);
+		let index = KeyMatrix::<5, 6>::get_key_index(1, 0);
 		assert_eq!(index, 6);
 	}
 
@@ -705,9 +703,9 @@ mod tests {
 			KeyId::new(Uuid::from_u128(0)), // 29
 		];
 
-		let mut matrix = KeyMatrix::<5, 6, 30>::new(key_ids, rows, cols, Duration::from_millis(0));
+		let mut matrix = KeyMatrix::<5, 6>::new(key_ids, rows, cols, Duration::from_ticks(0));
 
-		let dt = Duration::from_millis(1);
+		let dt = Duration::from_ticks(1);
 		let output = &mut Vec::new();
 		matrix.update(dt, output);
 

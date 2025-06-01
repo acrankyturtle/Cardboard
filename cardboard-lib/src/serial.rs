@@ -1,4 +1,5 @@
-use embassy_time::Duration;
+use core::time::Duration;
+
 use uuid::Uuid;
 
 pub const TIMEOUT: Duration = Duration::from_millis(1000);
@@ -182,74 +183,6 @@ impl<T: SerialWriter> SerialWriterExt for T {
 
 	async fn write_utf8(&mut self, value: &str) -> Result<(), &'static str> {
 		self.write_exact(value.as_bytes()).await
-	}
-}
-
-#[cfg(all(not(test), feature = "embassy"))]
-pub mod embassy {
-	use super::*;
-	use embassy_rp::peripherals::USB;
-	use embassy_rp::usb::Driver;
-	use embassy_time::Timer;
-	use embassy_usb::class::cdc_acm::{Receiver, Sender};
-
-	pub struct EmbassySerialPacketReader<'d, const SIZE: usize> {
-		receiver: Receiver<'d, Driver<'d, USB>>,
-		timeout: Duration,
-	}
-
-	pub struct EmbassySerialPacketWriter<'d, const SIZE: usize> {
-		sender: Sender<'d, Driver<'d, USB>>,
-		timeout: Duration,
-	}
-
-	impl<'d, const SIZE: usize> EmbassySerialPacketReader<'d, SIZE> {
-		pub fn new(receiver: Receiver<'d, Driver<'d, USB>>, timeout: Duration) -> Self {
-			Self { receiver, timeout }
-		}
-	}
-
-	impl<'d, const SIZE: usize> EmbassySerialPacketWriter<'d, SIZE> {
-		pub fn new(sender: Sender<'d, Driver<'d, USB>>, timeout: Duration) -> Self {
-			Self { sender, timeout }
-		}
-	}
-
-	impl<'d, const SIZE: usize> SerialPacketReader for EmbassySerialPacketReader<'d, SIZE> {
-		async fn read_packet(&mut self, buf: &mut [u8]) -> Result<usize, &'static str> {
-			let timer = Timer::after(self.timeout);
-
-			let result = embassy_futures::select::select(self.receiver.read_packet(buf), async {
-				timer.await
-			})
-			.await;
-
-			match result {
-				embassy_futures::select::Either::First(result) => {
-					result.map_err(|_| "Endpoint error")
-				}
-				embassy_futures::select::Either::Second(_) => Err("Read timeout"),
-			}
-		}
-		const SIZE: usize = SIZE;
-	}
-
-	impl<'d, const SIZE: usize> SerialPacketSender for EmbassySerialPacketWriter<'d, SIZE> {
-		async fn write_packet(&mut self, data: &[u8]) -> Result<(), &'static str> {
-			let timer = Timer::after(self.timeout);
-			let result = embassy_futures::select::select(self.sender.write_packet(data), async {
-				timer.await
-			})
-			.await;
-
-			match result {
-				embassy_futures::select::Either::First(result) => {
-					result.map_err(|_| "Endpoint error")
-				}
-				embassy_futures::select::Either::Second(_) => Err("Write timeout"),
-			}
-		}
-		const SIZE: usize = SIZE;
 	}
 }
 

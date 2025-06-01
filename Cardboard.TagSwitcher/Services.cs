@@ -34,12 +34,12 @@ file class TagSwitcherService(
 {
 	private readonly DeviceTagCache _cache = new();
 
-	private ApplicationChangedEvent? _previousEvent;
+	private ApplicationChangedEvent _current = new("");
 
 	private IDisposable? _applicationSubscription;
 	private IDisposable? _deviceSubscription;
 
-	public Task StartAsync(CancellationToken cancellationToken)
+	public async Task StartAsync(CancellationToken cancellationToken)
 	{
 		Debug.Assert(_applicationSubscription == null);
 		Debug.Assert(_deviceSubscription == null);
@@ -49,7 +49,7 @@ file class TagSwitcherService(
 			.Subscribe(OnApplicationChanged);
 		_deviceSubscription = deviceService.OnDevicesChanged.Subscribe(OnDevicesChanged);
 
-		return Task.CompletedTask;
+		await UpdateAssociations(cancellationToken);
 	}
 
 	public Task StopAsync(CancellationToken cancellationToken)
@@ -64,19 +64,21 @@ file class TagSwitcherService(
 
 	private void OnApplicationChanged(ApplicationChangedEvent applicationChangedEvent)
 	{
-		_previousEvent = applicationChangedEvent;
+		_current = applicationChangedEvent;
 		OnUpdateAssociations();
+		logger.LogTrace("Application changed: {Event}", applicationChangedEvent);
 	}
 
 	private void OnDevicesChanged(DevicesChangedEvent devicesChangedEvent)
 	{
 		_cache.Clear();
 		OnUpdateAssociations();
+		logger.LogTrace("Devices changed: {Event}", devicesChangedEvent);
 	}
 
 	private void OnUpdateAssociations()
 	{
-		UpdateAssociations()
+		_ = UpdateAssociations()
 			.ContinueWith(
 				x => logger.LogError(x.Exception, "Error updating associations"),
 				TaskContinuationOptions.OnlyOnFaulted
@@ -85,10 +87,7 @@ file class TagSwitcherService(
 
 	private async Task UpdateAssociations(CancellationToken cancellationToken = default)
 	{
-		if (_previousEvent is not { } e)
-			return;
-
-		var matches = await tagRepository.GetMatches(e.Path, cancellationToken);
+		var matches = await tagRepository.GetMatches(_current.Path, cancellationToken);
 		var tags = matches.SelectMany(x => x.Data.Tags).Distinct().ToList();
 
 		if (!_cache.NeedsUpdate(tags))
@@ -116,5 +115,8 @@ file class TagSwitcherService(
 		{
 			logger.LogError(err, "Failed to set external tags on device {DeviceId}: {Error}", deviceId, err);
 		}
+
+		logger.LogInformation("New tags: {Tags}", string.Join(", ", tags));
+		logger.LogInformation("Updated tags for {Devices} devices", results.Count(x => x.Result.IsSuccess));
 	}
 }

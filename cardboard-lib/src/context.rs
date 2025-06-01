@@ -1,14 +1,13 @@
 use core::alloc::GlobalAlloc;
 
 use crate::{
+	TrackingAllocator,
 	device::DeviceInfo,
 	profile::{KeyboardProfile, LayerTag},
+	serial::{SerialReader, SerialReaderExt, SerialWriter, SerialWriterExt},
 	storage::FlashMemory,
-	TrackingAllocator,
 };
 use alloc::vec::Vec;
-use cardboard_lib::serial::{SerialReader, SerialReaderExt, SerialWriter, SerialWriterExt};
-use embassy_sync::{blocking_mutex::raw::RawMutex, signal::Signal};
 
 pub struct Context<
 	ProfileFlash: FlashMemory,
@@ -17,6 +16,7 @@ pub struct Context<
 	SerialTx: SerialWriter + SerialWriterExt,
 	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
 	Allocator: GlobalAlloc + 'static,
+	Bootloader: RebootToBootloader + 'static,
 > {
 	pub device_info: &'static DeviceInfo,
 	pub profile_flash: ProfileFlash,
@@ -25,17 +25,27 @@ pub struct Context<
 	pub serial_tx: SerialTx,
 	pub external_tags_signal: &'static SetExternalTagsSignal,
 	pub allocator: &'static TrackingAllocator<Allocator>,
+	pub bootloader: &'static Bootloader,
 }
 
 impl<
-		ProfileFlash: FlashMemory,
-		ChangeProfileSignal: ChangeProfileSignalTx,
-		SerialRx: SerialReader + SerialReaderExt,
-		SerialTx: SerialWriter + SerialWriterExt,
-		SetExternalTagsSignal: ExternalTagsSignalTx,
-		Allocator: GlobalAlloc + 'static,
+	ProfileFlash: FlashMemory,
+	ChangeProfileSignal: ChangeProfileSignalTx,
+	SerialRx: SerialReader + SerialReaderExt,
+	SerialTx: SerialWriter + SerialWriterExt,
+	SetExternalTagsSignal: ExternalTagsSignalTx,
+	Allocator: GlobalAlloc + 'static,
+	Bootloader: RebootToBootloader,
+>
+	Context<
+		ProfileFlash,
+		ChangeProfileSignal,
+		SerialRx,
+		SerialTx,
+		SetExternalTagsSignal,
+		Allocator,
+		Bootloader,
 	>
-	Context<ProfileFlash, ChangeProfileSignal, SerialRx, SerialTx, SetExternalTagsSignal, Allocator>
 {
 	pub fn new(
 		device_info: &'static DeviceInfo,
@@ -45,6 +55,7 @@ impl<
 		serial_tx: SerialTx,
 		external_tags_signal: &'static SetExternalTagsSignal,
 		allocator: &'static TrackingAllocator<Allocator>,
+		bootloader: &'static Bootloader,
 	) -> Self {
 		Self {
 			device_info,
@@ -54,6 +65,7 @@ impl<
 			serial_tx,
 			external_tags_signal,
 			allocator,
+			bootloader,
 		}
 	}
 }
@@ -89,14 +101,19 @@ pub trait ContextAllocator {
 	type A: GlobalAlloc;
 }
 
+pub trait ContextBootloader {
+	fn reboot_to_bootloader(&mut self) -> !;
+}
+
 impl<
-		ProfileFlash: FlashMemory,
-		ChangeProfileSignal: ChangeProfileSignalTx,
-		SerialRx: SerialReader + SerialReaderExt,
-		SerialTx: SerialWriter + SerialWriterExt,
-		SetExternalTagsSignal: ExternalTagsSignalTx,
-		Allocator: GlobalAlloc + 'static,
-	> ContextDeviceInfo
+	ProfileFlash: FlashMemory,
+	ChangeProfileSignal: ChangeProfileSignalTx,
+	SerialRx: SerialReader + SerialReaderExt,
+	SerialTx: SerialWriter + SerialWriterExt,
+	SetExternalTagsSignal: ExternalTagsSignalTx,
+	Allocator: GlobalAlloc + 'static,
+	Bootloader: RebootToBootloader,
+> ContextDeviceInfo
 	for Context<
 		ProfileFlash,
 		ChangeProfileSignal,
@@ -104,6 +121,7 @@ impl<
 		SerialTx,
 		SetExternalTagsSignal,
 		Allocator,
+		Bootloader,
 	>
 {
 	fn device_info(&self) -> &'static DeviceInfo {
@@ -112,13 +130,14 @@ impl<
 }
 
 impl<
-		ProfileFlash: FlashMemory,
-		ChangeProfileSignal: ChangeProfileSignalTx,
-		SerialRx: SerialReader + SerialReaderExt,
-		SerialTx: SerialWriter + SerialWriterExt,
-		SetExternalTagsSignal: ExternalTagsSignalTx,
-		Allocator: GlobalAlloc + 'static,
-	> ContextSerialRx
+	ProfileFlash: FlashMemory,
+	ChangeProfileSignal: ChangeProfileSignalTx,
+	SerialRx: SerialReader + SerialReaderExt,
+	SerialTx: SerialWriter + SerialWriterExt,
+	SetExternalTagsSignal: ExternalTagsSignalTx,
+	Allocator: GlobalAlloc + 'static,
+	Bootloader: RebootToBootloader,
+> ContextSerialRx
 	for Context<
 		ProfileFlash,
 		ChangeProfileSignal,
@@ -126,6 +145,7 @@ impl<
 		SerialTx,
 		SetExternalTagsSignal,
 		Allocator,
+		Bootloader,
 	>
 {
 	type SerialRx = SerialRx;
@@ -135,13 +155,14 @@ impl<
 }
 
 impl<
-		ProfileFlash: FlashMemory,
-		ChangeProfileSignal: ChangeProfileSignalTx,
-		SerialRx: SerialReader + SerialReaderExt,
-		SerialTx: SerialWriter + SerialWriterExt,
-		SetExternalTagsSignal: ExternalTagsSignalTx,
-		Allocator: GlobalAlloc + 'static,
-	> ContextSerialTx
+	ProfileFlash: FlashMemory,
+	ChangeProfileSignal: ChangeProfileSignalTx,
+	SerialRx: SerialReader + SerialReaderExt,
+	SerialTx: SerialWriter + SerialWriterExt,
+	SetExternalTagsSignal: ExternalTagsSignalTx,
+	Allocator: GlobalAlloc + 'static,
+	Bootloader: RebootToBootloader,
+> ContextSerialTx
 	for Context<
 		ProfileFlash,
 		ChangeProfileSignal,
@@ -149,6 +170,7 @@ impl<
 		SerialTx,
 		SetExternalTagsSignal,
 		Allocator,
+		Bootloader,
 	>
 {
 	type SerialTx = SerialTx;
@@ -158,13 +180,14 @@ impl<
 }
 
 impl<
-		ProfileFlash: FlashMemory,
-		ChangeProfileSignal: ChangeProfileSignalTx,
-		SerialRx: SerialReader + SerialReaderExt,
-		SerialTx: SerialWriter + SerialWriterExt,
-		SetExternalTagsSignal: ExternalTagsSignalTx,
-		Allocator: GlobalAlloc + 'static,
-	> ContextProfile
+	ProfileFlash: FlashMemory,
+	ChangeProfileSignal: ChangeProfileSignalTx,
+	SerialRx: SerialReader + SerialReaderExt,
+	SerialTx: SerialWriter + SerialWriterExt,
+	SetExternalTagsSignal: ExternalTagsSignalTx,
+	Allocator: GlobalAlloc + 'static,
+	Bootloader: RebootToBootloader,
+> ContextProfile
 	for Context<
 		ProfileFlash,
 		ChangeProfileSignal,
@@ -172,6 +195,7 @@ impl<
 		SerialTx,
 		SetExternalTagsSignal,
 		Allocator,
+		Bootloader,
 	>
 {
 	type ProfileFlash = ProfileFlash;
@@ -186,13 +210,14 @@ impl<
 }
 
 impl<
-		ProfileFlash: FlashMemory,
-		ChangeProfileSignal: ChangeProfileSignalTx,
-		SerialRx: SerialReader + SerialReaderExt,
-		SerialTx: SerialWriter + SerialWriterExt,
-		SetExternalTagsSignal: ExternalTagsSignalTx,
-		Allocator: GlobalAlloc + 'static,
-	> ContextTags
+	ProfileFlash: FlashMemory,
+	ChangeProfileSignal: ChangeProfileSignalTx,
+	SerialRx: SerialReader + SerialReaderExt,
+	SerialTx: SerialWriter + SerialWriterExt,
+	SetExternalTagsSignal: ExternalTagsSignalTx,
+	Allocator: GlobalAlloc + 'static,
+	Bootloader: RebootToBootloader,
+> ContextTags
 	for Context<
 		ProfileFlash,
 		ChangeProfileSignal,
@@ -200,6 +225,7 @@ impl<
 		SerialTx,
 		SetExternalTagsSignal,
 		Allocator,
+		Bootloader,
 	>
 {
 	fn set_external_tags(&mut self, tags: Vec<LayerTag>) {
@@ -208,13 +234,14 @@ impl<
 }
 
 impl<
-		ProfileFlash: FlashMemory,
-		ChangeProfileSignal: ChangeProfileSignalTx,
-		SerialRx: SerialReader + SerialReaderExt,
-		SerialTx: SerialWriter + SerialWriterExt,
-		SetExternalTagsSignal: ExternalTagsSignalTx,
-		Allocator: GlobalAlloc + 'static,
-	> ContextAllocator
+	ProfileFlash: FlashMemory,
+	ChangeProfileSignal: ChangeProfileSignalTx,
+	SerialRx: SerialReader + SerialReaderExt,
+	SerialTx: SerialWriter + SerialWriterExt,
+	SetExternalTagsSignal: ExternalTagsSignalTx,
+	Allocator: GlobalAlloc + 'static,
+	Bootloader: RebootToBootloader,
+> ContextAllocator
 	for Context<
 		ProfileFlash,
 		ChangeProfileSignal,
@@ -222,12 +249,37 @@ impl<
 		SerialTx,
 		SetExternalTagsSignal,
 		Allocator,
+		Bootloader,
 	>
 {
 	fn allocator(&self) -> &TrackingAllocator<Self::A> {
 		self.allocator
 	}
 	type A = Allocator;
+}
+
+impl<
+	ProfileFlash: FlashMemory,
+	ChangeProfileSignal: ChangeProfileSignalTx,
+	SerialRx: SerialReader + SerialReaderExt,
+	SerialTx: SerialWriter + SerialWriterExt,
+	SetExternalTagsSignal: ExternalTagsSignalTx,
+	Allocator: GlobalAlloc + 'static,
+	Bootloader: RebootToBootloader,
+> ContextBootloader
+	for Context<
+		ProfileFlash,
+		ChangeProfileSignal,
+		SerialRx,
+		SerialTx,
+		SetExternalTagsSignal,
+		Allocator,
+		Bootloader,
+	>
+{
+	fn reboot_to_bootloader(&mut self) -> ! {
+		self.bootloader.reboot_to_bootloader()
+	}
 }
 
 pub trait ChangeProfileSignalTx {
@@ -242,22 +294,12 @@ pub trait ExternalTagsSignalTx {
 	fn set_external_tags(&self, tags: Vec<LayerTag>);
 }
 
-impl<M: RawMutex> ChangeProfileSignalTx for Signal<M, KeyboardProfile> {
-	fn change_profile(&self, profile: KeyboardProfile) {
-		self.signal(profile);
-	}
+pub trait ExternalTagsSignalRx {
+	fn try_get_external_tags(&self) -> Option<Vec<LayerTag>>;
 }
 
-impl<M: RawMutex> ChangeProfileSignalRx for Signal<M, KeyboardProfile> {
-	fn try_get_changed_profile(&self) -> Option<KeyboardProfile> {
-		self.try_take()
-	}
-}
-
-impl<M: RawMutex> ExternalTagsSignalTx for Signal<M, Vec<LayerTag>> {
-	fn set_external_tags(&self, tags: Vec<LayerTag>) {
-		self.signal(tags);
-	}
+pub trait RebootToBootloader {
+	fn reboot_to_bootloader(&self) -> !;
 }
 
 pub trait WaitForSerialConnection {

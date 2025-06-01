@@ -160,7 +160,8 @@ file class JsonTagRepository(IOptions<TagRepositoryConfiguration> configuration,
 		if (!File.Exists(path))
 			return new() { Associations = [] };
 
-		var json = await File.ReadAllTextAsync(path, cancellationToken);
+		// async version doesn't work during startup for some reason...
+		var json = File.ReadAllText(path);
 		return JsonSerializer.Deserialize<TagRepositoryFile>(json, _serializerOptions)
 			?? throw new JsonException();
 	}

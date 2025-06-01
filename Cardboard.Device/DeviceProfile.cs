@@ -55,7 +55,7 @@ public sealed class Sequence
 
 public sealed class Action
 {
-	public uint PredelayMs { get; init; }
+	public ulong PredelayMs { get; init; }
 	public required ActionEvent ActionEvent { get; init; }
 }
 
@@ -113,15 +113,6 @@ public sealed class ActionEvent
 	{
 		public required string Log { get; init; }
 	}
-}
-
-public enum ActionEventType
-{
-	Keyboard,
-	Mouse,
-	ConsumerControl,
-	Layer,
-	Debug,
 }
 
 [StronglyTypedId]
@@ -432,7 +423,7 @@ public sealed class JsonSequence
 
 public sealed class JsonAction
 {
-	public uint PredelayMs { get; init; }
+	public ulong PredelayMs { get; init; }
 	public required JsonActionEvent ActionEvent { get; init; }
 
 	public Action ToAction() => new() { PredelayMs = PredelayMs, ActionEvent = ActionEvent.ToActionEvent(), };
@@ -522,19 +513,19 @@ public sealed class JsonActionEvent
 
 		[JsonPropertyName("Scroll")]
 		[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-		public (int X, int Y)? Scroll { get; init; }
+		public JsonCoords? Scroll { get; init; }
 
 		[JsonPropertyName("Move")]
 		[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-		public (int X, int Y)? Move { get; init; }
+		public JsonCoords? Move { get; init; }
 
 		public ActionEvent.MouseActionEvent ToMouseActionEvent() =>
 			new()
 			{
 				ButtonDown = ButtonDown,
 				ButtonUp = ButtonUp,
-				Scroll = Scroll,
-				Move = Move,
+				Scroll = Scroll is not null ? (Scroll.X, Scroll.Y) : null,
+				Move = Move is not null ? (Move.X, Move.Y) : null,
 			};
 
 		public static JsonMouseActionEvent From(ActionEvent.MouseActionEvent e) =>
@@ -542,9 +533,15 @@ public sealed class JsonActionEvent
 			{
 				ButtonDown = e.ButtonDown,
 				ButtonUp = e.ButtonUp,
-				Scroll = e.Scroll,
-				Move = e.Move,
+				Scroll = e.Scroll is not null ? new() { X = e.Scroll.Value.X, Y = e.Scroll.Value.Y } : null,
+				Move = e.Move is not null ? new() { X = e.Move.Value.X, Y = e.Move.Value.Y } : null,
 			};
+
+		public sealed class JsonCoords
+		{
+			public required int X { get; init; }
+			public required int Y { get; init; }
+		}
 	}
 
 	public sealed class JsonLayerActionEvent
