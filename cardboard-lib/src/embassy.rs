@@ -13,7 +13,7 @@ use embassy_time::Timer;
 use embassy_usb::class::cdc_acm::{Receiver, Sender};
 
 use crate::context::ExternalTagsSignalRx;
-use crate::hid::{ConsumerControl, HidDevice, HidReport, Mouse, NKROKeyboard, ReportHid};
+use crate::hid::{HidDevice, HidReport, ReportHid};
 use crate::profile::{ConsumerControlEvent, KeyboardEvent, MouseEvent};
 use crate::serial::{SerialPacketReader, SerialPacketSender};
 use crate::storage::FlashMemory;

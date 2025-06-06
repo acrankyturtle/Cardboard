@@ -1,8 +1,4 @@
-use core::time::Duration;
-
 use uuid::Uuid;
-
-pub const TIMEOUT: Duration = Duration::from_millis(1000);
 
 pub trait SerialPacketReader {
 	async fn read_packet(&mut self, buf: &mut [u8]) -> Result<usize, &'static str>;
@@ -188,7 +184,6 @@ impl<T: SerialWriter> SerialWriterExt for T {
 
 #[cfg(test)]
 mod tests {
-
 	use std::collections::VecDeque;
 
 	use super::*;

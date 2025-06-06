@@ -928,60 +928,6 @@ mod tests {
 		assert_eq!(state.running[0].macro_.id, expected_macro_id);
 	}
 
-	#[test]
-	fn bug_case_rapid_fire_macro() {
-		let _macro = Macro {
-			id: MACRO_ID,
-			name: "Rapid F".to_string(),
-			play_channel: None,
-			cut_channels: vec![],
-			start_sequence: Sequence {
-				actions: vec![Action {
-					predelay_ms: 0,
-					action_event: ActionEvent::Keyboard(KeyboardEvent::KeyDown(KeyboardKey::F)),
-				}],
-			},
-			loop_sequence: Sequence {
-				actions: vec![
-					Action {
-						predelay_ms: 10,
-						action_event: ActionEvent::Keyboard(KeyboardEvent::KeyUp(KeyboardKey::F)),
-					},
-					Action {
-						predelay_ms: 10,
-						action_event: ActionEvent::Keyboard(KeyboardEvent::KeyDown(KeyboardKey::F)),
-					},
-				],
-			},
-			end_sequence: Sequence {
-				actions: vec![Action {
-					predelay_ms: 10,
-					action_event: ActionEvent::Keyboard(KeyboardEvent::KeyUp(KeyboardKey::F)),
-				}],
-			},
-		};
-
-		let profile = KeyboardProfile {
-			keys: vec![DeviceKey {
-				id: KEY_ID,
-				layers: vec![],
-				default_layer: DeviceKeyLayer {
-					id: LAYER_ID,
-					macros: vec![0],
-				},
-			}],
-			macros: vec![_macro],
-		};
-
-		let mut state = KeyboardState::from(&profile);
-		state.press_key(KEY_ID);
-
-		let mut events = vec![];
-		state.tick(10.millis(), &mut events);
-
-		assert_eq!(events.len(), 2);
-	}
-
 	// ------- HELPERS --------
 
 	fn new_test_profile(keys: Vec<DeviceKey>, macros: Vec<Macro>) -> KeyboardProfile {

@@ -1,11 +1,11 @@
-#[cfg(not(test))]
-use crate::alloc::string::ToString;
 use crate::time::Duration;
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+#[cfg(not(test))]
+use crate::alloc::string::ToString;
 #[cfg(not(test))]
 use defmt::Format;
 
@@ -49,7 +49,6 @@ where
 			keys: key_ids.map(|key_id| InputKey {
 				id: key_id,
 				prev_actual_state: KeyState::Released,
-				reported_state: KeyState::Released,
 				prev_reported_state: KeyState::Released,
 				keydown_time: Duration::from_ticks(0),
 				debounce_time,
@@ -67,9 +66,9 @@ where
 					false => KeyState::Released,
 				};
 				let key = self.keys.get_mut(Self::get_key_index(r, c)).unwrap();
-				let event = key.update(state, dt);
+				let maybe_event = key.update(state, dt);
 
-				if let Some(event) = event {
+				if let Some(event) = maybe_event {
 					output.push(KeyboardAction {
 						action: event,
 						key_id: key.id,
@@ -99,7 +98,6 @@ where
 pub struct InputKey {
 	id: KeyId,
 	prev_actual_state: KeyState,
-	reported_state: KeyState,
 	prev_reported_state: KeyState,
 	keydown_time: Duration,
 	debounce_time: Duration,
@@ -112,7 +110,7 @@ impl InputKey {
 
 	pub fn update(&mut self, state: KeyState, dt: Duration) -> Option<KeyState> {
 		let prev_actual_state = self.prev_actual_state;
-		self.prev_reported_state = self.reported_state;
+		self.keydown_time += dt;
 
 		match (prev_actual_state, state) {
 			(KeyState::Released, KeyState::Pressed) => {
@@ -122,15 +120,13 @@ impl InputKey {
 				self.prev_actual_state = KeyState::Pressed;
 			}
 			(KeyState::Pressed, KeyState::Released) => {
-				// self.keydown_time = Duration::from_ticks(0); // probably unnecessary
 				self.prev_actual_state = KeyState::Released;
 			}
-			_ => {
-				self.keydown_time += dt;
-			}
+			_ => {}
 		}
 
-		self.reported_state = match (self.reported_state, self.prev_actual_state) {
+		let prev_reported_state = self.prev_reported_state;
+		let new_state = match (self.prev_reported_state, self.prev_actual_state) {
 			(KeyState::Pressed, KeyState::Released) => {
 				if self.keydown_time < self.debounce_time {
 					// debouncing
@@ -142,8 +138,10 @@ impl InputKey {
 			_ => self.prev_actual_state,
 		};
 
-		if self.prev_reported_state != self.reported_state {
-			Some(self.reported_state)
+		self.prev_reported_state = new_state;
+
+		if self.prev_reported_state != prev_reported_state {
+			Some(self.prev_reported_state)
 		} else {
 			None
 		}
@@ -211,27 +209,12 @@ mod tests {
 
 	use super::*;
 
-	#[unsafe(no_mangle)]
-	pub unsafe extern "C" fn _embassy_time_now() -> u64 {
-		// Return a fake timestamp (e.g., milliseconds since epoch)
-		std::time::SystemTime::now()
-			.duration_since(std::time::UNIX_EPOCH)
-			.unwrap()
-			.as_millis() as u64
-	}
-
-	#[unsafe(no_mangle)]
-	pub unsafe extern "C" fn _embassy_time_schedule_wake(_at: u64) {
-		// No-op: no real scheduling needed in tests
-	}
-
 	#[test]
 	fn key_same_state_returns_none() {
 		let key_id = KeyId::new(Uuid::from_u128(0));
 		let mut input_key = InputKey {
 			id: key_id,
 			prev_actual_state: KeyState::Released,
-			reported_state: KeyState::Released,
 			prev_reported_state: KeyState::Released,
 			keydown_time: Duration::from_ticks(0),
 			debounce_time: Duration::from_ticks(0),
@@ -248,7 +231,6 @@ mod tests {
 		let mut input_key = InputKey {
 			id: key_id,
 			prev_actual_state: KeyState::Released,
-			reported_state: KeyState::Released,
 			prev_reported_state: KeyState::Released,
 			keydown_time: Duration::from_ticks(0),
 			debounce_time: Duration::from_ticks(0),
@@ -265,7 +247,6 @@ mod tests {
 		let mut input_key = InputKey {
 			id: key_id,
 			prev_actual_state: KeyState::Pressed,
-			reported_state: KeyState::Pressed,
 			prev_reported_state: KeyState::Pressed,
 			keydown_time: Duration::from_ticks(0),
 			debounce_time: Duration::from_ticks(0),
@@ -282,7 +263,6 @@ mod tests {
 		let mut input_key = InputKey {
 			id: key_id,
 			prev_actual_state: KeyState::Released,
-			reported_state: KeyState::Released,
 			prev_reported_state: KeyState::Released,
 			keydown_time: Duration::from_ticks(0),
 			debounce_time: Duration::from_ticks(0),
@@ -300,7 +280,6 @@ mod tests {
 		let mut input_key = InputKey {
 			id: key_id,
 			prev_actual_state: KeyState::Pressed,
-			reported_state: KeyState::Pressed,
 			prev_reported_state: KeyState::Pressed,
 			keydown_time: Duration::from_ticks(0),
 			debounce_time: Duration::from_ticks(0),
@@ -316,7 +295,6 @@ mod tests {
 		let mut input_key = InputKey {
 			id: key_id,
 			prev_actual_state: KeyState::Pressed,
-			reported_state: KeyState::Pressed,
 			prev_reported_state: KeyState::Pressed,
 			keydown_time: Duration::from_ticks(0),
 			debounce_time: Duration::from_ticks(0),
@@ -332,7 +310,6 @@ mod tests {
 		let mut input_key = InputKey {
 			id: key_id,
 			prev_actual_state: KeyState::Released,
-			reported_state: KeyState::Released,
 			prev_reported_state: KeyState::Released,
 			keydown_time: Duration::from_ticks(0),
 			debounce_time: Duration::from_ticks(5),
@@ -344,12 +321,11 @@ mod tests {
 	}
 
 	#[test]
-	fn key_press_and_released_after_time_is_debounced() {
+	fn key_press_and_released_after_debounce_time_is_released() {
 		let key_id = KeyId::new(Uuid::from_u128(0));
 		let mut input_key = InputKey {
 			id: key_id,
 			prev_actual_state: KeyState::Released,
-			reported_state: KeyState::Released,
 			prev_reported_state: KeyState::Released,
 			keydown_time: Duration::from_ticks(0),
 			debounce_time: Duration::from_ticks(5),
@@ -360,33 +336,52 @@ mod tests {
 			input_key.debounce_time + Duration::from_ticks(1),
 		);
 
-		assert_eq!(result, None);
+		assert_eq!(result, Some(KeyState::Released));
 	}
 
 	#[test]
-	fn key_press_and_released_before_time_is_debounced_after_waiting() {
+	fn key_press_and_released_after_debounce_time_and_multiple_updates_is_released() {
 		let key_id = KeyId::new(Uuid::from_u128(0));
 		let mut input_key = InputKey {
 			id: key_id,
 			prev_actual_state: KeyState::Released,
-			reported_state: KeyState::Released,
 			prev_reported_state: KeyState::Released,
 			keydown_time: Duration::from_ticks(0),
 			debounce_time: Duration::from_ticks(5),
 		};
 		_ = input_key.update(KeyState::Pressed, Duration::from_ticks(0));
+		_ = input_key.update(KeyState::Pressed, Duration::from_ticks(1));
+		_ = input_key.update(KeyState::Released, Duration::from_ticks(1));
+		let result = input_key.update(KeyState::Released, input_key.debounce_time);
+
+		assert_eq!(result, Some(KeyState::Released));
+	}
+
+	#[test]
+	fn key_press_and_release_and_press_during_debounce_doesnt_reset_debounce_time() {
+		let key_id = KeyId::new(Uuid::from_u128(0));
+		let mut input_key = InputKey {
+			id: key_id,
+			prev_actual_state: KeyState::Released,
+			prev_reported_state: KeyState::Released,
+			keydown_time: Duration::from_ticks(0),
+			debounce_time: Duration::from_ticks(5),
+		};
+		_ = input_key.update(KeyState::Pressed, Duration::from_ticks(0));
+		_ = input_key.update(KeyState::Released, Duration::from_ticks(3));
+		_ = input_key.update(KeyState::Pressed, Duration::from_ticks(1));
 		let result = input_key.update(
 			KeyState::Released,
-			input_key.debounce_time + Duration::from_ticks(1),
+			input_key.debounce_time - Duration::from_ticks(1),
 		);
 
-		assert_eq!(result, None);
+		assert_eq!(result, Some(KeyState::Released));
 	}
 
 	pub struct MockKeyMatrixState<const ROWS: usize, const COLS: usize> {
-		// The physical state of keys: true = pressed, false = released
+		// the physical state of keys: true = pressed, false = released
 		key_states: [[bool; COLS]; ROWS],
-		// Current state of row pins: true = high, false = low
+		// current state of row pins: true = high, false = low
 		row_states: [bool; ROWS],
 	}
 
