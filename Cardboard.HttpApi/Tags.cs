@@ -45,68 +45,70 @@ public static class Tags
 	}
 
 	private static async Task<Ok<GetTagAssociationsResponse>> GetTagAssociations(
-		ITagRepository tagRepository,
+		IAssociationRepository associationRepository,
 		CancellationToken cancellationToken
 	) =>
 		TypedResults.Ok(
 			new GetTagAssociationsResponse
 			{
-				Associations = await tagRepository.GetAssociations(cancellationToken),
+				Associations = await associationRepository.GetAssociations(
+					cancellationToken: cancellationToken
+				),
 			}
 		);
 
 	private static async Task<Results<Ok<GetTagAssociationResponse>, NotFound>> GetTagAssociation(
-		[FromRoute] TagAssociationId id,
-		ITagRepository tagRepository,
+		[FromRoute] ApplicationAssociationId id,
+		IAssociationRepository associationRepository,
 		CancellationToken cancellationToken
 	) =>
-		await tagRepository.GetAssociation(id, cancellationToken) is { } tagAssociation
+		await associationRepository.GetAssociation(id, cancellationToken) is { } tagAssociation
 			? TypedResults.Ok(new GetTagAssociationResponse { Association = tagAssociation })
 			: TypedResults.NotFound();
 
 	private static async Task<Ok<CreateTagAssociationResponse>> CreateTagAssociation(
-		[FromBody] TagAssociationData data,
-		ITagRepository tagRepository,
+		[FromBody] ApplicationAssociationData data,
+		IAssociationRepository associationRepository,
 		CancellationToken cancellationToken
 	)
 	{
-		var id = await tagRepository.CreateAssociation(data, cancellationToken);
+		var id = await associationRepository.CreateAssociation(data, cancellationToken);
 		return TypedResults.Ok(new CreateTagAssociationResponse { Id = id });
 	}
 
 	private static async Task<Results<NoContent, NotFound>> UpdateTagAssociation(
-		[FromRoute] TagAssociationId id,
-		[FromBody] TagAssociationData data,
-		ITagRepository tagRepository,
+		[FromRoute] ApplicationAssociationId id,
+		[FromBody] ApplicationAssociationData data,
+		IAssociationRepository associationRepository,
 		CancellationToken cancellationToken
 	) =>
-		await tagRepository.UpdateAssociation(id, data, cancellationToken)
+		await associationRepository.UpdateAssociation(id, data, cancellationToken)
 			? TypedResults.NoContent()
 			: TypedResults.NotFound();
 
 	private static async Task<Results<NoContent, NotFound>> DeleteTagAssociation(
-		[FromRoute] TagAssociationId id,
-		ITagRepository tagRepository,
+		[FromRoute] ApplicationAssociationId id,
+		IAssociationRepository associationRepository,
 		CancellationToken cancellationToken
 	) =>
-		await tagRepository.DeleteAssociation(id, cancellationToken)
+		await associationRepository.DeleteAssociation(id, cancellationToken)
 			? TypedResults.NoContent()
 			: TypedResults.NotFound();
 }
 
 public sealed class GetTagAssociationsResponse
 {
-	public required IReadOnlyCollection<TagAssociation> Associations { get; init; }
+	public required IReadOnlyCollection<ApplicationAssociation> Associations { get; init; }
 }
 
 public sealed class CreateTagAssociationResponse
 {
-	public required TagAssociationId Id { get; init; }
+	public required ApplicationAssociationId Id { get; init; }
 }
 
 public sealed class GetTagAssociationResponse
 {
-	public required TagAssociation Association { get; init; }
+	public required ApplicationAssociation Association { get; init; }
 }
 
 public sealed class GetTagsInUseResponse

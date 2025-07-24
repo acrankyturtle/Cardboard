@@ -22,7 +22,8 @@
       <ProjectReference Include="..\Cardboard.Events.Windows\Cardboard.Events.Windows.csproj" />
       <ProjectReference Include="..\Cardboard.HttpApi\Cardboard.HttpApi.csproj" />
       <ProjectReference Include="..\Cardboard.Serial.Windows\Cardboard.Serial.Windows.csproj" />
-      <ProjectReference Include="..\Cardboard.TagSwitcher\Cardboard.TagSwitcher.csproj" />
+      <ProjectReference Include="..\Cardboard.Services.Windows\Cardboard.Services.Windows.csproj" />
+      <ProjectReference Include="..\Cardboard.Services\Cardboard.Services.csproj" />
     </ItemGroup>
 
 <!--    <Target Name="BuildReact" BeforeTargets="Build">-->

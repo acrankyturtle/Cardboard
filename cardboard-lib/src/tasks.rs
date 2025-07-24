@@ -1,6 +1,7 @@
 use crate::command::Command;
 use crate::context::{
 	ChangeProfileSignalRx, ContextSerialRx, ExternalTagsSignalRx, RebootToBootloader,
+	VirtualKeySignalRx,
 };
 use crate::hid::ReportHid;
 use crate::input::{KeyId, KeyState, UpdateMatrix};
@@ -17,16 +18,19 @@ pub async fn keypad_task<
 	Clock: crate::time::Clock,
 	Matrix: UpdateMatrix,
 	Report: ReportHid,
-	ProfileChanged: ChangeProfileSignalRx,
-	ExternalTagsChanged: ExternalTagsSignalRx,
+	ProfileChanged: ChangeProfileSignalRx + 'static,
+	ExternalTagsChanged: ExternalTagsSignalRx + 'static,
+	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
+	VirtualKeysChanged: VirtualKeySignalRx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
 	Bootloader: RebootToBootloader,
 >(
 	clock: &Clock,
 	mut matrix: Matrix,
 	mut profile: KeyboardProfile,
 	mut hid: Report,
-	profile_changed: ProfileChanged,
-	tags_changed: ExternalTagsChanged,
+	profile_changed: &'static ProfileChanged,
+	tags_changed: &'static ExternalTagsChanged,
+	virtual_keys_changed: &'static VirtualKeysChanged,
 	bootloader_key: Option<KeyId>,
 	bootloader: &'static Bootloader,
 	interval: Duration,
@@ -40,9 +44,7 @@ pub async fn keypad_task<
 
 	let mut previous_tick = clock.now();
 
-	let mut x = 0;
-
-	// check if bootloader keys is pressed at startup
+	// check if bootloader key is pressed at startup
 	if let Some(bootloader_key) = bootloader_key {
 		matrix.update(0.millis(), &mut key_actions);
 		if key_actions.iter().any(|k| k.key_id == bootloader_key) {
@@ -67,6 +69,11 @@ pub async fn keypad_task<
 		// check for external tags change
 		if let Some(tags) = tags_changed.try_get_external_tags() {
 			state.set_external_tags(tags);
+		}
+
+		// check for virtual keys
+		if let Some(virtual_keys) = virtual_keys_changed.try_get_virtual_keys() {
+			state.set_virtual_key_state(&virtual_keys);
 		}
 
 		let next_tick = previous_tick + interval;

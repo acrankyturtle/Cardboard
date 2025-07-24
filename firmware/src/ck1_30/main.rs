@@ -11,7 +11,6 @@ extern crate usbd_human_interface_device;
 use alloc::vec;
 use core::mem::MaybeUninit;
 use embedded_alloc::LlffHeap;
-use serde::de;
 
 use alloc::{boxed::Box, vec::Vec};
 use cardboard::{
@@ -25,7 +24,7 @@ use cardboard::{
 use cardboard_lib::{
 	command::{
 		ChangeProfileCommand, Command, EnterBootloaderCommand, GetProfileCommand, GetStatusCommand,
-		IdentifyCommand, SetExternalTagsCommand,
+		IdentifyCommand, SetExternalTagsCommand, SetVirtualKeysCommand,
 	},
 	context::Context,
 	device::{DeviceInfo, DeviceTypeId},
@@ -71,6 +70,8 @@ static ALLOCATOR: TrackingAllocator<Heap> = TrackingAllocator::new(Heap::empty()
 const ROWS: usize = 5;
 const COLS: usize = 6;
 
+const VIRTUAL_KEY_BITFIELD_SIZE: usize = 4; // 32 bits
+
 // profile flash storage
 #[link_section = ".profile"]
 static mut PROFILE: MaybeUninit<[u8; PROFILE_SIZE]> = MaybeUninit::uninit();
@@ -88,6 +89,7 @@ static HID_SIGNAL: Signal<
 > = Signal::new();
 static PROFILE_CHANGED_SIGNAL: Signal<KeyboardProfile> = Signal::new();
 static EXTERNAL_TAGS_CHANGED_SIGNAL: Signal<Vec<LayerTag>> = Signal::new();
+static VIRTUAL_KEY_SIGNAL: Signal<[u8; VIRTUAL_KEY_BITFIELD_SIZE]> = Signal::new();
 
 type Matrix = KeyMatrix<ROWS, COLS>;
 
@@ -97,6 +99,7 @@ type ContextSerialReader =
 	BufferedReader<EmbassySerialPacketReader<'static, USB_SERIAL_PACKET_SIZE>>;
 type ContextSerialWriter = EmbassySerialPacketWriter<'static, USB_SERIAL_PACKET_SIZE>;
 type ContextExternalTagsSignal = Signal<Vec<LayerTag>>;
+type ContextVirtualKeySignal = Signal<[u8; VIRTUAL_KEY_BITFIELD_SIZE]>;
 
 type CommandContext = Context<
 	ContextFlashMemory,
@@ -104,6 +107,8 @@ type CommandContext = Context<
 	ContextSerialReader,
 	ContextSerialWriter,
 	ContextExternalTagsSignal,
+	VIRTUAL_KEY_BITFIELD_SIZE,
+	ContextVirtualKeySignal,
 	Heap,
 	EmbassyRp2040RebootToBootloader,
 >;
@@ -121,6 +126,7 @@ async fn main(spawner: Spawner) -> () {
 		Box::new(SetExternalTagsCommand {}),
 		Box::new(EnterBootloaderCommand {}),
 		Box::new(GetStatusCommand {}),
+		Box::new(SetVirtualKeysCommand::<VIRTUAL_KEY_BITFIELD_SIZE> {}),
 	];
 
 	let key_ids: [KeyId; ROWS * COLS] = [
@@ -247,6 +253,7 @@ async fn main(spawner: Spawner) -> () {
 		serial_rx,
 		serial_tx,
 		&EXTERNAL_TAGS_CHANGED_SIGNAL,
+		&VIRTUAL_KEY_SIGNAL,
 		&ALLOCATOR,
 		bootloader,
 	);
@@ -270,6 +277,7 @@ async fn main(spawner: Spawner) -> () {
 			hid,
 			&PROFILE_CHANGED_SIGNAL,
 			&EXTERNAL_TAGS_CHANGED_SIGNAL,
+			&VIRTUAL_KEY_SIGNAL,
 			bootloader_key,
 			bootloader,
 			tick_interval,
@@ -289,6 +297,7 @@ async fn keypad_task(
 	hid: EmbassyKeypadHid<KeyboardImpl, MouseImpl, ConsumerImpl, Mutex>,
 	profile_changed: &'static Signal<KeyboardProfile>,
 	tags_changed: &'static Signal<Vec<LayerTag>>,
+	virtual_keys_changed: &'static Signal<[u8; VIRTUAL_KEY_BITFIELD_SIZE]>,
 	bootloader_key: KeyId,
 	bootloader: &'static EmbassyRp2040RebootToBootloader,
 	interval: Duration,
@@ -300,6 +309,7 @@ async fn keypad_task(
 		hid,
 		profile_changed,
 		tags_changed,
+		virtual_keys_changed,
 		Some(bootloader_key),
 		bootloader,
 		interval,

@@ -7,13 +7,23 @@ namespace Cardboard.Device;
 public sealed class DeviceProfile
 {
 	public required IReadOnlyCollection<DeviceKey> Keys { get; init; }
-
+	public required IReadOnlyCollection<VirtualKey> VirtualKeys { get; init; }
 	public required IReadOnlyCollection<Macro> Macros { get; init; }
 }
 
 public sealed class DeviceKey
 {
 	public required DeviceKeyId Id { get; init; }
+	public required DeviceLayers Layers { get; init; }
+}
+
+public sealed class VirtualKey
+{
+	public required DeviceLayers Layers { get; init; }
+}
+
+public sealed class DeviceLayers
+{
 	public IReadOnlyCollection<TaggedDeviceKeyLayer> Layers { get; init; } = [];
 	public required DeviceKeyLayer DefaultLayer { get; init; }
 }
@@ -286,18 +296,29 @@ public sealed class JsonDeviceProfile
 {
 	public required IReadOnlyCollection<JsonDeviceKey> Keys { get; init; }
 
+	public required IReadOnlyCollection<JsonVirtualKey> VirtualKeys { get; init; } = [];
+
 	public required IReadOnlyCollection<JsonMacro> Macros { get; init; }
 
 	public DeviceProfile ToDeviceProfile()
 	{
 		var macros = Macros.Select(x => x.ToMacro()).ToList();
-		return new() { Keys = Keys.Select(x => x.ToDeviceKey(macros)).ToList(), Macros = macros, };
+		return new()
+		{
+			Keys = Keys.Select(x => x.ToDeviceKey(macros)).ToList(),
+			VirtualKeys = VirtualKeys.Select(x => x.ToVirtualKey(macros)).ToList(),
+			Macros = macros,
+		};
 	}
 
 	public static JsonDeviceProfile From(DeviceProfile profile) =>
 		new()
 		{
 			Keys = profile.Keys.Select(x => JsonDeviceKey.From(x, profile.Macros.ToList())).ToList(),
+			VirtualKeys = profile
+				.VirtualKeys
+				.Select(x => JsonVirtualKey.From(x, profile.Macros.ToList()))
+				.ToList(),
 			Macros = profile.Macros.Select(JsonMacro.From).ToList(),
 		};
 }
@@ -305,23 +326,43 @@ public sealed class JsonDeviceProfile
 public sealed class JsonDeviceKey
 {
 	public required DeviceKeyId Id { get; init; }
+	public required JsonDeviceLayers Layers { get; init; }
+
+	public DeviceKey ToDeviceKey(IReadOnlyList<Macro> macros) =>
+		new() { Id = Id, Layers = Layers.ToDeviceLayers(macros), };
+
+	public static JsonDeviceKey From(DeviceKey key, IReadOnlyList<Macro> macros) =>
+		new() { Id = key.Id, Layers = JsonDeviceLayers.From(key.Layers, macros), };
+}
+
+public sealed class JsonVirtualKey
+{
+	public required JsonDeviceLayers Layers { get; init; }
+
+	public VirtualKey ToVirtualKey(IReadOnlyList<Macro> macros) =>
+		new() { Layers = Layers.ToDeviceLayers(macros), };
+
+	public static JsonVirtualKey From(VirtualKey key, IReadOnlyList<Macro> macros) =>
+		new() { Layers = JsonDeviceLayers.From(key.Layers, macros), };
+}
+
+public sealed class JsonDeviceLayers
+{
 	public IReadOnlyCollection<JsonTaggedDeviceKeyLayer> Layers { get; init; } = [];
 	public required JsonDeviceKeyLayer DefaultLayer { get; init; }
 
-	public DeviceKey ToDeviceKey(IReadOnlyList<Macro> macros) =>
+	public DeviceLayers ToDeviceLayers(IReadOnlyList<Macro> macros) =>
 		new()
 		{
-			Id = Id,
 			Layers = Layers.Select(x => x.ToTaggedDeviceKeyLayer(macros)).ToList(),
 			DefaultLayer = DefaultLayer.ToDeviceKeyLayer(macros),
 		};
 
-	public static JsonDeviceKey From(DeviceKey key, IReadOnlyList<Macro> macros) =>
+	public static JsonDeviceLayers From(DeviceLayers layers, IReadOnlyList<Macro> macros) =>
 		new()
 		{
-			Id = key.Id,
-			Layers = key.Layers.Select(x => JsonTaggedDeviceKeyLayer.From(x, macros)).ToList(),
-			DefaultLayer = JsonDeviceKeyLayer.From(key.DefaultLayer, macros),
+			Layers = layers.Layers.Select(x => JsonTaggedDeviceKeyLayer.From(x, macros)).ToList(),
+			DefaultLayer = JsonDeviceKeyLayer.From(layers.DefaultLayer, macros),
 		};
 }
 

@@ -140,15 +140,15 @@ impl InputKey {
 
 		self.prev_reported_state = new_state;
 
-		if self.prev_reported_state != prev_reported_state {
-			Some(self.prev_reported_state)
+		if new_state != prev_reported_state {
+			Some(new_state)
 		} else {
 			None
 		}
 	}
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct KeyId(Uuid);
 
 impl KeyId {

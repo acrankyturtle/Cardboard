@@ -88,12 +88,12 @@ unsafe impl<A: GlobalAlloc> GlobalAlloc for TrackingAllocator<A> {
 				self.current.borrow(cs).set(new_current);
 			});
 		}
-		self.inner.dealloc(ptr, layout);
+		unsafe { self.inner.dealloc(ptr, layout) };
 	}
 
 	unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
 		let old_size = layout.size();
-		let new_ptr = self.inner.realloc(ptr, layout, new_size);
+		let new_ptr = unsafe { self.inner.realloc(ptr, layout, new_size) };
 		if !new_ptr.is_null() && !ptr.is_null() {
 			cortex_m::interrupt::free(|cs| {
 				let new_current = self.current.borrow(cs).get() - old_size + new_size;

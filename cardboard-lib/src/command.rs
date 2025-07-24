@@ -17,7 +17,7 @@ use uuid::uuid;
 
 use crate::context::{
 	ChangeProfileSignalTx, ContextDeviceInfo, ContextProfile, ContextSerialRx, ContextSerialTx,
-	ContextTags,
+	ContextTags, ContextVirtualKeys,
 };
 use crate::context::{ContextAllocator, ContextBootloader};
 use crate::device::{CommandId, DeviceInfo};
@@ -295,6 +295,61 @@ impl<Context: ContextSerialTx + ContextAllocator> Command<Context> for GetStatus
 		} else {
 			Err("Failed to serialize response")
 		}
+	}
+}
+
+pub struct SetVirtualKeysCommand<const VIRTUAL_KEY_BITFIELD_BYTES: usize>
+where
+	[(); VIRTUAL_KEY_BITFIELD_BYTES]:;
+
+impl<const VIRTUAL_KEY_BITFIELD_BYTES: usize> SetVirtualKeysCommand<VIRTUAL_KEY_BITFIELD_BYTES>
+where
+	[(); VIRTUAL_KEY_BITFIELD_BYTES]:,
+{
+	async fn execute<
+		Context: ContextSerialRx + ContextSerialTx + ContextVirtualKeys<VIRTUAL_KEY_BITFIELD_BYTES>,
+	>(
+		&self,
+		ctx: &mut Context,
+	) -> Result<(), &'static str> {
+		let mut buffer = [0u8; VIRTUAL_KEY_BITFIELD_BYTES];
+		ctx.serial_rx().read_exact(&mut buffer).await?;
+		ctx.set_virtual_keys(buffer);
+		Ok(())
+	}
+}
+
+#[async_trait(?Send)]
+impl<Context> Command<Context> for SetVirtualKeysCommand<1>
+where
+	Context: ContextSerialRx + ContextSerialTx + ContextVirtualKeys<1>,
+{
+	fn info(&self) -> CommandInfo {
+		CommandInfo {
+			id: CommandId(uuid!("162d99cc-5e8f-5879-97fc-c37fdb0f22a9")),
+			name: "Set Virtual Key (8 keys)",
+		}
+	}
+
+	async fn execute(&self, ctx: &mut Context) -> Result<(), &'static str> {
+		self.execute(ctx).await
+	}
+}
+
+#[async_trait(?Send)]
+impl<Context> Command<Context> for SetVirtualKeysCommand<4>
+where
+	Context: ContextSerialRx + ContextSerialTx + ContextVirtualKeys<4>,
+{
+	fn info(&self) -> CommandInfo {
+		CommandInfo {
+			id: CommandId(uuid!("c1b2d3e4-f5a6-7b8c-9d0e-f1a2b3c4d5e6")),
+			name: "Set Virtual Key (32 keys)",
+		}
+	}
+
+	async fn execute(&self, ctx: &mut Context) -> Result<(), &'static str> {
+		self.execute(ctx).await
 	}
 }
 

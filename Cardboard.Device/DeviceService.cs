@@ -22,7 +22,7 @@ public interface IDeviceService
 internal class DeviceService : IDeviceService, IDisposable
 {
 	private readonly IReadOnlyList<IDeviceProvider> _providers;
-	private readonly Subject<DevicesChangedEvent> _devicesChangedSubject = new();
+	private readonly AsyncSubject<DevicesChangedEvent> _devicesChangedSubject = new();
 	private readonly IReadOnlyCollection<IDisposable> _subscriptions;
 
 	public DeviceService(IEnumerable<IDeviceProvider> providers)
@@ -30,7 +30,7 @@ internal class DeviceService : IDeviceService, IDisposable
 		_providers = providers.ToList();
 
 		_subscriptions = _providers
-			.Select(x => OnDevicesChanged.Subscribe(_devicesChangedSubject.OnNext))
+			.Select(x => x.OnDevicesChanged.Subscribe(_devicesChangedSubject.OnNext))
 			.ToList();
 	}
 
@@ -61,8 +61,8 @@ internal class DeviceService : IDeviceService, IDisposable
 			})
 		);
 
-		var tasks = providerGroups.Select(
-			async x => await x.Provider.SendCommand(x.DeviceIds, command, input, cancellationToken)
+		var tasks = providerGroups.Select(async x =>
+			await x.Provider.SendCommand(x.DeviceIds, command, input, cancellationToken)
 		);
 
 		var results = (await Task.WhenAll(tasks)).SelectMany(x => x).ToList();
@@ -75,6 +75,21 @@ internal class DeviceService : IDeviceService, IDisposable
 		foreach (var subscription in _subscriptions)
 			subscription.Dispose();
 	}
+}
+
+public static class DeviceServiceExtensions
+{
+	public static async Task<Result<TOut, Exception>> SendCommand<TIn, TOut>(
+		this IDeviceService deviceService,
+		ICommand<TIn, TOut> command,
+		TIn input,
+		DeviceId deviceId,
+		CancellationToken cancellationToken = default
+	)
+		where TIn : notnull =>
+		(await deviceService.SendCommand(command, input, d => d.Id == deviceId, cancellationToken))
+			.Single()
+			.Result;
 }
 
 partial class Services

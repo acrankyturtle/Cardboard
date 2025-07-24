@@ -15,6 +15,8 @@ pub struct Context<
 	SerialRx: SerialReader + SerialReaderExt,
 	SerialTx: SerialWriter + SerialWriterExt,
 	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
+	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
+	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
 	Allocator: GlobalAlloc + 'static,
 	Bootloader: RebootToBootloader + 'static,
 > {
@@ -24,6 +26,7 @@ pub struct Context<
 	pub serial_rx: SerialRx,
 	pub serial_tx: SerialTx,
 	pub external_tags_signal: &'static SetExternalTagsSignal,
+	pub virtual_keys_signal: &'static SetVirtualKeysSignal,
 	pub allocator: &'static TrackingAllocator<Allocator>,
 	pub bootloader: &'static Bootloader,
 }
@@ -33,7 +36,9 @@ impl<
 	ChangeProfileSignal: ChangeProfileSignalTx,
 	SerialRx: SerialReader + SerialReaderExt,
 	SerialTx: SerialWriter + SerialWriterExt,
-	SetExternalTagsSignal: ExternalTagsSignalTx,
+	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
+	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
+	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
 	Allocator: GlobalAlloc + 'static,
 	Bootloader: RebootToBootloader,
 >
@@ -43,6 +48,8 @@ impl<
 		SerialRx,
 		SerialTx,
 		SetExternalTagsSignal,
+		VIRTUAL_KEY_BITFIELD_BYTES,
+		SetVirtualKeysSignal,
 		Allocator,
 		Bootloader,
 	>
@@ -54,6 +61,7 @@ impl<
 		serial_rx: SerialRx,
 		serial_tx: SerialTx,
 		external_tags_signal: &'static SetExternalTagsSignal,
+		virtual_keys_signal: &'static SetVirtualKeysSignal,
 		allocator: &'static TrackingAllocator<Allocator>,
 		bootloader: &'static Bootloader,
 	) -> Self {
@@ -64,6 +72,7 @@ impl<
 			serial_rx,
 			serial_tx,
 			external_tags_signal,
+			virtual_keys_signal,
 			allocator,
 			bootloader,
 		}
@@ -96,6 +105,10 @@ pub trait ContextTags {
 	fn set_external_tags(&mut self, tags: Vec<LayerTag>);
 }
 
+pub trait ContextVirtualKeys<const VIRTUAL_KEY_BITFIELD_BYTES: usize> {
+	fn set_virtual_keys(&mut self, state: [u8; VIRTUAL_KEY_BITFIELD_BYTES]);
+}
+
 pub trait ContextAllocator {
 	fn allocator(&self) -> &TrackingAllocator<Self::A>;
 	type A: GlobalAlloc;
@@ -110,7 +123,9 @@ impl<
 	ChangeProfileSignal: ChangeProfileSignalTx,
 	SerialRx: SerialReader + SerialReaderExt,
 	SerialTx: SerialWriter + SerialWriterExt,
-	SetExternalTagsSignal: ExternalTagsSignalTx,
+	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
+	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
+	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
 	Allocator: GlobalAlloc + 'static,
 	Bootloader: RebootToBootloader,
 > ContextDeviceInfo
@@ -120,6 +135,8 @@ impl<
 		SerialRx,
 		SerialTx,
 		SetExternalTagsSignal,
+		VIRTUAL_KEY_BITFIELD_BYTES,
+		SetVirtualKeysSignal,
 		Allocator,
 		Bootloader,
 	>
@@ -134,7 +151,9 @@ impl<
 	ChangeProfileSignal: ChangeProfileSignalTx,
 	SerialRx: SerialReader + SerialReaderExt,
 	SerialTx: SerialWriter + SerialWriterExt,
-	SetExternalTagsSignal: ExternalTagsSignalTx,
+	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
+	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
+	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
 	Allocator: GlobalAlloc + 'static,
 	Bootloader: RebootToBootloader,
 > ContextSerialRx
@@ -144,6 +163,8 @@ impl<
 		SerialRx,
 		SerialTx,
 		SetExternalTagsSignal,
+		VIRTUAL_KEY_BITFIELD_BYTES,
+		SetVirtualKeysSignal,
 		Allocator,
 		Bootloader,
 	>
@@ -159,7 +180,9 @@ impl<
 	ChangeProfileSignal: ChangeProfileSignalTx,
 	SerialRx: SerialReader + SerialReaderExt,
 	SerialTx: SerialWriter + SerialWriterExt,
-	SetExternalTagsSignal: ExternalTagsSignalTx,
+	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
+	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
+	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
 	Allocator: GlobalAlloc + 'static,
 	Bootloader: RebootToBootloader,
 > ContextSerialTx
@@ -169,6 +192,8 @@ impl<
 		SerialRx,
 		SerialTx,
 		SetExternalTagsSignal,
+		VIRTUAL_KEY_BITFIELD_BYTES,
+		SetVirtualKeysSignal,
 		Allocator,
 		Bootloader,
 	>
@@ -184,7 +209,9 @@ impl<
 	ChangeProfileSignal: ChangeProfileSignalTx,
 	SerialRx: SerialReader + SerialReaderExt,
 	SerialTx: SerialWriter + SerialWriterExt,
-	SetExternalTagsSignal: ExternalTagsSignalTx,
+	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
+	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
+	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
 	Allocator: GlobalAlloc + 'static,
 	Bootloader: RebootToBootloader,
 > ContextProfile
@@ -194,6 +221,8 @@ impl<
 		SerialRx,
 		SerialTx,
 		SetExternalTagsSignal,
+		VIRTUAL_KEY_BITFIELD_BYTES,
+		SetVirtualKeysSignal,
 		Allocator,
 		Bootloader,
 	>
@@ -214,7 +243,9 @@ impl<
 	ChangeProfileSignal: ChangeProfileSignalTx,
 	SerialRx: SerialReader + SerialReaderExt,
 	SerialTx: SerialWriter + SerialWriterExt,
-	SetExternalTagsSignal: ExternalTagsSignalTx,
+	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
+	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
+	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
 	Allocator: GlobalAlloc + 'static,
 	Bootloader: RebootToBootloader,
 > ContextTags
@@ -224,6 +255,8 @@ impl<
 		SerialRx,
 		SerialTx,
 		SetExternalTagsSignal,
+		VIRTUAL_KEY_BITFIELD_BYTES,
+		SetVirtualKeysSignal,
 		Allocator,
 		Bootloader,
 	>
@@ -235,10 +268,43 @@ impl<
 
 impl<
 	ProfileFlash: FlashMemory,
+	ChangeProfileSignal: ChangeProfileSignalTx + 'static,
+	SerialRx: SerialReader + SerialReaderExt,
+	SerialTx: SerialWriter + SerialWriterExt,
+	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
+	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
+	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
+	Allocator: GlobalAlloc + 'static,
+	Bootloader: RebootToBootloader + 'static,
+> ContextVirtualKeys<VIRTUAL_KEY_BITFIELD_BYTES>
+	for Context<
+		ProfileFlash,
+		ChangeProfileSignal,
+		SerialRx,
+		SerialTx,
+		SetExternalTagsSignal,
+		VIRTUAL_KEY_BITFIELD_BYTES,
+		SetVirtualKeysSignal,
+		Allocator,
+		Bootloader,
+	>
+{
+	fn set_virtual_keys(&mut self, state: [u8; VIRTUAL_KEY_BITFIELD_BYTES]) {
+		let state_ptr: *const [u8; VIRTUAL_KEY_BITFIELD_BYTES] = &state;
+		let state: [u8; VIRTUAL_KEY_BITFIELD_BYTES] =
+			unsafe { *state_ptr.cast::<[u8; VIRTUAL_KEY_BITFIELD_BYTES]>() };
+		self.virtual_keys_signal.set_virtual_keys(state);
+	}
+}
+
+impl<
+	ProfileFlash: FlashMemory,
 	ChangeProfileSignal: ChangeProfileSignalTx,
 	SerialRx: SerialReader + SerialReaderExt,
 	SerialTx: SerialWriter + SerialWriterExt,
-	SetExternalTagsSignal: ExternalTagsSignalTx,
+	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
+	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
+	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
 	Allocator: GlobalAlloc + 'static,
 	Bootloader: RebootToBootloader,
 > ContextAllocator
@@ -248,6 +314,8 @@ impl<
 		SerialRx,
 		SerialTx,
 		SetExternalTagsSignal,
+		VIRTUAL_KEY_BITFIELD_BYTES,
+		SetVirtualKeysSignal,
 		Allocator,
 		Bootloader,
 	>
@@ -263,7 +331,9 @@ impl<
 	ChangeProfileSignal: ChangeProfileSignalTx,
 	SerialRx: SerialReader + SerialReaderExt,
 	SerialTx: SerialWriter + SerialWriterExt,
-	SetExternalTagsSignal: ExternalTagsSignalTx,
+	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
+	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
+	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
 	Allocator: GlobalAlloc + 'static,
 	Bootloader: RebootToBootloader,
 > ContextBootloader
@@ -273,6 +343,8 @@ impl<
 		SerialRx,
 		SerialTx,
 		SetExternalTagsSignal,
+		VIRTUAL_KEY_BITFIELD_BYTES,
+		SetVirtualKeysSignal,
 		Allocator,
 		Bootloader,
 	>
@@ -296,6 +368,14 @@ pub trait ExternalTagsSignalTx {
 
 pub trait ExternalTagsSignalRx {
 	fn try_get_external_tags(&self) -> Option<Vec<LayerTag>>;
+}
+
+pub trait VirtualKeySignalTx<const SIZE: usize> {
+	fn set_virtual_keys(&self, state: [u8; SIZE]);
+}
+
+pub trait VirtualKeySignalRx<const SIZE: usize> {
+	fn try_get_virtual_keys(&self) -> Option<[u8; SIZE]>;
 }
 
 pub trait RebootToBootloader {

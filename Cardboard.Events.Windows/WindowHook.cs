@@ -133,7 +133,7 @@ public class WindowHook : IDisposable
 	}
 
 	[DllImport("user32.dll")]
-	static extern IntPtr SetWinEventHook(
+	private static extern IntPtr SetWinEventHook(
 		uint eventMin,
 		uint eventMax,
 		IntPtr hmodWinEventProc,
@@ -144,19 +144,19 @@ public class WindowHook : IDisposable
 	);
 
 	[DllImport("user32.dll")]
-	static extern bool UnhookWinEvent(IntPtr hWinEventHook);
+	private static extern bool UnhookWinEvent(IntPtr hWinEventHook);
 
 	[DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
 	private static extern int GetWindowThreadProcessId(IntPtr handle, out int processId);
 
 	[DllImport("user32.dll")]
-	static extern IntPtr GetForegroundWindow();
+	private static extern IntPtr GetForegroundWindow();
 
 	[DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
 	private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
 
 	[DllImport("kernel32.dll", SetLastError = true)]
-	static extern bool QueryFullProcessImageName(
+	private static extern bool QueryFullProcessImageName(
 		[In] IntPtr hProcess,
 		[In] int dwFlags,
 		[Out] StringBuilder lpExeName,
@@ -164,10 +164,10 @@ public class WindowHook : IDisposable
 	);
 
 	[DllImport("kernel32.dll", SetLastError = true)]
-	public static extern IntPtr OpenProcess(uint processAccess, bool bInheritHandle, int processId);
+	private static extern IntPtr OpenProcess(uint processAccess, bool bInheritHandle, int processId);
 
 	[DllImport("kernel32.dll", SetLastError = true)]
-	static extern bool CloseHandle(IntPtr hHandle);
+	private static extern bool CloseHandle(IntPtr hHandle);
 
 	delegate void WinEventDelegate(
 		IntPtr hWinEventHook,

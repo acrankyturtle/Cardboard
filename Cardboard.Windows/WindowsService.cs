@@ -1,5 +1,6 @@
 ﻿using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using Cranky;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Cardboard.Windows;
@@ -10,7 +11,14 @@ public interface IWindowsService
 
 	IObservable<Message> OnMessage { get; }
 
-	T Invoke<T>(Func<T> func);
+	T Invoke<T>(Func<Form, T> func);
+
+	void Invoke(Action<Form> action) =>
+		Invoke(form =>
+		{
+			action(form);
+			return Unit.Value;
+		});
 }
 
 file class WindowsService : IWindowsService, IDisposable
@@ -18,7 +26,7 @@ file class WindowsService : IWindowsService, IDisposable
 	private readonly HiddenWindow _window = new();
 	private readonly Thread _windowThread;
 
-	public IntPtr Handle => _window.Handle;
+	public IntPtr Handle { get; }
 
 	public IObservable<Message> OnMessage => _window.OnMessage;
 
@@ -29,9 +37,11 @@ file class WindowsService : IWindowsService, IDisposable
 		_windowThread.Start();
 
 		Thread.Sleep(50); // HACK: give the window time to initialize
+
+		Handle = _window.Invoke(() => _window.Handle);
 	}
 
-	public T Invoke<T>(Func<T> func) => _window.Invoke(func);
+	public T Invoke<T>(Func<Form, T> func) => _window.Invoke(() => func(_window));
 
 	public void Dispose()
 	{
@@ -58,7 +68,14 @@ file class HiddenWindow : Form
 
 	protected override void WndProc(ref Message m)
 	{
-		_messageSubject.OnNext(m);
+		try
+		{
+			_messageSubject.OnNext(m);
+		}
+		catch (Exception ex)
+		{
+			_messageSubject.OnError(ex);
+		}
 
 		base.WndProc(ref m);
 	}

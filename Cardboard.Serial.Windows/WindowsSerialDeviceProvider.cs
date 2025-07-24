@@ -15,7 +15,7 @@ public class WindowsSerialDeviceProvider : IDeviceProvider, IDisposable
 
 	private readonly SemaphoreSlim _lock = new(1, 1);
 
-	private readonly Subject<DevicesChangedEvent> _devicesChangedSubject = new();
+	private readonly AsyncSubject<DevicesChangedEvent> _devicesChangedSubject = new();
 	public IObservable<DevicesChangedEvent> OnDevicesChanged => _devicesChangedSubject.AsObservable();
 
 	private readonly IWindowsSerialDeviceFinder _deviceFinder;
@@ -75,37 +75,29 @@ public class WindowsSerialDeviceProvider : IDeviceProvider, IDisposable
 						.Select(async x =>
 						{
 							var serialPort = x.SerialPort.Assert();
-							var commandStreamResult = await serialPort.GetCommandStream(cancellationToken);
-							return commandStreamResult.Match<(
-								DeviceInfo DeviceInfo,
-								ISerialPort SerialPort
-							)?>(
-								commandStream =>
+							var result = await serialPort.With(
+								async Task<(DeviceInfo DeviceInfo, ISerialPort SerialPort)> (commandStream) =>
 								{
-									try
-									{
-										commandStream.Writer.Write((byte)0x00);
-										commandStream.Writer.Flush();
-										var identityCommand = new IdentityCommand();
-										return (identityCommand.Execute(new(), commandStream), serialPort);
-									}
-									catch (Exception ex)
-									{
-										_logger.LogError(ex, "Error getting initial identity");
+									commandStream.Writer.Write((byte)0x00);
+									commandStream.Writer.Flush();
+									var identityCommand = new IdentityCommand();
+									var deviceInfo = identityCommand.Execute(new(), commandStream);
 
-#if DEBUG
-										throw;
-#endif
-										return null;
-									}
-									finally
-									{
-										commandStream.Dispose();
-									}
+									return (deviceInfo, serialPort);
 								},
+								cancellationToken
+							);
+
+							return result.Match<(DeviceInfo DeviceInfo, ISerialPort SerialPort)?>(
+								v => v,
 								_ =>
-									// TODO: LOG
-									null
+								{
+									_logger.LogWarning(
+										"Failed to get device info for port {PortName}. Skipping.",
+										x.ConnectionInfo.ComPort
+									);
+									return null;
+								}
 							);
 						})
 				)
@@ -146,80 +138,76 @@ public class WindowsSerialDeviceProvider : IDeviceProvider, IDisposable
 
 		var deviceIdSet = deviceIds.ToHashSet();
 
-		var commandStreams = await Task.WhenAll(
+		return await Task.WhenAll(
 			_ports
 				.Where(x => deviceIdSet.Contains(x.DeviceInfo.Id))
 				.Select(
-					async x =>
-						(x.DeviceInfo, CommandStream: await x.SerialPort.GetCommandStream(cancellationToken))
-				)
-		);
-
-		return await Task.WhenAll(
-			commandStreams.Select(async x =>
-			{
-				return await x.CommandStream.Match<Task<(DeviceId DeviceId, Result<TOut, Exception> Result)>>(
-					async commandStream =>
-					{
-						try
-						{
-							if (Command.GetCommandIndex(x.DeviceInfo, command.Id) is not { } commandIndex)
-							{
-								return (
-									x.DeviceInfo.Id,
-									new(new InvalidOperationException("Command not found on device."))
-								);
-							}
+					async Task<(DeviceId, Result<TOut, Exception>)> (x) =>
+						(
+							x.DeviceInfo.Id,
+							await x.SerialPort.With<TOut>(
+								async commandStream =>
+								{
+									try
+									{
+										if (
+											Command.GetCommandIndex(x.DeviceInfo, command.Id)
+											is not { } commandIndex
+										)
+										{
+											throw new InvalidOperationException(
+												"Command not found on device."
+											);
+										}
 
 #if DEBUG
-							var stopwatch = Stopwatch.StartNew();
+										var stopwatch = Stopwatch.StartNew();
 #endif
-							commandStream.Writer.Write((byte)commandIndex.Value);
-							commandStream.Writer.Flush();
+										commandStream.Writer.Write((byte)commandIndex.Value);
+										commandStream.Writer.Flush();
 
-							var result = command.Execute(input, commandStream, cancellationToken);
+										var result = command.Execute(input, commandStream, cancellationToken);
 
 #if DEBUG
-							stopwatch.Stop();
-							_logger.LogInformation(
-								"Command {Name} took {ElapsedMilliseconds:0.00}ms",
-								command.GetType().Name,
-								stopwatch.Elapsed.TotalMilliseconds
-							);
+										stopwatch.Stop();
+										_logger.LogInformation(
+											"Command {Name} took {ElapsedMilliseconds:0.00}ms",
+											command.GetType().Name,
+											stopwatch.Elapsed.TotalMilliseconds
+										);
 #endif
-							return (x.DeviceInfo.Id, result);
-						}
-						catch (Exception ex)
-						{
-							_logger.LogError(
-								ex,
-								"Error sending command {Name} to device {DeviceInfoId}",
-								command.GetType().Name,
-								x.DeviceInfo.Id
-							);
+										return result;
+									}
+									catch (Exception ex)
+									{
+										_logger.LogError(
+											ex,
+											"Error sending command {Name} to device {DeviceInfoId}",
+											command.GetType().Name,
+											x.DeviceInfo.Id
+										);
 
-							// hold serial port for a timeout duration
-							// we don't pass the cancellation token because we always want to wait this long
-							await Task.Delay(TimeSpan.FromMilliseconds(500), CancellationToken.None);
+										// hold serial port for a timeout duration, then clear the read buffer
+										// we don't pass the cancellation token because we always want to wait this long
+										await Task.Delay(
+											TimeSpan.FromMilliseconds(500),
+											CancellationToken.None
+										);
+										commandStream.ClearReadBuffer();
 
-							return (x.DeviceInfo.Id, Result.Fail(ex));
-						}
-						finally
-						{
-							commandStream.Dispose();
-						}
-					},
-					e =>
-						Task.FromResult<(DeviceId DeviceId, Result<TOut, Exception> Result)>(
-							(x.DeviceInfo.Id, Result.Fail(e))
+										throw;
+									}
+								},
+								cancellationToken
+							)
 						)
-				);
-			})
+				)
 		);
 	}
 
 	public void Dispose()
 	{
+		GC.SuppressFinalize(this);
 		_deviceSubscription.Dispose();
 	}
 }

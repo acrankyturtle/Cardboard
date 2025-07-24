@@ -1,15 +1,18 @@
 extern crate alloc;
 
 use core::fmt;
+use core::slice::IterMut;
 
 use crate::input::KeyId;
 use crate::profile::*;
 use crate::time::Duration;
 use alloc::vec::Vec;
+use bitset_core::BitSet;
 use fugit::ExtU64;
 
 pub struct KeyboardState<'a> {
-	keys: Vec<KeyState<'a>>,
+	keys: Vec<PhysicalKeyState<'a>>,
+	virtual_keys: Vec<VirtualKeyState<'a>>,
 	tags: TagList,
 	running: Vec<MacroState<'a>>,
 	macros: &'a Vec<Macro>,
@@ -18,7 +21,13 @@ pub struct KeyboardState<'a> {
 impl<'a> KeyboardState<'a> {
 	pub fn from(profile: &'a KeyboardProfile) -> Self {
 		let mut state = KeyboardState {
-			keys: KeyboardState::map_keys_from_profile(profile),
+			keys: profile.keys.iter().map(PhysicalKeyState::from).collect(),
+			virtual_keys: profile
+				.virtual_keys
+				.iter()
+				.enumerate()
+				.map(|(i, vk)| VirtualKeyState::from(vk, i))
+				.collect(),
 			tags: TagList::new(),
 			running: Vec::new(),
 			macros: &profile.macros,
@@ -31,37 +40,71 @@ impl<'a> KeyboardState<'a> {
 
 	pub fn press_key(&mut self, key_id: KeyId) {
 		if let Some(key) = self.get_key(key_id) {
-			let macros: Vec<MacroState<'a>> = key
-				.current_layer
-				.macros
-				.iter()
-				.map(|i| {
-					let macro_ = self.macros.get(*i as usize).unwrap();
-					MacroState::from(macro_, key)
-				})
-				.collect();
-
-			self.cut_channels(
-				macros
-					.iter()
-					.flat_map(|m| m.macro_.cut_channels.iter().copied())
-					.collect(),
-			);
-
-			self.running.extend(macros);
-		}
+			let macros = Self::get_macros_from_key(self.macros, key);
+			Self::run_macros(&mut self.running, macros);
+		};
 	}
 
-	fn get_key(&self, key_id: KeyId) -> Option<&KeyState<'a>> {
+	fn get_key(&self, key_id: KeyId) -> Option<&PhysicalKeyState<'a>> {
 		self.keys.iter().find(|ks| ks.key.id == key_id)
 	}
 
 	pub fn release_key(&mut self, key_id: KeyId) {
-		for macro_ in self.running.iter_mut() {
-			if macro_.source.key == key_id {
+		Self::release_key_source(self.running.iter_mut(), MacroSourceKey::PhysicalKey(key_id));
+	}
+
+	fn release_key_source(running: IterMut<MacroState<'a>>, source_key: MacroSourceKey) {
+		for macro_ in running {
+			if macro_.source.key == source_key {
 				macro_.stop();
 			}
 		}
+	}
+
+	pub fn set_virtual_key_state(&mut self, bits: &[u8]) {
+		let num_bits = bits.len() * 8;
+		let num_keys = self.virtual_keys.len().min(num_bits);
+		for i in 0..num_keys {
+			let key = &mut self.virtual_keys[i];
+			let bit_index = to_bitset_index(i, num_bits);
+			let state = bits.bit_test(bit_index);
+			match key.update(state) {
+				Some(true) => {
+					let macros = Self::get_macros_from_key(self.macros, key);
+					Self::run_macros(&mut self.running, macros);
+				}
+				Some(false) => {
+					Self::release_key_source(
+						self.running.iter_mut(),
+						MacroSourceKey::VirtualKey(key.id),
+					);
+				}
+				_ => {}
+			};
+		}
+	}
+
+	fn get_macros_from_key<K: KeyState<'a>>(
+		macros: &'a Vec<Macro>,
+		key: &K,
+	) -> Vec<MacroState<'a>> {
+		key.current_layer()
+			.macros
+			.iter()
+			.map(|i| {
+				let macro_ = macros.get(*i as usize).unwrap();
+				MacroState::from(macro_, key)
+			})
+			.collect()
+	}
+
+	fn run_macros(running: &mut Vec<MacroState<'a>>, macros: Vec<MacroState<'a>>) {
+		let channels_to_cut: Vec<Channel> = macros
+			.iter()
+			.flat_map(|m| m.macro_.cut_channels.iter().copied())
+			.collect();
+		Self::cut_channels(running.iter_mut(), &channels_to_cut);
+		running.extend(macros);
 	}
 
 	pub fn tick(&mut self, elapsed: Duration, events: &mut Vec<ActionEvent>) {
@@ -98,50 +141,133 @@ impl<'a> KeyboardState<'a> {
 	}
 
 	fn update_layers(&mut self) {
-		for ks in self.keys.iter_mut() {
-			let new_layer = ks.key.get_active_layer(&self.tags);
+		for ks in self
+			.keys
+			.iter_mut()
+			.map(|pk| pk as &mut dyn KeyState)
+			.chain(
+				self.virtual_keys
+					.iter_mut()
+					.map(|vk| vk as &mut dyn KeyState),
+			) {
+			let new_layer = ks.update_current_layer(&self.tags);
 
-			if ks.current_layer.id != new_layer.id {
+			if let Some(new_layer) = new_layer {
 				// release macros that no longer have a valid source
 				for macro_ in self
 					.running
 					.iter_mut()
-					.filter(|m| m.source.key == ks.key.id && m.source.layer != new_layer.id)
+					.filter(|m| m.source.key == ks.key() && m.source.layer != new_layer.id)
 				{
 					macro_.stop();
 				}
-				ks.current_layer = new_layer;
 			}
 		}
 	}
 
-	fn cut_channels(&mut self, channels: Vec<Channel>) {
-		for macro_ in self
-			.running
-			.iter_mut()
-			.filter(|m| match m.macro_.play_channel {
-				Some(channel) => channels.contains(&channel),
-				None => false,
-			}) {
+	fn cut_channels(running: IterMut<MacroState<'a>>, channels: &[Channel]) {
+		for macro_ in running.filter(|m| match m.macro_.play_channel {
+			Some(channel) => channels.contains(&channel),
+			None => false,
+		}) {
 			macro_.stop();
 		}
 	}
-
-	fn map_keys_from_profile(profile: &'a KeyboardProfile) -> Vec<KeyState<'a>> {
-		profile.keys.iter().map(KeyState::from).collect()
-	}
 }
 
-struct KeyState<'a> {
+struct PhysicalKeyState<'a> {
 	key: &'a DeviceKey,
 	current_layer: &'a DeviceKeyLayer,
 }
 
-impl<'a> KeyState<'a> {
+impl<'a> PhysicalKeyState<'a> {
 	pub fn from(key: &'a DeviceKey) -> Self {
-		KeyState {
+		Self {
 			key,
-			current_layer: &key.default_layer,
+			current_layer: &key.layers.default_layer,
+		}
+	}
+}
+
+struct VirtualKeyState<'a> {
+	state: bool,
+	id: usize,
+	key: &'a VirtualKey,
+	current_layer: &'a DeviceKeyLayer,
+}
+
+impl<'a> VirtualKeyState<'a> {
+	pub fn from(key: &'a VirtualKey, id: usize) -> Self {
+		Self {
+			state: false,
+			id,
+			key,
+			current_layer: &key.layers.default_layer,
+		}
+	}
+
+	fn update(&mut self, state: bool) -> Option<bool> {
+		if self.state != state {
+			self.state = state;
+			return Some(state);
+		}
+		None
+	}
+}
+
+trait KeyState<'a> {
+	fn key(&self) -> MacroSourceKey;
+	fn layers(&self) -> &'a DeviceLayers;
+	fn current_layer(&self) -> &'a DeviceKeyLayer;
+	fn update_current_layer(&mut self, tags: &TagList) -> Option<&'a DeviceKeyLayer>;
+}
+
+impl<'a> KeyState<'a> for PhysicalKeyState<'a> {
+	fn key(&self) -> MacroSourceKey {
+		MacroSourceKey::PhysicalKey(self.key.id)
+	}
+
+	fn layers(&self) -> &'a DeviceLayers {
+		&self.key.layers
+	}
+
+	fn current_layer(&self) -> &'a DeviceKeyLayer {
+		self.current_layer
+	}
+
+	fn update_current_layer(&mut self, tags: &TagList) -> Option<&'a DeviceKeyLayer> {
+		let new_layer = self.key.layers.get_active_layer(tags);
+
+		if new_layer.id != self.current_layer.id {
+			self.current_layer = new_layer;
+			Some(new_layer)
+		} else {
+			None
+		}
+	}
+}
+
+impl<'a> KeyState<'a> for VirtualKeyState<'a> {
+	fn key(&self) -> MacroSourceKey {
+		MacroSourceKey::VirtualKey(self.id)
+	}
+
+	fn layers(&self) -> &'a DeviceLayers {
+		&self.key.layers
+	}
+
+	fn current_layer(&self) -> &'a DeviceKeyLayer {
+		self.current_layer
+	}
+
+	fn update_current_layer(&mut self, tags: &TagList) -> Option<&'a DeviceKeyLayer> {
+		let new_layer = self.key.layers.get_active_layer(tags);
+
+		if new_layer.id != self.current_layer.id {
+			self.current_layer = new_layer;
+			Some(new_layer)
+		} else {
+			None
 		}
 	}
 }
@@ -154,7 +280,7 @@ struct MacroState<'a> {
 }
 
 impl<'a> MacroState<'a> {
-	pub fn from(macro_: &'a Macro, source: &KeyState) -> Self {
+	pub fn from<K: KeyState<'a>>(macro_: &'a Macro, source: &K) -> Self {
 		MacroState {
 			macro_,
 			current_sequence: CurrentSequence::Start(SequenceState::from(
@@ -163,8 +289,8 @@ impl<'a> MacroState<'a> {
 			)),
 			trigger: TriggerState::Running,
 			source: MacroSource {
-				key: source.key.id,
-				layer: source.current_layer.id,
+				key: source.key(),
+				layer: source.current_layer().id,
 			},
 		}
 	}
@@ -229,8 +355,14 @@ impl<'a> MacroState<'a> {
 }
 
 struct MacroSource {
-	key: KeyId,
+	key: MacroSourceKey,
 	layer: LayerId,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum MacroSourceKey {
+	PhysicalKey(KeyId),
+	VirtualKey(usize),
 }
 
 struct SequenceState<'a> {
@@ -335,6 +467,19 @@ impl TagList {
 			.chain(self.external.iter())
 			.any(|tag| *tag == *value)
 	}
+}
+
+// bit 0 in bitset_core = xxxxxxx1...(other bytes), whereas vk 0 is 1xxxxxxx...(other bytes)
+pub fn to_bitset_index(vk_index: usize, total_bits: usize) -> usize {
+	if vk_index >= total_bits {
+		panic!(
+			"Domain index {} out of bounds for bitset with {} bits",
+			vk_index, total_bits
+		);
+	}
+	let byte = vk_index / 8;
+	let bit = 7 - (vk_index % 8);
+	byte * 8 + bit
 }
 
 #[cfg(test)]
@@ -547,7 +692,7 @@ mod tests {
 		let _macro = new_test_macro(MACRO_ID, Some(CHANNEL_ID), vec![CHANNEL_ID]);
 		let device_key = new_test_device_key(KEY_ID, vec![0]);
 
-		let key_state = KeyState::from(&device_key);
+		let key_state = PhysicalKeyState::from(&device_key);
 		let mut macro_state = MacroState::from(&_macro, &key_state);
 		assert!(matches!(
 			macro_state.current_sequence,
@@ -566,7 +711,7 @@ mod tests {
 		let _macro = new_test_macro(MACRO_ID, Some(CHANNEL_ID), vec![CHANNEL_ID]);
 		let device_key = new_test_device_key(KEY_ID, vec![0]);
 
-		let key_state = KeyState::from(&device_key);
+		let key_state = PhysicalKeyState::from(&device_key);
 		let mut macro_state = MacroState::from(&_macro, &key_state);
 
 		macro_state.tick(100.millis(), &mut vec![]);
@@ -605,7 +750,7 @@ mod tests {
 		};
 		let device_key = new_test_device_key(KEY_ID, vec![0]);
 
-		let key_state = KeyState::from(&device_key);
+		let key_state = PhysicalKeyState::from(&device_key);
 		let mut macro_state = MacroState::from(&_macro, &key_state);
 
 		macro_state.tick(100.millis(), &mut vec![]);
@@ -626,7 +771,7 @@ mod tests {
 		let _macro = new_test_macro(MACRO_ID, Some(CHANNEL_ID), vec![CHANNEL_ID]);
 		let device_key = new_test_device_key(KEY_ID, vec![0]);
 
-		let key_state = KeyState::from(&device_key);
+		let key_state = PhysicalKeyState::from(&device_key);
 		let mut macro_state = MacroState::from(&_macro, &key_state);
 
 		macro_state.tick(100.millis(), &mut vec![]);
@@ -649,7 +794,7 @@ mod tests {
 		let _macro = new_test_macro(MACRO_ID, Some(CHANNEL_ID), vec![CHANNEL_ID]);
 		let device_key = new_test_device_key(KEY_ID, vec![0]);
 
-		let key_state = KeyState::from(&device_key);
+		let key_state = PhysicalKeyState::from(&device_key);
 		let mut macro_state = MacroState::from(&_macro, &key_state);
 
 		macro_state.tick(100.millis(), &mut vec![]);
@@ -678,7 +823,7 @@ mod tests {
 		let _macro = new_test_macro(MACRO_ID, Some(CHANNEL_ID), vec![CHANNEL_ID]);
 		let device_key = new_test_device_key(KEY_ID, vec![0]);
 
-		let key_state = KeyState::from(&device_key);
+		let key_state = PhysicalKeyState::from(&device_key);
 		let mut macro_state = MacroState::from(&_macro, &key_state);
 
 		macro_state.stop();
@@ -836,17 +981,19 @@ mod tests {
 
 		let device_key = DeviceKey {
 			id: KEY_ID,
-			layers: vec![TaggedDeviceKeyLayer {
-				layer: DeviceKeyLayer {
-					id: LAYER_ID2,
-					macros: vec![0],
+			layers: DeviceLayers {
+				layers: vec![TaggedDeviceKeyLayer {
+					layer: DeviceKeyLayer {
+						id: LAYER_ID2,
+						macros: vec![0],
+					},
+					tags: vec![LayerTag::new("test".to_string())],
+					match_type: TagMatchType::All,
+				}],
+				default_layer: DeviceKeyLayer {
+					id: LAYER_ID,
+					macros: vec![1],
 				},
-				tags: vec![LayerTag::new("test".to_string())],
-				match_type: TagMatchType::All,
-			}],
-			default_layer: DeviceKeyLayer {
-				id: LAYER_ID,
-				macros: vec![1],
 			},
 		};
 
@@ -871,17 +1018,19 @@ mod tests {
 
 		let device_key = DeviceKey {
 			id: KEY_ID,
-			layers: vec![TaggedDeviceKeyLayer {
-				layer: DeviceKeyLayer {
-					id: LAYER_ID2,
-					macros: vec![0],
+			layers: DeviceLayers {
+				layers: vec![TaggedDeviceKeyLayer {
+					layer: DeviceKeyLayer {
+						id: LAYER_ID2,
+						macros: vec![0],
+					},
+					tags: vec![LayerTag::new("test".to_string())],
+					match_type: TagMatchType::All,
+				}],
+				default_layer: DeviceKeyLayer {
+					id: LAYER_ID,
+					macros: vec![1],
 				},
-				tags: vec![LayerTag::new("test".to_string())],
-				match_type: TagMatchType::All,
-			}],
-			default_layer: DeviceKeyLayer {
-				id: LAYER_ID,
-				macros: vec![1],
 			},
 		};
 
@@ -906,17 +1055,19 @@ mod tests {
 
 		let device_key = DeviceKey {
 			id: KEY_ID,
-			layers: vec![TaggedDeviceKeyLayer {
-				layer: DeviceKeyLayer {
-					id: LAYER_ID2,
-					macros: vec![1],
+			layers: DeviceLayers {
+				layers: vec![TaggedDeviceKeyLayer {
+					layer: DeviceKeyLayer {
+						id: LAYER_ID2,
+						macros: vec![1],
+					},
+					tags: vec![LayerTag::new("test".to_string())],
+					match_type: TagMatchType::All,
+				}],
+				default_layer: DeviceKeyLayer {
+					id: LAYER_ID,
+					macros: vec![0],
 				},
-				tags: vec![LayerTag::new("test".to_string())],
-				match_type: TagMatchType::All,
-			}],
-			default_layer: DeviceKeyLayer {
-				id: LAYER_ID,
-				macros: vec![0],
 			},
 		};
 
@@ -931,16 +1082,22 @@ mod tests {
 	// ------- HELPERS --------
 
 	fn new_test_profile(keys: Vec<DeviceKey>, macros: Vec<Macro>) -> KeyboardProfile {
-		KeyboardProfile { keys, macros }
+		KeyboardProfile {
+			keys,
+			virtual_keys: vec![],
+			macros,
+		}
 	}
 
 	fn new_test_device_key(id: KeyId, macros: Vec<u32>) -> DeviceKey {
 		DeviceKey {
 			id,
-			layers: Vec::new(),
-			default_layer: DeviceKeyLayer {
-				id: LAYER_ID,
-				macros,
+			layers: DeviceLayers {
+				layers: Vec::new(),
+				default_layer: DeviceKeyLayer {
+					id: LAYER_ID,
+					macros,
+				},
 			},
 		}
 	}

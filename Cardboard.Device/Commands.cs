@@ -30,6 +30,8 @@ public interface ICommandStream : IDisposable
 	BinaryReader Reader { get; }
 
 	BinaryWriter Writer { get; }
+
+	void ClearReadBuffer();
 }
 
 [StronglyTypedId(Template.Int)]

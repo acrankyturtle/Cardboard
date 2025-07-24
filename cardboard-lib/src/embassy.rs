@@ -12,7 +12,7 @@ use embassy_sync::{blocking_mutex::raw::RawMutex, signal::Signal};
 use embassy_time::Timer;
 use embassy_usb::class::cdc_acm::{Receiver, Sender};
 
-use crate::context::ExternalTagsSignalRx;
+use crate::context::{ExternalTagsSignalRx, VirtualKeySignalTx};
 use crate::hid::{HidDevice, HidReport, ReportHid};
 use crate::profile::{ConsumerControlEvent, KeyboardEvent, MouseEvent};
 use crate::serial::{SerialPacketReader, SerialPacketSender};
@@ -48,27 +48,17 @@ impl<M: RawMutex> ExternalTagsSignalRx for Signal<M, Vec<LayerTag>> {
 	}
 }
 
-impl<M: RawMutex> ChangeProfileSignalTx for &'static Signal<M, KeyboardProfile> {
-	fn change_profile(&self, profile: KeyboardProfile) {
-		(*self).change_profile(profile);
+impl<M: RawMutex, const SIZE: usize> VirtualKeySignalTx<SIZE> for Signal<M, [u8; SIZE]> {
+	fn set_virtual_keys(&self, state: [u8; SIZE]) {
+		self.signal(state);
 	}
 }
 
-impl<M: RawMutex> ChangeProfileSignalRx for &'static Signal<M, KeyboardProfile> {
-	fn try_get_changed_profile(&self) -> Option<KeyboardProfile> {
-		(*self).try_get_changed_profile()
-	}
-}
-
-impl<M: RawMutex> ExternalTagsSignalTx for &'static Signal<M, Vec<LayerTag>> {
-	fn set_external_tags(&self, tags: Vec<LayerTag>) {
-		(*self).set_external_tags(tags);
-	}
-}
-
-impl<M: RawMutex> ExternalTagsSignalRx for &'static Signal<M, Vec<LayerTag>> {
-	fn try_get_external_tags(&self) -> Option<Vec<LayerTag>> {
-		(*self).try_get_external_tags()
+impl<M: RawMutex, const SIZE: usize> crate::context::VirtualKeySignalRx<SIZE>
+	for Signal<M, [u8; SIZE]>
+{
+	fn try_get_virtual_keys(&self) -> Option<[u8; SIZE]> {
+		self.try_take()
 	}
 }
 

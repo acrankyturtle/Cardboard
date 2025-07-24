@@ -13,6 +13,7 @@ use crate::state::TagList;
 #[derive(Serialize, Deserialize, Default)]
 pub struct KeyboardProfile {
 	pub keys: Vec<DeviceKey>,
+	pub virtual_keys: Vec<VirtualKey>,
 	pub macros: Vec<Macro>,
 }
 
@@ -30,11 +31,21 @@ impl KeyboardProfile {
 #[derive(Serialize, Deserialize)]
 pub struct DeviceKey {
 	pub id: KeyId,
+	pub layers: DeviceLayers,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct VirtualKey {
+	pub layers: DeviceLayers,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct DeviceLayers {
 	pub layers: Vec<TaggedDeviceKeyLayer>,
 	pub default_layer: DeviceKeyLayer,
 }
 
-impl DeviceKey {
+impl DeviceLayers {
 	pub fn get_active_layer(&self, tags: &TagList) -> &DeviceKeyLayer {
 		match self.layers.iter().find(|layer| layer.is_match(tags)) {
 			Some(layer) => &layer.layer,

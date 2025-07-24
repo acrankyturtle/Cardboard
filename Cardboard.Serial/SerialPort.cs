@@ -9,7 +9,10 @@ public interface ISerialPort : IAsyncDisposable
 {
 	string PortName { get; }
 
-	Task<Result<ICommandStream, Exception>> GetCommandStream(CancellationToken cancellationToken = default);
+	Task<Result<T, Exception>> With<T>(
+		Func<ICommandStream, Task<T>> action,
+		CancellationToken cancellationToken = default
+	);
 }
 
 public sealed class SystemSerialPort(string name, SerialPort serialPort) : ISerialPort
@@ -17,7 +20,6 @@ public sealed class SystemSerialPort(string name, SerialPort serialPort) : ISeri
 	private static readonly TimeSpan _timeOut = TimeSpan.FromSeconds(3);
 
 	private readonly SemaphoreSlim _lock = new(1, 1);
-	private bool _isDisposed;
 
 	public string PortName => name;
 
@@ -44,60 +46,21 @@ public sealed class SystemSerialPort(string name, SerialPort serialPort) : ISeri
 		return new SystemSerialPort(portName, serialPort);
 	}
 
-	public async Task<Result<ICommandStream, Exception>> GetCommandStream(
+	public async Task<Result<T, Exception>> With<T>(
+		Func<ICommandStream, Task<T>> action,
 		CancellationToken cancellationToken = default
 	)
 	{
-		await _lock.WaitAsync(_timeOut, cancellationToken);
-		return new SerialCommandStream(serialPort, _lock);
-	}
-
-	private class SerialCommandStream(SerialPort serialPort, SemaphoreSlim semaphore) : ICommandStream
-	{
-		private readonly BinaryReader _reader = new(serialPort.BaseStream, Encoding.UTF8, true);
-		private readonly BinaryWriter _writer = new(serialPort.BaseStream, Encoding.UTF8, true);
-
-		private bool _isDisposed;
-
-		public BinaryReader Reader =>
-			!_isDisposed ? _reader : throw new ObjectDisposedException(nameof(SerialCommandStream));
-
-		public BinaryWriter Writer =>
-			!_isDisposed ? _writer : throw new ObjectDisposedException(nameof(SerialCommandStream));
-
-		public void Dispose()
-		{
-			_reader.Dispose();
-			_writer.Dispose();
-
-			_isDisposed = true;
-			semaphore.Release();
-		}
-	}
-
-	private async Task<Result<T, Exception>> With<T>(
-		Func<BinaryReader, BinaryWriter, Task<Result<T, Exception>>> action,
-		bool clearReadBuffer,
-		CancellationToken cancellationToken = default
-	)
-	{
-		ObjectDisposedException.ThrowIf(_isDisposed, this);
-
-		using var linkedCts = GetTimeoutCts(ref cancellationToken);
-
-		await _lock.WaitAsync(cancellationToken);
+		var result = await GetCommandStream(cancellationToken);
 
 		try
 		{
-			if (clearReadBuffer)
-				serialPort.DiscardInBuffer();
-
-			using var reader = new BinaryReader(serialPort.BaseStream, Encoding.UTF8, true);
-			await using var writer = new BinaryWriter(serialPort.BaseStream, Encoding.UTF8, true);
+			if (!result.TryGetSuccess(out var commandStream))
+				return result.AssertError();
 
 			try
 			{
-				return await action(reader, writer);
+				return await action(commandStream);
 			}
 			catch (TimeoutException e)
 			{
@@ -114,12 +77,19 @@ public sealed class SystemSerialPort(string name, SerialPort serialPort) : ISeri
 		}
 	}
 
-	private static CancellationTokenSource GetTimeoutCts(ref CancellationToken cancellationToken)
+	private async Task<Result<ICommandStream, Exception>> GetCommandStream(
+		CancellationToken cancellationToken = default
+	)
 	{
-		var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-		cts.CancelAfter(_timeOut);
-		cancellationToken = cts.Token;
-		return cts;
+		try
+		{
+			await _lock.WaitAsync(_timeOut, cancellationToken);
+			return new SerialCommandStream(serialPort, _lock);
+		}
+		catch (Exception e)
+		{
+			return e;
+		}
 	}
 
 	public async ValueTask DisposeAsync()
@@ -128,6 +98,42 @@ public sealed class SystemSerialPort(string name, SerialPort serialPort) : ISeri
 
 		serialPort.Dispose();
 		_lock.Dispose();
-		_isDisposed = true;
+	}
+
+	private class SerialCommandStream(SerialPort serialPort, SemaphoreSlim semaphore) : ICommandStream
+	{
+		private readonly BinaryReader _reader = new(serialPort.BaseStream, Encoding.UTF8, true);
+		private readonly BinaryWriter _writer = new(serialPort.BaseStream, Encoding.UTF8, true);
+
+		private bool _isDisposed;
+
+		public BinaryReader Reader =>
+			!_isDisposed ? _reader : throw new ObjectDisposedException(nameof(SerialCommandStream));
+
+		public BinaryWriter Writer =>
+			!_isDisposed ? _writer : throw new ObjectDisposedException(nameof(SerialCommandStream));
+
+		public void ClearReadBuffer()
+		{
+			ObjectDisposedException.ThrowIf(_isDisposed, this);
+
+			serialPort.DiscardInBuffer();
+		}
+
+		public void Dispose()
+		{
+			_reader.Dispose();
+			_writer.Dispose();
+
+			_isDisposed = true;
+			semaphore.Release();
+		}
+	}
+
+	private static CancellationTokenSource GetTimeoutCts(CancellationToken cancellationToken)
+	{
+		var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+		cts.CancelAfter(_timeOut);
+		return cts;
 	}
 }

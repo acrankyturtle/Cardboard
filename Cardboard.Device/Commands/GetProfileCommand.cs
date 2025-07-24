@@ -18,7 +18,12 @@ public sealed class GetProfileCommand : ICommand<Unit, DeviceProfile>
 		var isValid = stream.Reader.ReadByte() == 0xFF;
 
 		if (!isValid)
-			return new() { Keys = [], Macros = [] };
+			return new()
+			{
+				Keys = [],
+				VirtualKeys = [],
+				Macros = [],
+			};
 
 		// extend our read timeout because it's normal to wait for a response when sending large profiles
 		var readTimeout = stream.Reader.BaseStream.ReadTimeout;

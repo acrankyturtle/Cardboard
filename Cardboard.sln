@@ -22,7 +22,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DeviceTool", "DeviceTool\De
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.Windows", "Cardboard.Windows\Cardboard.Windows.csproj", "{5468A113-425D-4BB3-B70B-B422DA18DEDA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.TagSwitcher", "Cardboard.TagSwitcher\Cardboard.TagSwitcher.csproj", "{98E6A8AE-D11C-4418-8893-65CECF6C5793}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.Services", "Cardboard.Services\Cardboard.Services.csproj", "{98E6A8AE-D11C-4418-8893-65CECF6C5793}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.Services.Windows", "Cardboard.Services.Windows\Cardboard.Services.Windows.csproj", "{A2C50FE5-CFC2-46CC-939C-62709748BA17}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.Utilities", "Cardboard.Utilities\Cardboard.Utilities.csproj", "{9648F090-26C3-4962-B991-D0330229AE95}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -78,6 +82,14 @@ Global
 		{98E6A8AE-D11C-4418-8893-65CECF6C5793}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{98E6A8AE-D11C-4418-8893-65CECF6C5793}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{98E6A8AE-D11C-4418-8893-65CECF6C5793}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A2C50FE5-CFC2-46CC-939C-62709748BA17}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A2C50FE5-CFC2-46CC-939C-62709748BA17}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A2C50FE5-CFC2-46CC-939C-62709748BA17}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A2C50FE5-CFC2-46CC-939C-62709748BA17}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9648F090-26C3-4962-B991-D0330229AE95}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9648F090-26C3-4962-B991-D0330229AE95}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9648F090-26C3-4962-B991-D0330229AE95}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9648F090-26C3-4962-B991-D0330229AE95}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 	EndGlobalSection
