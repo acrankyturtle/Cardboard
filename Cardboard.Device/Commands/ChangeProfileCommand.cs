@@ -8,12 +8,17 @@ public sealed class ChangeProfileCommand : ICommand<DeviceProfile, Unit>
 	private static readonly CommandId _id = CommandId.Parse("45963fd8-73e2-50a0-ba69-69c3333dd8af");
 	public CommandId Id => _id;
 
-	public Unit Execute(DeviceProfile input, ICommandStream stream, CancellationToken cancellationToken)
+	public Unit Execute(DeviceProfile input, ICommandStream stream)
 	{
 		var bytes = JsonSerializer.SerializeToUtf8Bytes(
 			JsonDeviceProfile.From(input),
 			DeviceJson.SerializerOptions
 		);
+
+		if (bytes.Length > ushort.MaxValue)
+			throw new InvalidOperationException(
+				$"Profile size {bytes.Length} exceeds maximum allowed size of {ushort.MaxValue} bytes."
+			);
 
 		stream.Writer.Write((ushort)bytes.Length);
 		stream.Writer.Write(bytes);
@@ -28,7 +33,7 @@ public sealed class ChangeProfileCommand : ICommand<DeviceProfile, Unit>
 			var ack = stream.Reader.ReadByte();
 			if (ack != 0xFF)
 				throw new InvalidOperationException(
-					$"Failed to change profile. Received `0x{ack:x}` instead of `0xFF`."
+					$"Failed to change profile. Received `0x{ack:x}` instead of expected `0xFF`."
 				);
 		}
 		finally

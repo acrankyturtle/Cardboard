@@ -129,11 +129,4 @@ public sealed class SystemSerialPort(string name, SerialPort serialPort) : ISeri
 			semaphore.Release();
 		}
 	}
-
-	private static CancellationTokenSource GetTimeoutCts(CancellationToken cancellationToken)
-	{
-		var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-		cts.CancelAfter(_timeOut);
-		return cts;
-	}
 }

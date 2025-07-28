@@ -6,8 +6,8 @@ namespace Cardboard.Events.Windows;
 
 public class WindowHook : IDisposable
 {
-	private WinEventDelegate? dele;
-	private IntPtr hookPtr;
+	private WinEventDelegate? _dele;
+	private IntPtr _hookPtr;
 
 	public event Action<ActiveApplicationInfo>? ActiveWindowChanged;
 
@@ -18,28 +18,28 @@ public class WindowHook : IDisposable
 
 		Unhook();
 
-		dele = WinEventProc;
-		hookPtr = SetWinEventHook(
+		_dele = WinEventProc;
+		_hookPtr = SetWinEventHook(
 			EVENT_SYSTEM_FOREGROUND,
 			EVENT_SYSTEM_FOREGROUND,
 			IntPtr.Zero,
-			dele,
+			_dele,
 			0,
 			0,
 			WINEVENT_OUTOFCONTEXT
 		);
 
-		if (hookPtr == IntPtr.Zero)
+		if (_hookPtr == IntPtr.Zero)
 			throw new Win32Exception(Marshal.GetLastWin32Error());
 	}
 
 	public void Unhook()
 	{
-		if (hookPtr == IntPtr.Zero)
+		if (_hookPtr == IntPtr.Zero)
 			return;
 
-		UnhookWinEvent(hookPtr);
-		hookPtr = IntPtr.Zero;
+		UnhookWinEvent(_hookPtr);
+		_hookPtr = IntPtr.Zero;
 	}
 
 	private void WinEventProc(
@@ -55,15 +55,11 @@ public class WindowHook : IDisposable
 		if (hWnd == IntPtr.Zero)
 			return;
 
-		var application = GetAppInfo(hWnd);
+		// fall back to getting current
+		var application = GetAppInfo(hWnd) ?? GetCurrent();
 
-		if (application == null)
-		{
-			// fall back to getting current
-			GetCurrent();
-		}
-
-		ActiveWindowChanged?.Invoke(application);
+		if (application != null)
+			ActiveWindowChanged?.Invoke(application);
 	}
 
 	public static ActiveApplicationInfo? GetCurrent() => GetAppInfo(GetForegroundWindow());
@@ -99,10 +95,10 @@ public class WindowHook : IDisposable
 	// from: https://stackoverflow.com/questions/3399819/access-denied-while-getting-process-path
 	private static string GetExecutablePath(int dwProcessId)
 	{
-		const uint QueryLimitedInformation = 0x00001000;
+		const uint queryLimitedInformation = 0x00001000;
 
 		StringBuilder buffer = new(1024);
-		var hprocess = OpenProcess(QueryLimitedInformation, false, dwProcessId);
+		var hprocess = OpenProcess(queryLimitedInformation, false, dwProcessId);
 
 		if (hprocess == IntPtr.Zero)
 			return string.Empty;

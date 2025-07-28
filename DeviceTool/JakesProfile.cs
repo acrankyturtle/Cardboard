@@ -2,12 +2,14 @@ using Cardboard.Device;
 
 namespace DeviceTool;
 
-public static class MyProfile
+public static class JakesProfile
 {
 	public static BuiltProfile Value { get; } = Build();
 
 	private static BuiltProfile Build()
 	{
+		var fnLayerTag = LayerTag.Parse("fn");
+
 		var escMacro = Utilities.BasicKeyMacro(MacroId.New(), "Esc", KeyboardKey.ESCAPE);
 		var oneMacro = Utilities.BasicKeyMacro(MacroId.New(), "1", KeyboardKey.ONE);
 		var twoMacro = Utilities.BasicKeyMacro(MacroId.New(), "2", KeyboardKey.TWO);
@@ -29,18 +31,13 @@ public static class MyProfile
 		var shiftMacro = Utilities.BasicKeyMacro(MacroId.New(), "Shift", KeyboardKey.LEFT_SHIFT);
 		var zMacro = Utilities.BasicKeyMacro(MacroId.New(), "Z", KeyboardKey.Z);
 		var xMacro = Utilities.BasicKeyMacro(MacroId.New(), "X", KeyboardKey.X);
-		var mMacro = Utilities.BasicKeyMacro(MacroId.New(), "M", KeyboardKey.M);
-		var vMacro = Utilities.BasicKeyMacro(MacroId.New(), "V", KeyboardKey.V);
+		var cMacro = Utilities.BasicKeyMacro(MacroId.New(), "C", KeyboardKey.C);
 		var bMacro = Utilities.BasicKeyMacro(MacroId.New(), "B", KeyboardKey.B);
+		var vMacro = Utilities.BasicKeyMacro(MacroId.New(), "V", KeyboardKey.V);
 		var ctrlMacro = Utilities.BasicKeyMacro(MacroId.New(), "Ctrl", KeyboardKey.LEFT_CONTROL);
-		var altMacro = Utilities.BasicKeyMacro(MacroId.New(), "Alt", KeyboardKey.LEFT_ALT);
 		var sixMacro = Utilities.BasicKeyMacro(MacroId.New(), "6", KeyboardKey.SIX);
+		var altMacro = Utilities.BasicKeyMacro(MacroId.New(), "Alt", KeyboardKey.LEFT_ALT);
 		var sevenMacro = Utilities.BasicKeyMacro(MacroId.New(), "7", KeyboardKey.SEVEN);
-		var spaceMacro = Utilities.BasicKeyMacro(MacroId.New(), "Space", KeyboardKey.SPACEBAR);
-
-		var fnLayerTag = LayerTag.Parse("fn");
-		var elderScrollsLayerTag = LayerTag.Parse("tes");
-
 		var fnMacro = new Macro
 		{
 			Id = MacroId.New(),
@@ -56,110 +53,7 @@ public static class MyProfile
 				Actions = [new() { ActionEvent = new() { Layer = new() { Clear = fnLayerTag } } }],
 			},
 		};
-
-		var recordLastMinuteMacro = new Macro
-		{
-			Id = MacroId.New(),
-			Name = "Record Last Minute",
-			CutChannels = [],
-			StartSequence = new()
-			{
-				Actions =
-				[
-					new() { ActionEvent = new() { Keyboard = new() { KeyDown = KeyboardKey.LEFT_ALT } } },
-					new() { ActionEvent = new() { Keyboard = new() { KeyDown = KeyboardKey.F10 } } },
-				],
-			},
-			LoopSequence = new() { Actions = [] },
-			EndSequence = new()
-			{
-				Actions =
-				[
-					new() { ActionEvent = new() { Keyboard = new() { KeyUp = KeyboardKey.LEFT_ALT } } },
-					new() { ActionEvent = new() { Keyboard = new() { KeyUp = KeyboardKey.F10 } } },
-				],
-			},
-		};
-
-		var rapidSpaceMacro = new Macro
-		{
-			Id = MacroId.New(),
-			Name = "Rapid Space",
-			CutChannels = [],
-			StartSequence = new()
-			{
-				Actions =
-				[
-					new() { ActionEvent = new() { Keyboard = new() { KeyDown = KeyboardKey.SPACEBAR } } },
-				],
-			},
-			LoopSequence = new()
-			{
-				Actions =
-				[
-					new()
-					{
-						PredelayMs = 50,
-						ActionEvent = new() { Keyboard = new() { KeyUp = KeyboardKey.SPACEBAR } },
-					},
-					new()
-					{
-						PredelayMs = 50,
-						ActionEvent = new() { Keyboard = new() { KeyDown = KeyboardKey.SPACEBAR } },
-					},
-				],
-			},
-			EndSequence = new()
-			{
-				Actions =
-				[
-					new()
-					{
-						PredelayMs = 50,
-						ActionEvent = new() { Keyboard = new() { KeyUp = KeyboardKey.SPACEBAR } },
-					},
-				],
-			},
-		};
-
-		// oblivion
-		var rapidFMacro = new Macro
-		{
-			Id = MacroId.New(),
-			Name = "Rapid F",
-			CutChannels = [],
-			StartSequence = new()
-			{
-				Actions = [new() { ActionEvent = new() { Keyboard = new() { KeyDown = KeyboardKey.F } } }],
-			},
-			LoopSequence = new()
-			{
-				Actions =
-				[
-					new()
-					{
-						PredelayMs = 10,
-						ActionEvent = new() { Keyboard = new() { KeyUp = KeyboardKey.F } },
-					},
-					new()
-					{
-						PredelayMs = 10,
-						ActionEvent = new() { Keyboard = new() { KeyDown = KeyboardKey.F } },
-					},
-				],
-			},
-			EndSequence = new()
-			{
-				Actions =
-				[
-					new()
-					{
-						PredelayMs = 10,
-						ActionEvent = new() { Keyboard = new() { KeyUp = KeyboardKey.F } },
-					},
-				],
-			},
-		};
+		var spaceMacro = Utilities.BasicKeyMacro(MacroId.New(), "Space", KeyboardKey.SPACEBAR);
 
 		Macro[] macros =
 		[
@@ -184,19 +78,15 @@ public static class MyProfile
 			shiftMacro,
 			zMacro,
 			xMacro,
-			mMacro,
-			vMacro,
+			cMacro,
 			bMacro,
+			vMacro,
 			ctrlMacro,
-			altMacro,
 			sixMacro,
+			altMacro,
 			sevenMacro,
-			spaceMacro,
 			fnMacro,
-			recordLastMinuteMacro,
-			// oblivion
-			rapidFMacro,
-			rapidSpaceMacro,
+			spaceMacro,
 		];
 
 		var keys = Ck130.Keys(
@@ -205,19 +95,7 @@ public static class MyProfile
 			Utilities.BasicKey(LayerId.New(), twoMacro),
 			Utilities.BasicKey(LayerId.New(), threeMacro),
 			Utilities.BasicKey(LayerId.New(), fourMacro),
-			new()
-			{
-				Layers =
-				[
-					new()
-					{
-						Layer = new() { Id = LayerId.New(), Macros = [recordLastMinuteMacro.Id] },
-						Tags = [fnLayerTag],
-						MatchType = TagMatchType.All,
-					},
-				],
-				DefaultLayer = new() { Id = LayerId.New(), Macros = [fiveMacro.Id] },
-			},
+			Utilities.BasicKey(LayerId.New(), fiveMacro),
 			Utilities.BasicKey(LayerId.New(), graveAccentMacro),
 			Utilities.BasicKey(LayerId.New(), qMacro),
 			Utilities.BasicKey(LayerId.New(), wMacro),
@@ -233,31 +111,19 @@ public static class MyProfile
 			Utilities.BasicKey(LayerId.New(), shiftMacro),
 			Utilities.BasicKey(LayerId.New(), zMacro),
 			Utilities.BasicKey(LayerId.New(), xMacro),
-			Utilities.BasicKey(LayerId.New(), mMacro),
-			new()
-			{
-				Layers =
-				[
-					new()
-					{
-						Tags = [elderScrollsLayerTag],
-						MatchType = TagMatchType.All,
-						Layer = new() { Id = LayerId.New(), Macros = [rapidFMacro.Id] },
-					},
-				],
-				DefaultLayer = new() { Id = LayerId.New(), Macros = [vMacro.Id] },
-			},
-			Utilities.BasicKey(LayerId.New(), fnMacro),
+			Utilities.BasicKey(LayerId.New(), cMacro),
+			Utilities.BasicKey(LayerId.New(), bMacro),
+			Utilities.BasicKey(LayerId.New(), vMacro),
 			Utilities.BasicKey(LayerId.New(), ctrlMacro),
-			Utilities.BasicKey(LayerId.New(), altMacro),
 			Utilities.BasicKey(LayerId.New(), sixMacro),
+			Utilities.BasicKey(LayerId.New(), altMacro),
 			Utilities.BasicKey(LayerId.New(), sevenMacro),
-			Utilities.BasicKey(LayerId.New(), rapidSpaceMacro),
+			Utilities.BasicKey(LayerId.New(), fnMacro),
 			Utilities.BasicKey(LayerId.New(), spaceMacro)
 		);
 
-		VirtualKey[] virtualKeys = [new() { Layers = Utilities.BasicKey(LayerId.New(), oneMacro) }];
+		VirtualKey[] virtualKeys = [];
 
-		return ProfileBuilder.Build("cranky", macros, keys, virtualKeys);
+		return ProfileBuilder.Build("jake", macros, keys, virtualKeys);
 	}
 }

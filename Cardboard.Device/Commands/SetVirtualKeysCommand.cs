@@ -10,11 +10,13 @@ public abstract class SetVirtualKeysCommand : ICommand<IReadOnlyCollection<bool>
 	public int NumberOfVirtualKeys => GetNumVirtualKeyBitfieldBytes * 8;
 	public abstract CommandId Id { get; }
 
-	public Unit Execute(
-		IReadOnlyCollection<bool> keyStates,
-		ICommandStream stream,
-		CancellationToken cancellationToken = default
-	)
+	private static readonly IReadOnlyCollection<SetVirtualKeysCommand> _instances =
+	[
+		new SetVirtualKeys8Command(),
+		new SetVirtualKeys32Command(),
+	];
+
+	public Unit Execute(IReadOnlyCollection<bool> keyStates, ICommandStream stream)
 	{
 		if (keyStates.Count != GetNumVirtualKeyBitfieldBytes * 8)
 			throw new ArgumentException(
@@ -29,25 +31,10 @@ public abstract class SetVirtualKeysCommand : ICommand<IReadOnlyCollection<bool>
 		return Unit.Value;
 	}
 
-	public static SetVirtualKeysCommand? CreateFor(DeviceInfo device)
-	{
-		// prefer cmd32, so exhaust check for that first before accepting cmd8 (in case both are supported)
-		var cmd8 = false;
-
-		foreach (var command in device.Commands)
-		{
-			if (command.Id == SetVirtualKeys32Command._Id)
-				return new SetVirtualKeys32Command();
-
-			if (command.Id == SetVirtualKeys8Command._Id)
-				cmd8 = true;
-		}
-
-		if (cmd8)
-			return new SetVirtualKeys8Command();
-
-		return null;
-	}
+	public static SetVirtualKeysCommand? CreateFor(DeviceInfo device) =>
+		_instances
+			.Where(instance => device.Commands.Any(cmdInfo => cmdInfo.Id == instance.Id))
+			.MaxBy(x => x.GetNumVirtualKeyBitfieldBytes);
 
 	private static void KeyStatesToBitSet(Span<byte> output, IReadOnlyCollection<bool> keyStates)
 	{
@@ -74,24 +61,18 @@ public abstract class SetVirtualKeysCommand : ICommand<IReadOnlyCollection<bool>
 		);
 	}
 
-	private static byte ReverseBits(byte b)
-	{
-		return (byte)(((((b * 0x0802LU) & 0x22110LU) | ((b * 0x8020LU) & 0x88440LU)) * 0x10101LU) >> 16);
-	}
+	private static byte ReverseBits(byte b) =>
+		(byte)(((((b * 0x0802LU) & 0x22110LU) | ((b * 0x8020LU) & 0x88440LU)) * 0x10101LU) >> 16);
 }
 
 public sealed class SetVirtualKeys8Command : SetVirtualKeysCommand
 {
-	internal static readonly CommandId _Id = CommandId.Parse("162d99cc-5e8f-5879-97fc-c37fdb0f22a9");
-	public override CommandId Id { get; } = _Id;
-
-	protected override int GetNumVirtualKeyBitfieldBytes => 4;
+	public override CommandId Id { get; } = CommandId.Parse("162d99cc-5e8f-5879-97fc-c37fdb0f22a9");
+	protected override int GetNumVirtualKeyBitfieldBytes => 1;
 }
 
 public sealed class SetVirtualKeys32Command : SetVirtualKeysCommand
 {
-	internal static readonly CommandId _Id = CommandId.Parse("c1b2d3e4-f5a6-7b8c-9d0e-f1a2b3c4d5e6");
-	public override CommandId Id { get; } = _Id;
-
+	public override CommandId Id { get; } = CommandId.Parse("c1b2d3e4-f5a6-7b8c-9d0e-f1a2b3c4d5e6");
 	protected override int GetNumVirtualKeyBitfieldBytes => 4;
 }

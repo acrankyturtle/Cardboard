@@ -1,4 +1,4 @@
-using System.Reactive.Subjects;
+using Cardboard.Utilities;
 using Cranky;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -22,7 +22,7 @@ public interface IDeviceService
 internal class DeviceService : IDeviceService, IDisposable
 {
 	private readonly IReadOnlyList<IDeviceProvider> _providers;
-	private readonly AsyncSubject<DevicesChangedEvent> _devicesChangedSubject = new();
+	private readonly AsyncDispatchSubject<DevicesChangedEvent> _devicesChangedSubject = new();
 	private readonly IReadOnlyCollection<IDisposable> _subscriptions;
 
 	public DeviceService(IEnumerable<IDeviceProvider> providers)

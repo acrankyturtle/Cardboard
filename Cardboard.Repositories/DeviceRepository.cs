@@ -1,6 +1,5 @@
 ﻿using System.Text.Json.Serialization;
 using Cardboard.Device;
-using Cranky;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -149,21 +148,20 @@ internal sealed class DeviceRepository(IDeviceService deviceService, ILogger<Dev
 				cancellationToken
 			)
 		)
-			.Select(
-				x =>
-					x.Result.Match<DeviceStatus?>(
-						x => x,
-						e =>
-						{
-							_logger.LogError(
-								e,
-								"Failed to get status for device {DeviceId}: {Message}",
-								deviceId,
-								e.Message
-							);
-							return null;
-						}
-					)
+			.Select(x =>
+				x.Result.Match<DeviceStatus?>(
+					x => x,
+					e =>
+					{
+						_logger.LogError(
+							e,
+							"Failed to get status for device {DeviceId}: {Message}",
+							deviceId,
+							e.Message
+						);
+						return null;
+					}
+				)
 			)
 			.SingleOrDefault();
 
@@ -176,14 +174,13 @@ internal sealed class DeviceRepository(IDeviceService deviceService, ILogger<Dev
 		CancellationToken cancellationToken = default
 	)
 	{
-		var results = await deviceService.SendCommand(
+		var result = await deviceService.SendCommand(
 			new GetProfileCommand(),
 			new(),
-			d => d.Id == deviceId,
+			deviceId,
 			cancellationToken
 		);
-
-		return results.Count > 0 ? results.Single().Result.Match<DeviceProfile?>(p => p, _ => null) : null;
+		return result.Match<DeviceProfile?>(p => p, _ => null);
 	}
 
 	public async Task<UpdateDeviceProfileResult> UpdateDeviceProfile(
@@ -196,38 +193,33 @@ internal sealed class DeviceRepository(IDeviceService deviceService, ILogger<Dev
 		if (previous is null)
 			return UpdateDeviceProfileResult.NotFound;
 
-		var results = await deviceService.SendCommand(
+		var result = await deviceService.SendCommand(
 			new ChangeProfileCommand(),
 			deviceProfile,
+			deviceId,
+			cancellationToken
+		);
+
+		if (result.IsSuccess)
+			return UpdateDeviceProfileResult.Success;
+
+		// try to restore the previous profile
+		var restoreResults = await deviceService.SendCommand(
+			new ChangeProfileCommand(),
+			previous,
 			d => d.Id == deviceId,
 			cancellationToken
 		);
 
-		if (results.Count < 1)
-			return UpdateDeviceProfileResult.NotFound;
-
-		if (!results.Single().Result.IsSuccess)
+		if (restoreResults.Count == 0 || !restoreResults.Single().Result.IsSuccess)
 		{
-			// try to restore the previous profile
-			var restoreResults = await deviceService.SendCommand(
-				new ChangeProfileCommand(),
-				previous,
-				d => d.Id == deviceId,
-				cancellationToken
+			_logger.LogWarning(
+				"Failed to restore device profile for {DeviceId} after failed update",
+				deviceId
 			);
-
-			if (restoreResults.Count == 0 || !restoreResults.Single().Result.IsSuccess)
-			{
-				_logger.LogWarning(
-					"Failed to restore device profile for {DeviceId} after failed update",
-					deviceId
-				);
-			}
-
-			return UpdateDeviceProfileResult.DeviceError;
 		}
 
-		return UpdateDeviceProfileResult.Success;
+		return UpdateDeviceProfileResult.DeviceError;
 	}
 
 	public async Task<bool> EnterBootloader(DeviceId deviceId, CancellationToken cancellationToken = default)
@@ -268,6 +260,7 @@ internal sealed class DeviceRepository(IDeviceService deviceService, ILogger<Dev
 			KeyMap = [],
 		};
 
+	// todo: don't hard code
 	private readonly IReadOnlyCollection<DeviceTypeInfo> _metadata = new List<DeviceTypeInfo>
 	{
 		new()

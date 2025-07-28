@@ -50,7 +50,7 @@ impl Format for CommandId {
 pub struct DeviceInfo {
 	pub id: DeviceId,
 	pub name: &'static str,
-	pub r#type: DeviceTypeId,
 	pub manufacturer: &'static str,
+	pub r#type: DeviceTypeId,
 	pub commands: Vec<CommandInfo>,
 }

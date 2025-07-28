@@ -3,7 +3,7 @@ using Microsoft.Extensions.Hosting;
 
 namespace Cardboard.Services;
 
-public interface IInitialize
+public interface IInitializable
 {
 	Task Initialize();
 
@@ -17,16 +17,16 @@ public interface IReinitializer
 
 file class InitializationProvider(IServiceProvider serviceProvider, IServiceCollection serviceCollection)
 {
-	public IEnumerable<IInitialize> Initializations { get; } =
+	public IEnumerable<IInitializable> Initializations { get; } =
 		GetInitializations(serviceProvider, serviceCollection);
 
-	private static IReadOnlyCollection<IInitialize> GetInitializations(
+	private static IReadOnlyCollection<IInitializable> GetInitializations(
 		IServiceProvider serviceProvider,
 		IServiceCollection serviceCollection
 	) =>
 		serviceCollection
-			.Where(d => d.ImplementationType?.IsAssignableTo(typeof(IInitialize)) ?? false)
-			.SelectMany(d => serviceProvider.GetServices(d.ServiceType).OfType<IInitialize>())
+			.Where(d => d.ImplementationType?.IsAssignableTo(typeof(IInitializable)) ?? false)
+			.SelectMany(d => serviceProvider.GetServices(d.ServiceType).OfType<IInitializable>())
 			.ToList();
 }
 

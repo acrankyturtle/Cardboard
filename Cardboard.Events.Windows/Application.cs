@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Cardboard.Events.Windows;
 
-internal sealed class Application : IApplicationEventService, IInitialize, IDisposable
+internal sealed class Application : IApplicationEventService, IInitializable, IDisposable
 {
 	private readonly WindowHook _windowHook;
 

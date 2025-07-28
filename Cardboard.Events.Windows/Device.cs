@@ -27,6 +27,10 @@
 // 	{
 // 		var oldItems = _devices;
 // 		var newItems = _deviceFinder.GetDevices();
+//
+// 		var added = newItems
+// 			.Where(newItem => oldItems.All(oldItem => oldItem.ComPort != newItem.ComPort))
+// 			.Select(newItem => new DeviceAddedEvent(newItem));
 // 	}
 //
 // 	public void Dispose()

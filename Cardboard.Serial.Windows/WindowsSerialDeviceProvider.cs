@@ -166,7 +166,7 @@ public class WindowsSerialDeviceProvider : IDeviceProvider, IDisposable
 										commandStream.Writer.Write((byte)commandIndex.Value);
 										commandStream.Writer.Flush();
 
-										var result = command.Execute(input, commandStream, cancellationToken);
+										var result = command.Execute(input, commandStream);
 
 #if DEBUG
 										stopwatch.Stop();

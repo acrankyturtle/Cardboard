@@ -75,7 +75,7 @@ public class LazyObservable<T> : IObservable<T>, IDisposable
 		}
 		catch
 		{
-			// If initialization fails, we should still allow retry on next subscription
+			// if initialization fails, we should still allow retry on next subscription
 			_isInitialized = false;
 			throw;
 		}

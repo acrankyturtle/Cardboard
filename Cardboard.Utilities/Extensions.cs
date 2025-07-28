@@ -10,11 +10,11 @@ public static class EventExtensions
 		return source.Select(e => Observable.Defer(() => onNext(e).ToObservable())).Concat().Subscribe();
 	}
 
-	public static IObservable<TOut> SelectAsync<TIn, TOut>(
-		this IObservable<TIn> source,
-		Func<TIn, Task<TOut>> selector
-	)
-	{
-		return source.Select(e => Observable.Defer(() => selector(e).ToObservable())).Concat();
-	}
+	// public static IObservable<TOut> SelectAsync<TIn, TOut>(
+	// 	this IObservable<TIn> source,
+	// 	Func<TIn, Task<TOut>> selector
+	// )
+	// {
+	// 	return source.Select(e => Observable.Defer(() => selector(e).ToObservable())).Concat();
+	// }
 }

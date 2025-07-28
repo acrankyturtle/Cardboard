@@ -8,11 +8,7 @@ public sealed class GetProfileCommand : ICommand<Unit, DeviceProfile>
 	private static readonly CommandId _id = CommandId.Parse("e8dfdb54-f01c-5f79-9bb7-7d8d0c0c82d1");
 	public CommandId Id => _id;
 
-	public DeviceProfile Execute(
-		Unit input,
-		ICommandStream stream,
-		CancellationToken cancellationToken = default
-	)
+	public DeviceProfile Execute(Unit input, ICommandStream stream)
 	{
 		// check if profile is valid
 		var isValid = stream.Reader.ReadByte() == 0xFF;

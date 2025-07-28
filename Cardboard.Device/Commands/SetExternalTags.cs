@@ -8,21 +8,21 @@ public sealed class SetExternalTags : ICommand<IReadOnlyCollection<LayerTag>, Un
 	private static readonly CommandId _id = CommandId.Parse("6d84630b-03ec-57f7-806e-b1c5dee4974d");
 	public CommandId Id => _id;
 
-	public Unit Execute(
-		IReadOnlyCollection<LayerTag> input,
-		ICommandStream stream,
-		CancellationToken cancellationToken = default
-	)
+	public Unit Execute(IReadOnlyCollection<LayerTag> input, ICommandStream stream)
 	{
-		if (input.Any(x => Encoding.UTF8.GetByteCount(x.Value) > 255))
-			throw new ArgumentException("Tag value is too long.", nameof(input));
+		if (input.Count > byte.MaxValue)
+			throw new ArgumentException($"Too many tags. Maximum is {byte.MaxValue}.", nameof(input));
 
 		stream.Writer.Write((byte)input.Count);
 		foreach (var tag in input)
 		{
-			var ut8 = Encoding.UTF8.GetBytes(tag.Value);
-			stream.Writer.Write((byte)ut8.Length);
-			stream.Writer.Write(ut8);
+			var utf8 = Encoding.UTF8.GetBytes(tag.Value);
+
+			if (utf8.Length > byte.MaxValue)
+				throw new ArgumentException($"Tag value '{tag.Value}' is too long.", nameof(input));
+
+			stream.Writer.Write((byte)utf8.Length);
+			stream.Writer.Write(utf8);
 		}
 
 		var ack = stream.Reader.ReadByte();

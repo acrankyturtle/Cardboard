@@ -1,5 +1,3 @@
-using System.Text.Json;
-using Cranky;
 using StronglyTypedIds;
 
 namespace Cardboard.Device;
@@ -8,21 +6,17 @@ public interface ICommand<in TIn, out TOut>
 {
 	CommandId Id { get; }
 
-	TOut Execute(TIn input, ICommandStream stream, CancellationToken cancellationToken = default);
+	TOut Execute(TIn input, ICommandStream stream);
 }
 
 public static class Command
 {
-	public static CommandIndex? GetCommandIndex(DeviceInfo deviceInfo, CommandId commandId)
-	{
-		for (var i = 0; i < deviceInfo.Commands.Count; i++)
-		{
-			if (deviceInfo.Commands[i].Id == commandId)
-				return new CommandIndex(i);
-		}
-
-		return null;
-	}
+	public static CommandIndex? GetCommandIndex(DeviceInfo deviceInfo, CommandId commandId) =>
+		deviceInfo
+			.Commands.Select((c, i) => (c, i))
+			.Where(x => x.c.Id == commandId)
+			.Select(x => new CommandIndex(x.i))
+			.SingleOrDefault();
 }
 
 public interface ICommandStream : IDisposable
