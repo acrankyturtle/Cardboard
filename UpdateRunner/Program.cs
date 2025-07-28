@@ -15,7 +15,7 @@ var firmware = new DeviceFirmware
 	Version = 0,
 	Firmware = firmwareBytes,
 };
-var options = new UpdateOptions() { FlashOnly = true };
+var options = new UpdateOptions { FlashOnly = true };
 
 var builder = Host.CreateApplicationBuilder(args);
 

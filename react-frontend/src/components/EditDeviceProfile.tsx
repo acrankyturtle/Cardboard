@@ -1,11 +1,11 @@
 import clsx from "clsx";
 import { Button } from "./Button.tsx";
 import { ListBox, ListBoxItem } from "./ListBox.tsx";
-import { ReactNode, useMemo, useState } from "react";
+import { ReactNode, useMemo, useReducer, useState } from "react";
 import { useDeviceDetails, useDeviceProfile } from "../api/devices.ts";
 import { KeyRenderer } from "./KeyRenderer.tsx";
 import { Description, Field, Fieldset, Label } from "@headlessui/react";
-import { Select, Select, SelectOption } from "./SelectBox.tsx";
+import { Select, SelectOption } from "./SelectBox.tsx";
 import {
   CardboardDialog,
   DialogBody,
@@ -18,6 +18,9 @@ import {
   DialogHeaderDescription,
   DialogHeaderTitle,
 } from "./Dialog.tsx";
+import { LayerEditor } from "./LayerEditor.tsx";
+import { useEdit } from "../hooks/useEdit.ts";
+import { LayerModel } from "../lib/profileContext.ts";
 
 export function EditDeviceProfile({
   className,
@@ -43,21 +46,11 @@ export function EditDeviceProfile({
     error,
   } = useDeviceDetails(deviceId);
 
-  const { deviceProfile } = useDeviceProfile(deviceId);
+  const { deviceProfile: originalDeviceProfile } = useDeviceProfile(deviceId);
 
-  const { keyList, keyItemList } = useMemo(() => {
-    const keyList = deviceDetails?.keyMap ?? [];
-    const keyItemList = keyList.map((k): ListBoxItem => {
-      return {
-        label: k.name,
-        value: k.keyId,
-      };
-    });
-    return {
-      keyList: keyList,
-      keyItemList: keyItemList,
-    };
-  }, [deviceDetails]);
+  const [deviceProfile, setDeviceProfile] = useEdit(originalDeviceProfile);
+
+  let context = use;
 
   const selectedKey = useMemo(
     () => deviceProfile?.keys.find((k) => k.id === selectedKeyItem?.value),
@@ -80,19 +73,8 @@ export function EditDeviceProfile({
       : [];
   }, [selectedKeyItem]);
 
-  const macroList = useMemo(
-    () =>
-      deviceProfile.macros.map((m) => {
-        return {
-          label: m.name,
-          value: m.id,
-        };
-      }),
-    [deviceProfile],
-  );
-
-  const [editLayer, setEditLayer] = useState<"" | string | null>(null);
-  const layerToEdit = useMemo(
+  const [editLayer, setEditLayer] = useState<string | 0 | null>(null);
+  const layerToEdit: LayerModel = useMemo(
     () =>
       editLayer !== null
         ? editLayer === ""
@@ -107,7 +89,6 @@ export function EditDeviceProfile({
       <div className="grid w-80 grid-rows-2 divide-y-2 divide-stone-950 bg-stone-800">
         <KeysPanel
           className="grow"
-          keys={keyItemList}
           selected={selectedKeyItem}
           setSelected={(k) => {
             setSelectedKeyItem(k);
@@ -123,11 +104,10 @@ export function EditDeviceProfile({
       </div>
       <MacrosPanel
         className="w-96"
-        macros={macroList}
         selected={selectedMacroItem}
         setSelected={setSelectedMacroItem}
       />
-      <KeyRenderer className="p-1" keys={keyList} keyClassName={"bg-red-300"} />
+      <KeyRenderer className="p-1" keyClassName={"bg-red-300"} />
       <div className="fixed right-0 bottom-0 flex gap-2 p-3">
         <Button
           className="min-w-18 px-3"
@@ -160,16 +140,7 @@ export function EditDeviceProfile({
         </DialogHeader>
         <DialogDivider />
         <DialogBody>
-          <Fieldset className="w-96 space-y-8">
-            <Field className="flex flex-col gap-1">
-              <Label>Macro</Label>
-              <Select autoFocus>
-                <SelectOption>Test Macro 1</SelectOption>
-                <SelectOption>Test Macro 2</SelectOption>
-                <SelectOption>Test Macro 3</SelectOption>
-              </Select>
-            </Field>
-          </Fieldset>
+          <LayerEditor id={layerToEdit.layerId} />
         </DialogBody>
         <DialogFooter>
           <DialogFooterButtons>
@@ -343,7 +314,7 @@ function MacrosPanel({
   setSelected: (item: ListBoxItem) => void;
 }) {
   return (
-    <div className={clsx("bg-stone-800", className)}>
+    <div className={clsx("overflow-y-auto bg-stone-800", className)}>
       <HeaderBar>
         <div className="size-5">
           <MacroIcon />

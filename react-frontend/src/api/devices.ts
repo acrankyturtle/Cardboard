@@ -79,24 +79,25 @@ export interface KeyInfo {
   size: { width: number; height: number };
 }
 
+// todo: probably move profile stuff to lib folder
 export interface DeviceProfile {
   keys: readonly DeviceKey[];
   macros: readonly DeviceMacro[];
 }
 
-interface DeviceKey {
+export interface DeviceKey {
   id: string;
   layers?: readonly TaggedDeviceLayer[];
   defaultLayer: DeviceKeyLayer;
 }
 
-interface TaggedDeviceLayer {
+export interface TaggedDeviceLayer {
   layer: DeviceKeyLayer;
   tags: readonly string[];
   matchType: TagMatchType;
 }
 
-interface DeviceKeyLayer {
+export interface DeviceKeyLayer {
   id: string;
   macros: readonly string[];
 }
@@ -106,7 +107,7 @@ enum TagMatchType {
   Any = "Any",
 }
 
-interface DeviceMacro {
+export interface DeviceMacro {
   id: string;
   name: string;
   playChannel: string;
