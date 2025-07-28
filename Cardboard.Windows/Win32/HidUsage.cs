@@ -1,6 +1,6 @@
 ﻿namespace Cardboard.Windows;
 
-public enum HidUsage : ushort
+internal enum HidUsage : ushort
 {
 	Undefined = 0x00, // Unknown usage
 	Pointer = 0x01, // Pointer

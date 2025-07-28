@@ -1,11 +1,10 @@
 // using System.Reactive.Subjects;
 // using Cardboard.Device;
-// using Cardboard.Serial.Windows;
 // using Microsoft.Extensions.DependencyInjection;
 //
-// namespace Cardboard.Events.Windows;
+// namespace Cardboard.Windows;
 //
-// internal sealed class Device : IDeviceEventService, IDisposable
+// internal sealed class DeviceEventService : IDeviceEventService, IDisposable
 // {
 // 	private readonly IWindowsSerialDeviceFinder _deviceFinder;
 // 	private readonly Subject<DeviceAddedEvent> _deviceAddedSubject = new();
@@ -17,7 +16,7 @@
 // 	private readonly IReadOnlyCollection<(DeviceInfo DeviceInfo, string ComPort)> _devices = [];
 // 	private readonly IDisposable _deviceSubscription;
 //
-// 	public Device(IWindowsSerialDeviceFinder deviceFinder)
+// 	public DeviceEventService(IWindowsSerialDeviceFinder deviceFinder)
 // 	{
 // 		_deviceFinder = deviceFinder;
 // 		_deviceSubscription = deviceFinder.OnMaybeDevicesUpdated.Subscribe(_ => OnUpdate());
@@ -37,10 +36,4 @@
 // 	{
 // 		_deviceSubscription.Dispose();
 // 	}
-// }
-//
-// partial class Services
-// {
-// 	private static IServiceCollection AddDeviceEvents(this IServiceCollection services) =>
-// 		services.AddSingleton<IDeviceEventService, Device>();
 // }

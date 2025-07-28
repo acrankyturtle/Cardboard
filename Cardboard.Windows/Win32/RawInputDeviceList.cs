@@ -3,7 +3,7 @@
 namespace Cardboard.Windows;
 
 [StructLayout(LayoutKind.Sequential)]
-public struct RawInputDeviceList
+internal struct RawInputDeviceList
 {
 	public IntPtr hDevice;
 	public uint dwType;

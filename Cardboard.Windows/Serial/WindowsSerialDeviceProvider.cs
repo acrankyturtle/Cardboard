@@ -2,14 +2,14 @@
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using Cardboard.Device;
+using Cardboard.Serial;
 using Cranky;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using IDeviceProvider = Cardboard.Device.IDeviceProvider;
 
-namespace Cardboard.Serial.Windows;
+namespace Cardboard.Windows;
 
-public class WindowsSerialDeviceProvider : IDeviceProvider, IDisposable
+internal class WindowsSerialDeviceProvider : IDeviceProvider, IDisposable
 {
 	private List<(DeviceInfo DeviceInfo, ISerialPort SerialPort)> _ports = [];
 
@@ -210,10 +210,4 @@ public class WindowsSerialDeviceProvider : IDeviceProvider, IDisposable
 		GC.SuppressFinalize(this);
 		_deviceSubscription.Dispose();
 	}
-}
-
-partial class Services
-{
-	private static IServiceCollection AddWindowsSerialDeviceProvider(this IServiceCollection services) =>
-		services.AddSingleton<IDeviceProvider, WindowsSerialDeviceProvider>();
 }

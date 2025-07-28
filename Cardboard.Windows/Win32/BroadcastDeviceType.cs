@@ -1,6 +1,6 @@
 ﻿namespace Cardboard.Windows;
 
-public enum BroadcastDeviceType
+internal enum BroadcastDeviceType
 {
 	DBT_DEVTYP_OEM = 0,
 	DBT_DEVTYP_DEVNODE = 1,

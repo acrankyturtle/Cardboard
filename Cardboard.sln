@@ -6,8 +6,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.Serial", "Cardboa
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.Configuration", "Cardboard.Configuration\Cardboard.Configuration.csproj", "{7B7340BF-6036-421C-9567-F311216F5012}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.Serial.Windows", "Cardboard.Serial.Windows\Cardboard.Serial.Windows.csproj", "{0A17D1BA-44A1-4E40-9345-E802CD39411E}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.Controller", "Cardboard.Controller\Cardboard.Controller.csproj", "{4C7543F1-874D-4A11-AA94-486B8E41EC8C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.HttpApi", "Cardboard.HttpApi\Cardboard.HttpApi.csproj", "{B29B2043-7C59-4416-A0AA-0E46EF783BDA}"
@@ -16,15 +14,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.Repositories", "C
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.Events", "Cardboard.Events\Cardboard.Events.csproj", "{8401CCA7-D29C-49A4-8CA7-7262D932D494}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.Events.Windows", "Cardboard.Events.Windows\Cardboard.Events.Windows.csproj", "{FDB17A2B-D392-466D-8FEA-80088CA43F75}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DeviceTool", "DeviceTool\DeviceTool.csproj", "{292E8728-244E-4EB0-BDE9-EFF5F3764032}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.Windows", "Cardboard.Windows\Cardboard.Windows.csproj", "{5468A113-425D-4BB3-B70B-B422DA18DEDA}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.Services", "Cardboard.Services\Cardboard.Services.csproj", "{98E6A8AE-D11C-4418-8893-65CECF6C5793}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.Services.Windows", "Cardboard.Services.Windows\Cardboard.Services.Windows.csproj", "{A2C50FE5-CFC2-46CC-939C-62709748BA17}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.Utilities", "Cardboard.Utilities\Cardboard.Utilities.csproj", "{9648F090-26C3-4962-B991-D0330229AE95}"
 EndProject
@@ -50,10 +44,6 @@ Global
 		{7B7340BF-6036-421C-9567-F311216F5012}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7B7340BF-6036-421C-9567-F311216F5012}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7B7340BF-6036-421C-9567-F311216F5012}.Release|Any CPU.Build.0 = Release|Any CPU
-		{0A17D1BA-44A1-4E40-9345-E802CD39411E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{0A17D1BA-44A1-4E40-9345-E802CD39411E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{0A17D1BA-44A1-4E40-9345-E802CD39411E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{0A17D1BA-44A1-4E40-9345-E802CD39411E}.Release|Any CPU.Build.0 = Release|Any CPU
 		{4C7543F1-874D-4A11-AA94-486B8E41EC8C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{4C7543F1-874D-4A11-AA94-486B8E41EC8C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4C7543F1-874D-4A11-AA94-486B8E41EC8C}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -70,10 +60,6 @@ Global
 		{8401CCA7-D29C-49A4-8CA7-7262D932D494}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8401CCA7-D29C-49A4-8CA7-7262D932D494}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8401CCA7-D29C-49A4-8CA7-7262D932D494}.Release|Any CPU.Build.0 = Release|Any CPU
-		{FDB17A2B-D392-466D-8FEA-80088CA43F75}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{FDB17A2B-D392-466D-8FEA-80088CA43F75}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{FDB17A2B-D392-466D-8FEA-80088CA43F75}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{FDB17A2B-D392-466D-8FEA-80088CA43F75}.Release|Any CPU.Build.0 = Release|Any CPU
 		{292E8728-244E-4EB0-BDE9-EFF5F3764032}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{292E8728-244E-4EB0-BDE9-EFF5F3764032}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{292E8728-244E-4EB0-BDE9-EFF5F3764032}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -86,10 +72,6 @@ Global
 		{98E6A8AE-D11C-4418-8893-65CECF6C5793}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{98E6A8AE-D11C-4418-8893-65CECF6C5793}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{98E6A8AE-D11C-4418-8893-65CECF6C5793}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A2C50FE5-CFC2-46CC-939C-62709748BA17}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A2C50FE5-CFC2-46CC-939C-62709748BA17}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A2C50FE5-CFC2-46CC-939C-62709748BA17}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A2C50FE5-CFC2-46CC-939C-62709748BA17}.Release|Any CPU.Build.0 = Release|Any CPU
 		{9648F090-26C3-4962-B991-D0330229AE95}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{9648F090-26C3-4962-B991-D0330229AE95}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9648F090-26C3-4962-B991-D0330229AE95}.Release|Any CPU.ActiveCfg = Release|Any CPU

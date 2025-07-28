@@ -1,5 +1,4 @@
 ﻿using Cardboard.Device;
-using Cardboard.Serial.Windows;
 using Cardboard.Update;
 using Cardboard.Windows;
 using Microsoft.Extensions.DependencyInjection;

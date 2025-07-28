@@ -4,7 +4,7 @@
 /// Enumeration containing the button data for raw mouse input.
 /// </summary>
 [Flags]
-public enum RawMouseButtons : ushort
+internal enum RawMouseButtons : ushort
 {
 	/// <summary>No button.</summary>
 	None = 0,
@@ -40,5 +40,5 @@ public enum RawMouseButtons : ushort
 	Button5Up = 0x0200,
 
 	/// <summary>Mouse wheel moved.</summary>
-	MouseWheel = 0x0400
+	MouseWheel = 0x0400,
 }

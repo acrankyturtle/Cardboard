@@ -3,7 +3,7 @@
 namespace Cardboard.Windows;
 
 [StructLayout(LayoutKind.Sequential)]
-public struct BroadcastDeviceInterface
+internal struct BroadcastDeviceInterface
 {
 	public int DbccSize;
 	public BroadcastDeviceType BroadcastDeviceType;

@@ -3,7 +3,7 @@
 namespace Cardboard.Windows;
 
 [StructLayout(LayoutKind.Sequential)]
-public struct RawHID
+internal struct RawHID
 {
 	public uint dwSizHid;
 	public uint dwCount;

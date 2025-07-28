@@ -1,11 +1,10 @@
-﻿using Cardboard.Services;
+﻿using Cardboard.Events;
+using Cardboard.Services;
 using Cardboard.Utilities;
-using Cardboard.Windows;
-using Microsoft.Extensions.DependencyInjection;
 
-namespace Cardboard.Events.Windows;
+namespace Cardboard.Windows;
 
-internal sealed class Application : IApplicationEventService, IInitializable, IDisposable
+internal sealed class ApplicationEventService : IApplicationEventService, IInitializable, IDisposable
 {
 	private readonly WindowHook _windowHook;
 
@@ -14,7 +13,7 @@ internal sealed class Application : IApplicationEventService, IInitializable, ID
 
 	public IObservable<ApplicationChangedEvent> OnApplicationChanged { get; }
 
-	public Application(IWindowsService windowsService)
+	public ApplicationEventService(IWindowsService windowsService)
 	{
 		// hook needs to be enabled on the form thread
 		_windowHook = windowsService.Invoke(_ =>
@@ -52,10 +51,4 @@ internal sealed class Application : IApplicationEventService, IInitializable, ID
 		_lazy.Dispose();
 		_applicationChangedSubject.Dispose();
 	}
-}
-
-partial class Services
-{
-	private static IServiceCollection AddApplicationEvents(this IServiceCollection services) =>
-		services.AddSingleton<IApplicationEventService, Application>();
 }

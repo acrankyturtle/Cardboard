@@ -2,24 +2,14 @@ using System.ComponentModel;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Runtime.InteropServices;
-using System.Windows.Forms;
+using Cardboard.Events;
 using Cardboard.Repositories;
 using Cardboard.Utilities;
-using Cardboard.Windows;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Cardboard.Events.Windows;
+namespace Cardboard.Windows;
 
 // NOTE: this is mostly ported from the original keypad project. it probably needs rewritten
-
-partial class Services
-{
-	private static IServiceCollection AddInputEvents(this IServiceCollection services)
-	{
-		return services.AddSingleton<IInputEventService, InputEventService>();
-	}
-}
 
 internal class InputEventService : IInputEventService, IDisposable
 {

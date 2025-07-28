@@ -1,13 +1,10 @@
-using System.Drawing;
 using System.Drawing.Drawing2D;
-using System.Windows.Forms;
 using Cardboard.Events;
 using Cardboard.Repositories;
-using Cardboard.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace Cardboard.Services.Windows;
+namespace Cardboard.Windows;
 
 partial class Services
 {

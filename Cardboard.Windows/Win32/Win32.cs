@@ -3,7 +3,7 @@ using Microsoft.Win32;
 
 namespace Cardboard.Windows;
 
-public static class Win32
+internal static class Win32
 {
 	public static int LoWord(int dwValue)
 	{
@@ -163,15 +163,8 @@ public static class Win32
 		var subClassCode = split[1]; // PNP0303 (SubClass code)
 		var protocolCode = split[2]; // 3&13c0b0c5&0 (Protocol code)
 
-		return Registry
-			.LocalMachine
-			.OpenSubKey(
-				string.Format(
-					@"System\CurrentControlSet\Enum\{0}\{1}\{2}",
-					classCode,
-					subClassCode,
-					protocolCode
-				)
-			);
+		return Registry.LocalMachine.OpenSubKey(
+			string.Format(@"System\CurrentControlSet\Enum\{0}\{1}\{2}", classCode, subClassCode, protocolCode)
+		);
 	}
 }

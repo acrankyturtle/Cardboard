@@ -1,11 +1,9 @@
 using System.Management;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using Cardboard.Windows;
 using Cranky;
-using Microsoft.Extensions.DependencyInjection;
 
-namespace Cardboard.Serial.Windows;
+namespace Cardboard.Windows;
 
 public interface IWindowsSerialDeviceFinder
 {
@@ -16,7 +14,7 @@ public interface IWindowsSerialDeviceFinder
 
 internal class WindowsSerialDeviceFinder : IWindowsSerialDeviceFinder, IDisposable
 {
-	private static readonly IReadOnlyCollection<UsbDeviceQuery> _devices = [new("F055", "6969"),];
+	private static readonly IReadOnlyCollection<UsbDeviceQuery> _devices = [new("F055", "6969")];
 
 	private readonly Subject<Unit> _devicesUpdatedSubject = new();
 	private readonly IDisposable _subscription;
@@ -30,8 +28,7 @@ internal class WindowsSerialDeviceFinder : IWindowsSerialDeviceFinder, IDisposab
 	public WindowsSerialDeviceFinder(IWindowsService windowsService)
 	{
 		_subscription = windowsService
-			.OnMessage
-			.Where(x => x.Msg == WM_DEVICECHANGE)
+			.OnMessage.Where(x => x.Msg == WM_DEVICECHANGE)
 			.Subscribe(_ =>
 			{
 				UpdateDevices();
@@ -258,10 +255,4 @@ internal static class ComPortFinder
 public class WindowsSerialDeviceFinderOptions
 {
 	public IEnumerable<UsbDeviceQuery> Devices { get; set; } = [];
-}
-
-partial class Services
-{
-	private static IServiceCollection AddWindowsSerialDeviceFinder(this IServiceCollection services) =>
-		services.AddSingleton<IWindowsSerialDeviceFinder, WindowsSerialDeviceFinder>();
 }

@@ -2,9 +2,9 @@ using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace Cardboard.Events.Windows;
+namespace Cardboard.Windows;
 
-public class WindowHook : IDisposable
+internal class WindowHook : IDisposable
 {
 	private WinEventDelegate? _dele;
 	private IntPtr _hookPtr;

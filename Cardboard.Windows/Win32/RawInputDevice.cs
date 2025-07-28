@@ -3,7 +3,7 @@
 namespace Cardboard.Windows;
 
 [StructLayout(LayoutKind.Sequential)]
-public struct RawInputDevice
+internal struct RawInputDevice
 {
 	public HidUsagePage UsagePage;
 	public HidUsage Usage;

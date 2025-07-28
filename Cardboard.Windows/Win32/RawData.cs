@@ -3,7 +3,7 @@
 namespace Cardboard.Windows;
 
 [StructLayout(LayoutKind.Explicit)]
-public struct RawData
+internal struct RawData
 {
 	[FieldOffset(0)]
 	public RawMouse Mouse;

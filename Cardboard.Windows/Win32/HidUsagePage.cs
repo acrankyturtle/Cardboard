@@ -1,6 +1,6 @@
 ﻿namespace Cardboard.Windows;
 
-public enum HidUsagePage : ushort
+internal enum HidUsagePage : ushort
 {
 	UNDEFINED = 0x00, // Unknown usage page
 	GENERIC = 0x01, // Generic desktop controls

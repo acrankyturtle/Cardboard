@@ -1,7 +1,6 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 using Cardboard.Device;
-using Cardboard.Serial.Windows;
 using Cardboard.Windows;
 using DeviceTool;
 using Microsoft.Extensions.DependencyInjection;

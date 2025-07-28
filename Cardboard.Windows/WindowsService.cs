@@ -5,6 +5,12 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Cardboard.Windows;
 
+partial class Services
+{
+	public static IServiceCollection AddWindowsService(this IServiceCollection services) =>
+		services.AddSingleton<IWindowsService, WindowsService>();
+}
+
 public interface IWindowsService
 {
 	IntPtr Handle { get; }
@@ -79,10 +85,4 @@ file class HiddenWindow : Form
 
 		base.WndProc(ref m);
 	}
-}
-
-partial class Services
-{
-	public static IServiceCollection AddWindowsService(this IServiceCollection services) =>
-		services.AddSingleton<IWindowsService, WindowsService>();
 }

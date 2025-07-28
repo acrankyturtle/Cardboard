@@ -3,7 +3,7 @@
 namespace Cardboard.Windows;
 
 [StructLayout(LayoutKind.Explicit)]
-public struct RawMouse
+internal struct RawMouse
 {
 	[FieldOffset(0)]
 	public ushort Flags;

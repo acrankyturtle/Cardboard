@@ -10,7 +10,7 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\Cardboard.Device\Cardboard.Device.csproj" />
-		<ProjectReference Include="..\Cardboard.Serial.Windows\Cardboard.Serial.Windows.csproj" />
 		<ProjectReference Include="..\Cardboard.Update\Cardboard.Update.csproj" />
+		<ProjectReference Include="..\Cardboard.Windows\Cardboard.Windows.csproj" />
 	</ItemGroup>
 </Project>
