@@ -19,4 +19,8 @@ public interface IDeviceProvider
 public readonly record struct DevicesChangedEvent(
 	IReadOnlyCollection<DeviceInfo> Added,
 	IReadOnlyCollection<DeviceInfo> Removed
-);
+)
+{
+	public override string ToString() =>
+		$"{nameof(DevicesChangedEvent)}: {{ {nameof(Added)}: [{Added.Count}], {nameof(Removed)}: {Removed.Count} }}";
+}

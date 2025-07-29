@@ -23,7 +23,7 @@ public record TagStatusEntry
 	public required ApplicationAssociationId Source { get; init; }
 }
 
-file class TagSwitcherService(
+internal class TagSwitcherService(
 	IAssociationEventService associationEventService,
 	IDeviceService deviceService,
 	ILogger<TagSwitcherService> logger
@@ -105,24 +105,24 @@ file class TagSwitcherService(
 		logger.LogInformation("New tags: {Tags}", string.Join(", ", tags));
 		logger.LogInformation("Updated tags for {Devices} devices", results.Count(x => x.Result.IsSuccess));
 	}
-}
 
-file class DeviceTagCache
-{
-	private HashSet<TagStatusEntry>? _tags;
-
-	public bool NeedsUpdate(IEnumerable<TagStatusEntry> tags)
+	private class DeviceTagCache
 	{
-		return _tags is null || !_tags.SetEquals(tags);
-	}
+		private HashSet<TagStatusEntry>? _tags;
 
-	public void Update(IReadOnlyCollection<TagStatusEntry> tags)
-	{
-		_tags = tags.ToHashSet();
-	}
+		public bool NeedsUpdate(IEnumerable<TagStatusEntry> tags)
+		{
+			return _tags is null || !_tags.SetEquals(tags);
+		}
 
-	public void Clear()
-	{
-		_tags = null;
+		public void Update(IReadOnlyCollection<TagStatusEntry> tags)
+		{
+			_tags = tags.ToHashSet();
+		}
+
+		public void Clear()
+		{
+			_tags = null;
+		}
 	}
 }

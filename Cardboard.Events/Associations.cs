@@ -9,4 +9,8 @@ public interface IAssociationEventService
 
 public readonly record struct AssociationChangedEvent(
 	IReadOnlyCollection<ApplicationAssociation> Associations
-);
+)
+{
+	public override string ToString() =>
+		$"{nameof(AssociationChangedEvent)}: {{ {nameof(Associations)}: [{Associations.Count}] }}";
+}
