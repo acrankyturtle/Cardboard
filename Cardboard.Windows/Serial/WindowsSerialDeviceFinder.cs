@@ -16,14 +16,14 @@ internal class WindowsSerialDeviceFinder : IWindowsSerialDeviceFinder, IDisposab
 {
 	private static readonly IReadOnlyCollection<UsbDeviceQuery> _devices = [new("F055", "6969")];
 
-	private readonly Subject<Unit> _devicesUpdatedSubject = new();
+	private readonly Subject<Unit> _maybeUpdatedSubject = new();
 	private readonly IDisposable _subscription;
 
 	private const int WM_DEVICECHANGE = 0x0219;
 
-	public IObservable<Unit> OnMaybeDevicesUpdated => _devicesUpdatedSubject.AsObservable();
+	public IObservable<Unit> OnMaybeDevicesUpdated => _maybeUpdatedSubject.AsObservable();
 
-	private IReadOnlyCollection<SerialDeviceFound>? _cached = null;
+	private IReadOnlyCollection<SerialDeviceFound>? _cached;
 
 	public WindowsSerialDeviceFinder(IWindowsService windowsService)
 	{
@@ -32,7 +32,7 @@ internal class WindowsSerialDeviceFinder : IWindowsSerialDeviceFinder, IDisposab
 			.Subscribe(_ =>
 			{
 				UpdateDevices();
-				_devicesUpdatedSubject.OnNext(new());
+				_maybeUpdatedSubject.OnNext(new());
 			});
 	}
 

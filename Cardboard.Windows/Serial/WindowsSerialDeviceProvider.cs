@@ -1,21 +1,24 @@
 ﻿using System.Diagnostics;
 using System.Reactive.Linq;
-using System.Reactive.Subjects;
 using Cardboard.Device;
 using Cardboard.Serial;
+using Cardboard.Services;
+using Cardboard.Utilities;
 using Cranky;
 using Microsoft.Extensions.Logging;
 using IDeviceProvider = Cardboard.Device.IDeviceProvider;
 
 namespace Cardboard.Windows;
 
-internal class WindowsSerialDeviceProvider : IDeviceProvider, IDisposable
+internal class WindowsSerialDeviceProvider : IDeviceProvider, IInitializable, IDisposable
 {
-	private List<(DeviceInfo DeviceInfo, ISerialPort SerialPort)> _ports = [];
+	private readonly record struct DeviceEntry(DeviceInfo DeviceInfo, ISerialPort SerialPort);
+
+	private List<DeviceEntry> _ports = [];
 
 	private readonly SemaphoreSlim _lock = new(1, 1);
 
-	private readonly AsyncSubject<DevicesChangedEvent> _devicesChangedSubject = new();
+	private readonly AsyncDispatchSubject<DevicesChangedEvent> _devicesChangedSubject = new();
 	public IObservable<DevicesChangedEvent> OnDevicesChanged => _devicesChangedSubject.AsObservable();
 
 	private readonly IWindowsSerialDeviceFinder _deviceFinder;
@@ -30,37 +33,21 @@ internal class WindowsSerialDeviceProvider : IDeviceProvider, IDisposable
 		_deviceFinder = deviceFinder;
 		_logger = logger;
 
-		_deviceSubscription = _deviceFinder.OnMaybeDevicesUpdated.Subscribe(_ => OnMaybeUpdate());
-	}
-
-	private void OnMaybeUpdate()
-	{
-		_ = RefreshPorts(CancellationToken.None);
-	}
-
-	public async Task<IReadOnlyCollection<DeviceInfo>> GetDevices(CancellationToken cancellationToken)
-	{
-		if (!_ports.Any())
-			await RefreshPorts(cancellationToken);
-
-		await _lock.WaitAsync(cancellationToken);
-
-		try
-		{
-			return _ports.Select(x => x.DeviceInfo).ToList();
-		}
-		finally
-		{
-			_lock.Release();
-		}
+		_deviceSubscription = _deviceFinder.OnMaybeDevicesUpdated.SubscribeAsync(async _ =>
+			await RefreshPorts(CancellationToken.None)
+		);
 	}
 
 	private async Task RefreshPorts(CancellationToken cancellationToken)
 	{
 		await _lock.WaitAsync(cancellationToken);
 
+		List<(string PortName, DeviceInfo DeviceInfo)> existingPorts;
+
 		try
 		{
+			existingPorts = _ports.Select(x => (x.SerialPort.PortName, x.DeviceInfo)).ToList();
+
 			// dispose existing
 			await Task.WhenAll(_ports.Select(async x => await x.SerialPort.DisposeAsync()));
 			_ports.Clear();
@@ -76,19 +63,19 @@ internal class WindowsSerialDeviceProvider : IDeviceProvider, IDisposable
 						{
 							var serialPort = x.SerialPort.Assert();
 							var result = await serialPort.With(
-								async Task<(DeviceInfo DeviceInfo, ISerialPort SerialPort)> (commandStream) =>
+								Task<DeviceEntry> (commandStream) =>
 								{
 									commandStream.Writer.Write((byte)0x00);
 									commandStream.Writer.Flush();
 									var identityCommand = new IdentityCommand();
 									var deviceInfo = identityCommand.Execute(new(), commandStream);
 
-									return (deviceInfo, serialPort);
+									return Task.FromResult<DeviceEntry>(new(deviceInfo, serialPort));
 								},
 								cancellationToken
 							);
 
-							return result.Match<(DeviceInfo DeviceInfo, ISerialPort SerialPort)?>(
+							return result.Match<DeviceEntry?>(
 								v => v,
 								_ =>
 								{
@@ -101,27 +88,36 @@ internal class WindowsSerialDeviceProvider : IDeviceProvider, IDisposable
 							);
 						})
 				)
-			).OfType<(DeviceInfo DeviceInfo, ISerialPort SerialPort)>().ToList();
-
-			var addedDevices = newPorts
-				.Where(x => _ports.All(y => y.SerialPort.PortName != x.SerialPort.PortName))
-				.Select(x => x.DeviceInfo)
-				.ToList();
-			var removedDevices = _ports
-				.Where(x => newPorts.All(y => y.SerialPort.PortName != x.SerialPort.PortName))
-				.Select(x => x.DeviceInfo)
-				.ToList();
-
+			).OfType<DeviceEntry>().ToList();
 			_ports = newPorts;
-
-			if (addedDevices.Count == 0 || removedDevices.Count == 0)
-				_devicesChangedSubject.OnNext(new(addedDevices, removedDevices));
 		}
 		finally
 		{
 			_lock.Release();
 		}
+
+		var addedDevices = _ports
+			.Where(x => existingPorts.All(y => y.PortName != x.SerialPort.PortName))
+			.Select(x => x.DeviceInfo)
+			.ToList();
+		var removedDevices = existingPorts
+			.Where(x => _ports.All(y => y.SerialPort.PortName != x.PortName))
+			.Select(x => x.DeviceInfo)
+			.ToList();
+
+		if (addedDevices.Count != 0 || removedDevices.Count != 0)
+			_devicesChangedSubject.OnNext(new(addedDevices, removedDevices));
 	}
+
+	public async Task Initialize()
+	{
+		await RefreshPorts(CancellationToken.None);
+	}
+
+	public async Task Reinitialize() => await Initialize();
+
+	public Task<IReadOnlyCollection<DeviceInfo>> GetDevices(CancellationToken cancellationToken) =>
+		Task.FromResult<IReadOnlyCollection<DeviceInfo>>(_ports.Select(x => x.DeviceInfo).ToList());
 
 	public async Task<IReadOnlyCollection<(DeviceId DeviceId, Result<TOut, Exception> Result)>> SendCommand<
 		TIn,
@@ -133,9 +129,6 @@ internal class WindowsSerialDeviceProvider : IDeviceProvider, IDisposable
 		CancellationToken cancellationToken = default
 	)
 	{
-		if (_ports.Count < 1)
-			await RefreshPorts(cancellationToken);
-
 		var deviceIdSet = deviceIds.ToHashSet();
 
 		return await Task.WhenAll(
@@ -209,5 +202,6 @@ internal class WindowsSerialDeviceProvider : IDeviceProvider, IDisposable
 	{
 		GC.SuppressFinalize(this);
 		_deviceSubscription.Dispose();
+		_lock.Dispose();
 	}
 }
