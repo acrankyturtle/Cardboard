@@ -62,13 +62,9 @@ public sealed class SystemSerialPort(string name, SerialPort serialPort) : ISeri
 			{
 				return await action(commandStream);
 			}
-			catch (TimeoutException e)
+			catch (Exception e)
 			{
-				return Result.Fail<Exception>(e);
-			}
-			catch (IOException e)
-			{
-				return Result.Fail<Exception>(e);
+				return Result.Fail(e);
 			}
 		}
 		finally
