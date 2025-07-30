@@ -42,7 +42,7 @@ public static class Devices
 	}
 
 	private static async Task<Ok<DeviceListResponse>> GetDevices(
-		IDeviceRepository deviceRepository,
+		[FromServices] IDeviceRepository deviceRepository,
 		CancellationToken cancellationToken
 	) =>
 		TypedResults.Ok(
@@ -50,7 +50,7 @@ public static class Devices
 		);
 
 	private static async Task<Results<Ok<DeviceDetailsResponse>, NotFound>> GetDeviceDetails(
-		IDeviceRepository deviceRepository,
+		[FromServices] IDeviceRepository deviceRepository,
 		[FromRoute] DeviceId id,
 		CancellationToken cancellationToken
 	) =>
@@ -59,7 +59,7 @@ public static class Devices
 			: TypedResults.NotFound();
 
 	private static async Task<Results<Ok<GetDeviceProfileResponse>, NotFound>> GetDeviceProfile(
-		IDeviceRepository deviceRepository,
+		[FromServices] IDeviceRepository deviceRepository,
 		[FromRoute] DeviceId id,
 		CancellationToken cancellationToken
 	) =>
@@ -70,7 +70,7 @@ public static class Devices
 	private static async Task<
 		Results<NoContent, NotFound, BadRequest, InternalServerError>
 	> UpdateDeviceProfile(
-		IDeviceRepository deviceRepository,
+		[FromServices] IDeviceRepository deviceRepository,
 		[FromRoute] DeviceId id,
 		DeviceProfile deviceProfile,
 		CancellationToken cancellationToken
@@ -85,7 +85,7 @@ public static class Devices
 		};
 
 	private static async Task<Results<NoContent, NotFound>> EnterBootloader(
-		IDeviceRepository deviceRepository,
+		[FromServices] IDeviceRepository deviceRepository,
 		[FromRoute] DeviceId id,
 		CancellationToken cancellationToken
 	) =>

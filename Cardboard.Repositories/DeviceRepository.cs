@@ -117,7 +117,7 @@ public sealed class KeySize
 	public required int Height { get; init; }
 }
 
-internal sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceRepository> _logger)
+file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceRepository> _logger)
 	: IDeviceRepository
 {
 	public async Task<IReadOnlyCollection<DeviceSummary>> GetDevices(
