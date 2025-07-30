@@ -11,6 +11,7 @@ using Cardboard.Windows;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http.Json;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,7 +20,7 @@ builder.WebHost.ConfigureKestrel(options =>
 	// TODO: configure connection limits?
 });
 
-// todo: configure in TagRepository
+// todo: configure in AssociationRepository
 builder.Services.Configure<ApplicationRepositoryConfiguration>(builder.Configuration.GetSection("Paths"));
 
 // web api json options
@@ -28,6 +29,13 @@ builder.Services.Configure<JsonOptions>(options =>
 	options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
 	options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
 	options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
+
+// register json serializer options as singleton for our schema repository
+builder.Services.AddSingleton<JsonSerializerOptions>(serviceProvider =>
+{
+	var jsonOptions = serviceProvider.GetRequiredService<IOptions<JsonOptions>>();
+	return jsonOptions.Value.SerializerOptions;
 });
 
 builder
@@ -42,6 +50,7 @@ builder
 		options.MapStronglyTypedId<LayerTag>();
 		options.MapStronglyTypedId<MacroId>();
 		options.MapStronglyTypedId<ApplicationAssociationId>();
+		options.MapStronglyTypedId<SchemaName>();
 	})
 	.AddEndpointsApiExplorer();
 
@@ -101,6 +110,8 @@ app.UseRouting();
 
 app.MapFallbackToFile("index.html");
 
-app.MapEndpoints();
+app.MapDeviceRepositoryEndpoints();
+app.MapTagRepositoryEndpoints();
+app.MapSchemaEndpoints();
 
 app.Run();
