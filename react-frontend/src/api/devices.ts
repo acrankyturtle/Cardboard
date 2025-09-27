@@ -1,4 +1,5 @@
 import useSWR from "swr";
+import { getApiUrl } from "./cardboardApi.ts";
 
 export const useDeviceList = (): {
   devices: readonly DeviceSummary[];
@@ -7,11 +8,11 @@ export const useDeviceList = (): {
 } => {
   const { data, isLoading, error } = useSWR<{
     devices: readonly DeviceSummary[];
-  }>("/devices");
+  }>("devices");
 
   return {
     devices: data?.devices ?? [],
-    //devices: fakeDevices,
+    // devices: fakeDevices,
     isLoading,
     error,
   };
@@ -19,7 +20,7 @@ export const useDeviceList = (): {
 
 export const useDeviceDetails = (deviceId: string) => {
   const { data, isLoading, error } = useSWR<{ deviceDetails: DeviceDetails }>(
-    `/devices/${deviceId}`,
+    `devices/${deviceId}`,
   );
 
   return {
@@ -32,22 +33,38 @@ export const useDeviceDetails = (deviceId: string) => {
 export const useDeviceProfile = (
   deviceId: string,
 ): {
-  deviceProfile: DeviceProfile;
+  profile: DeviceProfile | undefined;
   isLoading?: boolean;
   error?: Error;
 } => {
   const { data, isLoading, error } = useSWR<{ deviceProfile: DeviceProfile }>(
-    `/devices/${deviceId}/profile`,
+    `devices/${deviceId}/profile`,
   );
 
   return {
-    deviceProfile: data?.deviceProfile ?? {
-      keys: [],
-      macros: [],
-    },
+    profile: data?.deviceProfile,
     isLoading,
     error,
   };
+};
+
+export const updateDeviceProfile = async (
+  deviceId: string,
+  profile: DeviceProfile,
+): Promise<"success" | { error: string }> => {
+  const response = await fetch(getApiUrl(`devices/${deviceId}/profile`), {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(profile),
+  });
+
+  if (!response.ok) {
+    return { error: `Failed to update device profile: ${response.statusText}` };
+  }
+
+  return "success";
 };
 
 export interface DeviceSummary {
@@ -65,6 +82,7 @@ export interface DeviceDetails {
   iconUrl?: string;
   commands: readonly CommandInfo[];
   keyMap: readonly KeyInfo[];
+  virtualKeyCount: number;
 }
 
 export interface CommandInfo {
@@ -77,17 +95,37 @@ export interface KeyInfo {
   name: string;
   offset: { x: number; y: number };
   size: { width: number; height: number };
+  color: KeyColor;
+}
+
+export enum KeyColor {
+  Regular = "Regular",
+  Accent1 = "Accent1",
+  Accent2 = "Accent2",
+  Virtual = "Virtual",
 }
 
 // todo: probably move profile stuff to lib folder
 export interface DeviceProfile {
   keys: readonly DeviceKey[];
+  virtualKeys: readonly VirtualKey[];
   macros: readonly DeviceMacro[];
 }
 
 export interface DeviceKey {
   id: string;
-  layers?: readonly TaggedDeviceLayer[];
+  layers: DeviceLayers;
+}
+
+export interface VirtualKey {
+  layers: DeviceLayers;
+}
+
+export const isVirtualKey = (key: DeviceKey | VirtualKey): key is VirtualKey =>
+  !("id" in key);
+
+export interface DeviceLayers {
+  layers: readonly TaggedDeviceLayer[];
   defaultLayer: DeviceKeyLayer;
 }
 
@@ -102,9 +140,13 @@ export interface DeviceKeyLayer {
   macros: readonly string[];
 }
 
-enum TagMatchType {
-  All = "All",
+export const isTaggedDeviceLayer = (
+  layer: DeviceKeyLayer | TaggedDeviceLayer,
+): layer is TaggedDeviceLayer => "tags" in layer && "matchType" in layer;
+
+export enum TagMatchType {
   Any = "Any",
+  All = "All",
 }
 
 export interface DeviceMacro {
@@ -117,51 +159,113 @@ export interface DeviceMacro {
   endSequence: Sequence;
 }
 
-interface Sequence {
+export interface Sequence {
   actions: readonly Action[];
 }
 
-interface Action {
+export interface Action {
   predelayMs: number;
   actionEvent: ActionEvent;
 }
 
-enum ActionEventType {
-  Keyboard = "Keyboard",
-  Mouse = "Mouse",
-  ConsumerControl = "ConsumerControl",
-  Layer = "Layer",
-  Debug = "Debug",
-}
+export type ActionEvent =
+  | { keyboard: KeyboardActionEvent }
+  | { mouse: MouseActionEvent }
+  | { consumerControl: ConsumerControlEvent }
+  | { layer: LayerActionEvent }
+  | { debug: DebugActionEvent };
 
-type ActionEvent =
-  | KeyboardActionEvent
-  | MouseActionEvent
-  | ConsumerControlActionEvent
-  | LayerActionEvent
-  | DebugActionEvent;
+export const isKeyboardActionEvent = (
+  e: ActionEvent,
+): e is { keyboard: KeyboardActionEvent } => "keyboard" in e;
 
-type KeyboardActionEvent =
-  | { type: ActionEventType.Keyboard; keyDown: KeyboardKey }
-  | { keyUp: KeyboardKey };
+export const isMouseActionEvent = (
+  e: ActionEvent,
+): e is { mouse: MouseActionEvent } => "mouse" in e;
 
-type MouseActionEvent =
-  | { type: ActionEventType.Mouse; buttonDown: MouseButton }
-  | { buttonUp: MouseButton }
-  | { scroll: MouseScroll }
-  | { move: MouseMove };
+export const isConsumerControlActionEvent = (
+  e: ActionEvent,
+): e is { consumerControl: ConsumerControlEvent } => "consumerControl" in e;
 
-type ConsumerControlActionEvent = {
-  type: ActionEventType.ConsumerControl;
-  consumerControl: ConsumerControlEvent;
+export const isLayerActionEvent = (
+  e: ActionEvent,
+): e is { layer: LayerActionEvent } => "layer" in e;
+
+export const isDebugActionEvent = (
+  e: ActionEvent,
+): e is { debug: DebugActionEvent } => "debug" in e;
+
+export type KeyboardActionEvent =
+  | KeyboardKeyDownActionEvent
+  | KeyboardKeyUpActionEvent;
+
+export type KeyboardKeyDownActionEvent = {
+  keyDown: KeyboardKey;
+};
+export type KeyboardKeyUpActionEvent = {
+  keyUp: KeyboardKey;
 };
 
-type LayerActionEvent = { type: ActionEventType.Layer } & (
-  | { clear: string }
-  | { set: string }
-);
+export const isKeyDownEvent = (
+  e: KeyboardActionEvent,
+): e is KeyboardKeyDownActionEvent => "keyDown" in e;
 
-type DebugActionEvent = { type: ActionEventType.Debug; log: string };
+export const isKeyUpEvent = (
+  e: KeyboardActionEvent,
+): e is KeyboardKeyUpActionEvent => "keyUp" in e;
+
+export type MouseActionEvent =
+  | MouseButtonDownActionEvent
+  | MouseButtonUpActionEvent
+  | MouseScrollActionEvent
+  | MouseMoveActionEvent;
+
+export type MouseButtonDownActionEvent = {
+  buttonDown: MouseButton;
+};
+
+export type MouseButtonUpActionEvent = {
+  buttonUp: MouseButton;
+};
+
+export type MouseScrollActionEvent = {
+  scroll: MouseScroll;
+};
+
+export type MouseMoveActionEvent = {
+  move: MouseMove;
+};
+
+export const isMouseDownEvent = (
+  e: MouseActionEvent,
+): e is MouseButtonDownActionEvent => "buttonDown" in e;
+
+export const isMouseUpEvent = (
+  e: MouseActionEvent,
+): e is MouseButtonUpActionEvent => "buttonUp" in e;
+
+export const isMouseScrollEvent = (
+  e: MouseActionEvent,
+): e is MouseScrollActionEvent => "scroll" in e;
+
+export const isMouseMoveEvent = (
+  e: MouseActionEvent,
+): e is MouseMoveActionEvent => "move" in e;
+
+export type LayerActionEvent = LayerClearActionEvent | LayerSetActionEvent;
+
+export type LayerClearActionEvent = { clear: string };
+export type LayerSetActionEvent = { set: string };
+
+export const isLayerClearEvent = (
+  e: LayerActionEvent,
+): e is LayerClearActionEvent => "clear" in e;
+
+export const isLayerSetEvent = (
+  e: LayerActionEvent,
+): e is LayerSetActionEvent => "set" in e;
+
+export type DebugActionEvent = { log: string };
 
 interface MouseScroll {
   x: number;
@@ -173,7 +277,7 @@ interface MouseMove {
   y: number;
 }
 
-enum KeyboardKey {
+export enum KeyboardKey {
   A = "A",
   B = "B",
   C = "C",
@@ -300,7 +404,7 @@ enum KeyboardKey {
   RIGHT_GUI = "RIGHT_GUI",
 }
 
-enum MouseButton {
+export enum MouseButton {
   Left = "Left",
   Right = "Right",
   Middle = "Middle",
@@ -308,7 +412,7 @@ enum MouseButton {
   Forward = "Forward",
 }
 
-enum ConsumerControlEvent {
+export enum ConsumerControlEvent {
   RECORD = "RECORD",
   FAST_FORWARD = "FAST_FORWARD",
   REWIND = "REWIND",
@@ -322,105 +426,105 @@ enum ConsumerControlEvent {
   VOLUME_INCREMENT = "VOLUME_INCREMENT",
 }
 
-const fakeDevices = [
-  {
-    id: "0",
-    name: "Device 1",
-    model: "Model 1",
-  },
-  {
-    id: "1",
-    name: "Device 2",
-    model: "Model 2",
-  },
-  {
-    id: "2",
-    name: "Device 3",
-    model: "Model 3",
-  },
-  {
-    id: "3",
-    name: "Device 4",
-    model: "Model 4",
-  },
-  {
-    id: "4",
-    name: "Device 5",
-    model: "Model 5",
-  },
-  {
-    id: "5",
-    name: "Device 6",
-    model: "Model 6",
-  },
-  {
-    id: "6",
-    name: "Device 7",
-    model: "Model 7",
-  },
-  {
-    id: "7",
-    name: "Device 8",
-    model: "Model 8",
-  },
-  {
-    id: "8",
-    name: "Device 9",
-    model: "Model 9",
-  },
-  {
-    id: "9",
-    name: "Device 10",
-    model: "Model 10",
-  },
-  {
-    id: "10",
-    name: "Device 11",
-    model: "Model 11",
-  },
-  {
-    id: "11",
-    name: "Device 12",
-    model: "Model 12",
-  },
-  {
-    id: "12",
-    name: "Device 13",
-    model: "Model 13",
-  },
-  {
-    id: "13",
-    name: "Device 14",
-    model: "Model 14",
-  },
-  {
-    id: "14",
-    name: "Device 15",
-    model: "Model 15",
-  },
-  {
-    id: "15",
-    name: "Device 16",
-    model: "Model 16",
-  },
-  {
-    id: "16",
-    name: "Device 17",
-    model: "Model 17",
-  },
-  {
-    id: "17",
-    name: "Device 18",
-    model: "Model 18",
-  },
-  {
-    id: "18",
-    name: "Device 19",
-    model: "Model 19",
-  },
-  {
-    id: "19",
-    name: "Device 20",
-    model: "Model 20",
-  },
-];
+// const fakeDevices = [
+//   {
+//     id: "0",
+//     name: "Device 1",
+//     model: "Model 1",
+//   },
+//   {
+//     id: "1",
+//     name: "Device 2",
+//     model: "Model 2",
+//   },
+//   {
+//     id: "2",
+//     name: "Device 3",
+//     model: "Model 3",
+//   },
+//   {
+//     id: "3",
+//     name: "Device 4",
+//     model: "Model 4",
+//   },
+//   {
+//     id: "4",
+//     name: "Device 5",
+//     model: "Model 5",
+//   },
+//   {
+//     id: "5",
+//     name: "Device 6",
+//     model: "Model 6",
+//   },
+//   {
+//     id: "6",
+//     name: "Device 7",
+//     model: "Model 7",
+//   },
+//   {
+//     id: "7",
+//     name: "Device 8",
+//     model: "Model 8",
+//   },
+//   {
+//     id: "8",
+//     name: "Device 9",
+//     model: "Model 9",
+//   },
+//   {
+//     id: "9",
+//     name: "Device 10",
+//     model: "Model 10",
+//   },
+//   {
+//     id: "10",
+//     name: "Device 11",
+//     model: "Model 11",
+//   },
+//   {
+//     id: "11",
+//     name: "Device 12",
+//     model: "Model 12",
+//   },
+//   {
+//     id: "12",
+//     name: "Device 13",
+//     model: "Model 13",
+//   },
+//   {
+//     id: "13",
+//     name: "Device 14",
+//     model: "Model 14",
+//   },
+//   {
+//     id: "14",
+//     name: "Device 15",
+//     model: "Model 15",
+//   },
+//   {
+//     id: "15",
+//     name: "Device 16",
+//     model: "Model 16",
+//   },
+//   {
+//     id: "16",
+//     name: "Device 17",
+//     model: "Model 17",
+//   },
+//   {
+//     id: "17",
+//     name: "Device 18",
+//     model: "Model 18",
+//   },
+//   {
+//     id: "18",
+//     name: "Device 19",
+//     model: "Model 19",
+//   },
+//   {
+//     id: "19",
+//     name: "Device 20",
+//     model: "Model 20",
+//   },
+// ];

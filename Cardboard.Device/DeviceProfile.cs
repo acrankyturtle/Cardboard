@@ -1,9 +1,11 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Cardboard.JsonSchema;
 using StronglyTypedIds;
 
 namespace Cardboard.Device;
 
+[GenerateSchema]
 public sealed class DeviceProfile
 {
 	public required IReadOnlyCollection<DeviceKey> Keys { get; init; }
@@ -22,12 +24,14 @@ public sealed class VirtualKey
 	public required DeviceLayers Layers { get; init; }
 }
 
+[GenerateSchema]
 public sealed class DeviceLayers
 {
 	public IReadOnlyCollection<TaggedDeviceKeyLayer> Layers { get; init; } = [];
 	public required DeviceKeyLayer DefaultLayer { get; init; }
 }
 
+[GenerateSchema]
 public sealed class TaggedDeviceKeyLayer
 {
 	public required DeviceKeyLayer Layer { get; init; }
@@ -35,6 +39,7 @@ public sealed class TaggedDeviceKeyLayer
 	public required TagMatchType MatchType { get; init; }
 }
 
+[GenerateSchema]
 public sealed class DeviceKeyLayer
 {
 	public required LayerId Id { get; init; }
@@ -43,10 +48,11 @@ public sealed class DeviceKeyLayer
 
 public enum TagMatchType
 {
-	All,
 	Any,
+	All,
 }
 
+[GenerateSchema]
 public sealed class Macro
 {
 	public required MacroId Id { get; init; }
@@ -58,17 +64,20 @@ public sealed class Macro
 	public required Sequence EndSequence { get; init; }
 }
 
+[GenerateSchema]
 public sealed class Sequence
 {
 	public required IReadOnlyCollection<Action> Actions { get; init; }
 }
 
+[GenerateSchema]
 public sealed class Action
 {
 	public ulong PredelayMs { get; init; }
 	public required ActionEvent ActionEvent { get; init; }
 }
 
+[GenerateSchema]
 public sealed class ActionEvent
 {
 	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
@@ -86,6 +95,7 @@ public sealed class ActionEvent
 	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
 	public DebugActionEvent? Debug { get; init; }
 
+	[GenerateSchema]
 	public sealed class KeyboardActionEvent
 	{
 		[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
@@ -95,6 +105,7 @@ public sealed class ActionEvent
 		public KeyboardKey? KeyUp { get; init; }
 	}
 
+	[GenerateSchema]
 	public sealed class MouseActionEvent
 	{
 		[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
@@ -110,6 +121,7 @@ public sealed class ActionEvent
 		public (int X, int Y)? Move { get; init; }
 	}
 
+	[GenerateSchema]
 	public sealed class LayerActionEvent
 	{
 		[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
@@ -316,8 +328,7 @@ public sealed class JsonDeviceProfile
 		{
 			Keys = profile.Keys.Select(x => JsonDeviceKey.From(x, profile.Macros.ToList())).ToList(),
 			VirtualKeys = profile
-				.VirtualKeys
-				.Select(x => JsonVirtualKey.From(x, profile.Macros.ToList()))
+				.VirtualKeys.Select(x => JsonVirtualKey.From(x, profile.Macros.ToList()))
 				.ToList(),
 			Macros = profile.Macros.Select(JsonMacro.From).ToList(),
 		};
@@ -329,10 +340,10 @@ public sealed class JsonDeviceKey
 	public required JsonDeviceLayers Layers { get; init; }
 
 	public DeviceKey ToDeviceKey(IReadOnlyList<Macro> macros) =>
-		new() { Id = Id, Layers = Layers.ToDeviceLayers(macros), };
+		new() { Id = Id, Layers = Layers.ToDeviceLayers(macros) };
 
 	public static JsonDeviceKey From(DeviceKey key, IReadOnlyList<Macro> macros) =>
-		new() { Id = key.Id, Layers = JsonDeviceLayers.From(key.Layers, macros), };
+		new() { Id = key.Id, Layers = JsonDeviceLayers.From(key.Layers, macros) };
 }
 
 public sealed class JsonVirtualKey
@@ -340,10 +351,10 @@ public sealed class JsonVirtualKey
 	public required JsonDeviceLayers Layers { get; init; }
 
 	public VirtualKey ToVirtualKey(IReadOnlyList<Macro> macros) =>
-		new() { Layers = Layers.ToDeviceLayers(macros), };
+		new() { Layers = Layers.ToDeviceLayers(macros) };
 
 	public static JsonVirtualKey From(VirtualKey key, IReadOnlyList<Macro> macros) =>
-		new() { Layers = JsonDeviceLayers.From(key.Layers, macros), };
+		new() { Layers = JsonDeviceLayers.From(key.Layers, macros) };
 }
 
 public sealed class JsonDeviceLayers
@@ -402,8 +413,7 @@ public sealed class JsonDeviceKeyLayer
 		{
 			Id = layer.Id,
 			Macros = layer
-				.Macros
-				.Select(m => macros.Index().FirstOrDefault(x => x.Item.Id == m).Index)
+				.Macros.Select(m => macros.Index().FirstOrDefault(x => x.Item.Id == m).Index)
 				.ToList(),
 		};
 }
@@ -451,15 +461,16 @@ public sealed class JsonSequence
 		new()
 		{
 			Actions = Actions
-				.Select(
-					x =>
-						new Action { PredelayMs = x.PredelayMs, ActionEvent = x.ActionEvent.ToActionEvent(), }
-				)
+				.Select(x => new Action
+				{
+					PredelayMs = x.PredelayMs,
+					ActionEvent = x.ActionEvent.ToActionEvent(),
+				})
 				.ToList(),
 		};
 
 	public static JsonSequence From(Sequence seq) =>
-		new() { Actions = seq.Actions.Select(JsonAction.From).ToList(), };
+		new() { Actions = seq.Actions.Select(JsonAction.From).ToList() };
 }
 
 public sealed class JsonAction
@@ -467,10 +478,10 @@ public sealed class JsonAction
 	public ulong PredelayMs { get; init; }
 	public required JsonActionEvent ActionEvent { get; init; }
 
-	public Action ToAction() => new() { PredelayMs = PredelayMs, ActionEvent = ActionEvent.ToActionEvent(), };
+	public Action ToAction() => new() { PredelayMs = PredelayMs, ActionEvent = ActionEvent.ToActionEvent() };
 
 	public static JsonAction From(Action action) =>
-		new() { PredelayMs = action.PredelayMs, ActionEvent = JsonActionEvent.From(action.ActionEvent), };
+		new() { PredelayMs = action.PredelayMs, ActionEvent = JsonActionEvent.From(action.ActionEvent) };
 }
 
 public sealed class JsonActionEvent
@@ -536,10 +547,10 @@ public sealed class JsonActionEvent
 		public KeyboardKey? KeyUp { get; init; }
 
 		public ActionEvent.KeyboardActionEvent ToKeyboardActionEvent() =>
-			new() { KeyDown = KeyDown, KeyUp = KeyUp, };
+			new() { KeyDown = KeyDown, KeyUp = KeyUp };
 
 		public static JsonKeyboardActionEvent From(ActionEvent.KeyboardActionEvent e) =>
-			new() { KeyDown = e.KeyDown, KeyUp = e.KeyUp, };
+			new() { KeyDown = e.KeyDown, KeyUp = e.KeyUp };
 	}
 
 	public sealed class JsonMouseActionEvent

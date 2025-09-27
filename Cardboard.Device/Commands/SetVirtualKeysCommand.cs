@@ -76,3 +76,9 @@ public sealed class SetVirtualKeys32Command : SetVirtualKeysCommand
 	public override CommandId Id { get; } = CommandId.Parse("c1b2d3e4-f5a6-7b8c-9d0e-f1a2b3c4d5e6");
 	protected override int GetNumVirtualKeyBitfieldBytes => 4;
 }
+
+public static class VirtualKeyHelper
+{
+	public static int GetVirtualKeyCount(DeviceInfo device) =>
+		SetVirtualKeysCommand.CreateFor(device)?.NumberOfVirtualKeys ?? 0;
+}

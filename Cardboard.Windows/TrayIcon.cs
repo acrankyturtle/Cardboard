@@ -1,8 +1,11 @@
 using System.Drawing.Drawing2D;
 using Cardboard.Events;
+using Cardboard.FrontendHost;
 using Cardboard.Repositories;
+using Cardboard.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace Cardboard.Windows;
 
@@ -17,7 +20,10 @@ partial class Services
 file class TrayIconService(
 	IWindowsService windowsService,
 	IHostApplicationLifetime lifetime,
-	IAssociationEventService associationEventService
+	IAssociationEventService associationEventService,
+	IFrontendService frontendService,
+	IReinitializer reinitializer,
+	ILogger<TrayIconService> logger
 ) : IHostedService
 {
 	private readonly Icon _baseIcon =
@@ -26,6 +32,7 @@ file class TrayIconService(
 	private NotifyIcon _notifyIcon = null!;
 	private Icon? _renderedIcon;
 	private IDisposable? _subscription;
+	private bool _isRefreshing;
 
 	public Task StartAsync(CancellationToken cancellationToken)
 	{
@@ -39,13 +46,8 @@ file class TrayIconService(
 			};
 
 			var contextMenu = new ContextMenuStrip();
-			contextMenu.Items.Add(
-				"Refresh",
-				null,
-				(_, _) => {
-					// TODO
-				}
-			);
+			contextMenu.Items.Add("Open", null, (_, _) => frontendService.Open());
+			contextMenu.Items.Add("Refresh", null, (_, _) => Reinitialize());
 			contextMenu.Items.Add("Exit", null, (_, _) => lifetime.StopApplication());
 
 			notifyIcon.ContextMenuStrip = contextMenu;
@@ -65,6 +67,34 @@ file class TrayIconService(
 		_subscription = null;
 
 		return Task.CompletedTask;
+	}
+
+	private void Reinitialize()
+	{
+		if (_isRefreshing)
+			return;
+
+		_isRefreshing = true;
+		_ = reinitializer
+			.Reinitialize()
+			.ContinueWith(t =>
+			{
+				try
+				{
+					if (t.IsCompletedSuccessfully)
+					{
+						logger.LogInformation("Reinitialization complete.");
+					}
+					else
+					{
+						logger.LogError(t.Exception, "Reinitialization failed.");
+					}
+				}
+				finally
+				{
+					_isRefreshing = false;
+				}
+			});
 	}
 
 	private void OnTagsChanged(AssociationChangedEvent e)

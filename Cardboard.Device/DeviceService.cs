@@ -86,10 +86,19 @@ public static class DeviceServiceExtensions
 		DeviceId deviceId,
 		CancellationToken cancellationToken = default
 	)
-		where TIn : notnull =>
-		(await deviceService.SendCommand(command, input, d => d.Id == deviceId, cancellationToken))
-			.Single()
-			.Result;
+		where TIn : notnull
+	{
+		var results = await deviceService.SendCommand(
+			command,
+			input,
+			d => d.Id == deviceId,
+			cancellationToken
+		);
+
+		return results.Any()
+			? results.Single().Result
+			: new InvalidOperationException("No device found with the specified ID.");
+	}
 }
 
 partial class Services

@@ -7,13 +7,14 @@
 	<ItemGroup>
 		<PackageReference Include="CommunityToolkit.HighPerformance" Version="8.4.0" />
 		<PackageReference Include="ggbim.Cranky" Version="1.0.1" />
-		<PackageReference Include="ggbim.Cranky.Events" Version="1.0.0" />
-		<PackageReference Include="JetBrains.Annotations" Version="2024.3.0" />
-		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.5" />
+		<PackageReference Include="ggbim.Cranky.Events" Version="2.0.0" />
+		<PackageReference Include="JetBrains.Annotations" Version="2025.2.0" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.7" />
 		<PackageReference Include="StronglyTypedId" Version="1.0.0-beta08" />
 		<PackageReference Include="System.Reactive" Version="6.0.1" />
 	</ItemGroup>
 	<ItemGroup>
+		<ProjectReference Include="..\Cardboard.JsonSchema\Cardboard.JsonSchema.csproj" />
 		<ProjectReference Include="..\Cardboard.Utilities\Cardboard.Utilities.csproj" />
 	</ItemGroup>
 </Project>

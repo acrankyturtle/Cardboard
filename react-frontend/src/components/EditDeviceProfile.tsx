@@ -1,197 +1,108 @@
-import clsx from "clsx";
-import { Button } from "./Button.tsx";
+import clsx, { ClassValue } from "clsx";
+import { Button, getButtonClassName } from "./Button.tsx";
 import { ListBox, ListBoxItem } from "./ListBox.tsx";
-import { ReactNode, useMemo, useReducer, useState } from "react";
-import { useDeviceDetails, useDeviceProfile } from "../api/devices.ts";
-import { KeyRenderer } from "./KeyRenderer.tsx";
-import { Description, Field, Fieldset, Label } from "@headlessui/react";
-import { Select, SelectOption } from "./SelectBox.tsx";
 import {
-  CardboardDialog,
+  CSSProperties,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import {
+  DeviceDetails,
+  DeviceKey,
+  DeviceKeyLayer,
+  DeviceLayers,
+  DeviceMacro,
+  DeviceProfile,
+  isLayerActionEvent,
+  isLayerClearEvent,
+  isLayerSetEvent,
+  isTaggedDeviceLayer,
+  KeyColor,
+  TaggedDeviceLayer,
+  VirtualKey,
+} from "../api/devices.ts";
+import {
+  Dialog,
   DialogBody,
   DialogCancelButton,
   DialogConfirmButton,
   DialogDivider,
   DialogFooter,
-  DialogFooterButtons,
   DialogHeader,
   DialogHeaderDescription,
   DialogHeaderTitle,
 } from "./Dialog.tsx";
-import { LayerEditor } from "./LayerEditor.tsx";
+import {
+  EditDeviceContextProvider,
+  EditDeviceState,
+  findKeyById,
+  findMacroById,
+  findSelectedProfileLayer,
+  getActiveLayer,
+  getMacroUsages,
+  getSelectedKeyProfileLayers,
+  getTaggedLayerName,
+  getVirtualKeyId,
+  insertLayer,
+  newTaggedLayer,
+  removeLayer,
+  updateKeyLayers,
+  updateLayerBindings,
+  useEditDeviceContext,
+} from "../lib/editDeviceContext.tsx";
+import { DndContext } from "@dnd-kit/core";
+import { KeyRenderer } from "./KeyRenderer.tsx";
+import {
+  Field,
+  Fieldset,
+  Input,
+  Label,
+  Tab,
+  TabGroup,
+  TabList,
+  TabPanel,
+  TabPanels,
+  Textarea,
+} from "@headlessui/react";
 import { useEdit } from "../hooks/useEdit.ts";
-import { LayerModel } from "../lib/profileContext.ts";
+import { InputClassName } from "./Input.tsx";
+import { SequenceEditor } from "./SequenceEditor.tsx";
+import { EditTaggedLayerDialog } from "./EditTaggedLayerDialog.tsx";
 
 export function EditDeviceProfile({
   className,
-  deviceId,
-  goToDevices,
+  device,
+  profile,
 }: {
   className?: string;
-  deviceId: string;
-  goToDevices: () => void;
+  device: DeviceDetails;
+  profile: DeviceProfile;
 }) {
-  const [selectedKeyItem, setSelectedKeyItem] = useState<ListBoxItem | null>(
-    null,
-  );
-  const [selectedLayerItem, setSelectedLayerItem] =
-    useState<ListBoxItem | null>(null);
-
-  const [selectedMacroItem, setSelectedMacroItem] =
-    useState<ListBoxItem | null>(null);
-
-  const {
-    device: deviceDetails,
-    isLoading,
-    error,
-  } = useDeviceDetails(deviceId);
-
-  const { deviceProfile: originalDeviceProfile } = useDeviceProfile(deviceId);
-
-  const [deviceProfile, setDeviceProfile] = useEdit(originalDeviceProfile);
-
-  let context = use;
-
-  const selectedKey = useMemo(
-    () => deviceProfile?.keys.find((k) => k.id === selectedKeyItem?.value),
-    [deviceProfile, selectedKeyItem],
-  );
-
-  const defaultLayerItem = { label: "Default Layer", value: "" };
-
-  const layerList = useMemo(() => {
-    return selectedKeyItem
-      ? [
-          ...(selectedKey?.layers ?? []).map((l) => {
-            return {
-              label: l.tags?.join(", "),
-              value: l.layer.id,
-            };
-          }),
-          defaultLayerItem,
-        ]
-      : [];
-  }, [selectedKeyItem]);
-
-  const [editLayer, setEditLayer] = useState<string | 0 | null>(null);
-  const layerToEdit: LayerModel = useMemo(
-    () =>
-      editLayer !== null
-        ? editLayer === ""
-          ? selectedKey?.defaultLayer
-          : (selectedKey?.layers?.find((t) => t.layer.id === editLayer) ?? null)
-        : null,
-    [editLayer, selectedKey],
-  );
-
   return (
-    <div className={clsx("flex h-full divide-x-3 divide-stone-950", className)}>
-      <div className="grid w-80 grid-rows-2 divide-y-2 divide-stone-950 bg-stone-800">
-        <KeysPanel
-          className="grow"
-          selected={selectedKeyItem}
-          setSelected={(k) => {
-            setSelectedKeyItem(k);
-            setSelectedLayerItem(defaultLayerItem);
-          }}
-        />
-        <LayersPanel
-          layers={layerList}
-          selected={selectedLayerItem}
-          setSelected={setSelectedLayerItem}
-          onEdit={(layer) => setEditLayer(layer.value)}
-        />
-      </div>
-      <MacrosPanel
-        className="w-96"
-        selected={selectedMacroItem}
-        setSelected={setSelectedMacroItem}
-      />
-      <KeyRenderer className="p-1" keyClassName={"bg-red-300"} />
-      <div className="fixed right-0 bottom-0 flex gap-2 p-3">
-        <Button
-          className="min-w-18 px-3"
-          buttonStyle={{
-            variant: "panelGhost",
-          }}
-          onClick={goToDevices}
-        >
-          Cancel
-        </Button>
-        <Button
-          className="min-w-24 px-3"
-          buttonStyle={{
-            variant: "submit",
-          }}
-        >
-          Save
-        </Button>
-      </div>
-      <CardboardDialog
-        open={layerToEdit !== null}
-        onClose={() => setEditLayer(null)}
-        closeOnBackdropClick={false}
-      >
-        <DialogHeader>
-          <DialogHeaderTitle className="text-lg font-bold">
-            Edit Layer
-          </DialogHeaderTitle>
-          <DialogHeaderDescription className="text-stone-400 italic">{`${selectedLayerItem?.label} @ ${selectedKeyItem?.label}`}</DialogHeaderDescription>
-        </DialogHeader>
-        <DialogDivider />
-        <DialogBody>
-          <LayerEditor id={layerToEdit.layerId} />
-        </DialogBody>
-        <DialogFooter>
-          <DialogFooterButtons>
-            <DialogCancelButton onClick={() => setEditLayer(null)}>
-              Cancel
-            </DialogCancelButton>
-            <DialogConfirmButton>Save</DialogConfirmButton>
-          </DialogFooterButtons>
-        </DialogFooter>
-      </CardboardDialog>
-      {/* <Dialog open={layerToEdit !== null} onClose={() => setEditLayer(null)}>
-        <DialogBackdrop
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm"
-          onClick={() => setEditLayer(null)}
-        />
-        <div className="fixed inset-0 flex w-screen items-center justify-center">
-          <DialogPanel className="flex max-w-lg flex-col gap-y-4 rounded-2xl border-2 border-stone-950 bg-stone-700 p-4 text-stone-100">
-            <div className="flex flex-col gap-1">
-              <DialogTitle className="text-lg font-bold">
-                Edit Layer
-              </DialogTitle>
-              <Description className="text-stone-400 italic">{`${selectedLayerItem?.label} @ ${selectedKeyItem?.label}`}</Description>
-            </div>
-            <div className="w-full border-b border-stone-800"></div>
-            <Fieldset className="w-96 space-y-8">
-              <Field className="flex flex-col gap-1">
-                <Label>Macro</Label>
-                <SelectBox>
-                  <SelectOption>Test Macro 1</SelectOption>
-                  <SelectOption>Test Macro 2</SelectOption>
-                  <SelectOption>Test Macro 3</SelectOption>
-                </SelectBox>
-              </Field>
-            </Fieldset>
-            <div className="flex gap-4 pt-6">
-              <div className="grow" />
-              <Button
-                className="px-3"
-                buttonStyle={{ variant: "panelGhost" }}
-                onClick={() => setEditLayer(null)}
-              >
-                Cancel
-              </Button>
-              <Button className="min-w-22" buttonStyle={{ variant: "submit" }}>
-                Save
-              </Button>
-            </div>
-          </DialogPanel>
+    <EditDeviceContextProvider device={device} profile={profile}>
+      <DndContext>
+        <div className={clsx("flex gap-0.5 bg-stone-950", className)}>
+          <div className="grid min-w-56 grid-rows-2 flex-col gap-0.5">
+            <TagsPanel />
+            <KeysPanel showPhysicalKeys showVirtualKeys />
+          </div>
+          <div className="flex grow flex-col">
+            <KeyViewPanel className="m-4 grow" />
+            <VirtualKeyPanel className="mx-10 mb-4" />
+          </div>
+          <div className="grid min-w-96 grid-rows-2 gap-0.5">
+            <LayersPanel />
+            <BindingsPanel className="min-w-96" />
+          </div>
+          <MacrosPanel className="min-w-96" />
         </div>
-      </Dialog> */}
-    </div>
+      </DndContext>
+      <EditTaggedLayerDialog />
+      <EditMacroDialog />
+    </EditDeviceContextProvider>
   );
 }
 
@@ -205,7 +116,7 @@ function HeaderBar({
   return (
     <div
       className={clsx(
-        "sticky top-0 flex h-9 shrink-0 items-center gap-1 bg-stone-700 p-1 text-lg tracking-widest",
+        "sticky top-0 flex h-9 shrink-0 items-center gap-1 border-b border-stone-950 bg-stone-700 p-1 text-lg tracking-widest",
         className,
       )}
     >
@@ -216,131 +127,1015 @@ function HeaderBar({
 
 const headerBarIconClass = "size-6 text-stone-100";
 
-function KeysPanel({
-  className,
-  keys,
-  selected,
-  setSelected,
-}: {
-  className?: string;
-  keys: ListBoxItem[];
-  selected: ListBoxItem | null;
-  setSelected: (item: ListBoxItem) => void;
-}) {
+const headerBarButtonClass = clsx(
+  headerBarIconClass,
+  getButtonClassName({
+    variant: "toolbar",
+    padding: "none",
+  }),
+);
+
+function TagsPanel({ className }: { className?: string }) {
+  const { state, dispatch } = useEditDeviceContext();
+  const tags = useMemo(() => {
+    const tagsFromLayers = state.profile.keys.flatMap((k) =>
+      k.layers.layers.flatMap((l) => l.tags),
+    );
+
+    const tagsFromMacros = state.profile.macros.flatMap((m) =>
+      [m.startSequence, m.loopSequence, m.endSequence].flatMap((s) =>
+        s.actions
+          .map((a) => {
+            const actionEvent = a.actionEvent;
+            if (!isLayerActionEvent(actionEvent)) return null!;
+            if (isLayerSetEvent(actionEvent.layer))
+              return actionEvent.layer.set;
+            if (isLayerClearEvent(actionEvent.layer))
+              return actionEvent.layer.clear;
+            return null!;
+          })
+          .filter((a) => a),
+      ),
+    );
+
+    return [...new Set([...tagsFromLayers, ...tagsFromMacros])].sort();
+  }, [state]);
+
+  const tagItems = useMemo(() => {
+    return tags.map((t) => ({ label: t, value: t }));
+  }, [tags]);
+
+  const selectedTags = useMemo(() => {
+    return state.selectedTags.map((t) => ({ label: t, value: t }));
+  }, [state.selectedTags]);
+
   return (
-    <div className={clsx("flex flex-col overflow-y-auto", className)}>
-      <HeaderBar className="sticky top-0">
+    <PanelContainer className={className}>
+      <HeaderBar>
         <div className={headerBarIconClass}>
-          <KeysIcon />
+          <TagsIcon />
         </div>
-        <div className="grow">Keys</div>
+        <div className="grow">Tags</div>
+        <button
+          className={headerBarButtonClass}
+          onClick={() => {
+            dispatch({ type: "setSelectedTags", tags });
+          }}
+        >
+          <SelectAllIcon />
+        </button>
+        <button
+          className={headerBarButtonClass}
+          onClick={() => {
+            dispatch({ type: "setSelectedTags", tags: [] });
+          }}
+        >
+          <DeselectIcon />
+        </button>
       </HeaderBar>
       <ListBox
-        className="grow"
-        variant={"green"}
-        items={keys}
-        selected={selected}
-        setSelected={setSelected}
+        items={tagItems}
+        selected={selectedTags}
+        setSelected={(items) =>
+          dispatch({ type: "setSelectedTags", tags: items.map((i) => i.value) })
+        }
+        variant={"yellow"}
+        isMultiSelect
+        renderItem={(item) => {
+          return (
+            <div className="flex size-full">
+              <div className="grow">{item.label}</div>
+            </div>
+          );
+        }}
       />
+    </PanelContainer>
+  );
+}
+
+function KeyViewPanel({ className }: { className?: string }) {
+  const { state } = useEditDeviceContext();
+  const device = state.device;
+  return (
+    <KeyRenderer
+      className={className}
+      keys={device.keyMap}
+      renderKey={(key, keyClassName, style) => {
+        return (
+          <Key
+            key={key.keyId}
+            keyId={key.keyId}
+            keyName={key.name}
+            keyColor={key.color}
+            keyClassName={keyClassName}
+            keyStyle={style}
+          />
+        );
+      }}
+    />
+  );
+}
+
+function Key({
+  keyId,
+  keyName,
+  keyColor,
+  keyClassName,
+  keyStyle,
+  compact,
+}: {
+  keyId: string;
+  keyName: string;
+  keyColor: KeyColor;
+  keyClassName?: string;
+  keyStyle?: CSSProperties;
+  compact?: boolean;
+}) {
+  const { state, dispatch } = useEditDeviceContext();
+  const isSelected = state.selectedKey === keyId;
+  const key = useMemo(() => findKeyById(keyId, state.profile), [keyId, state]);
+  const layerCount = key?.layers.layers.length ?? 0;
+  const activeLayer = getActiveLayer(
+    key?.layers ?? {
+      layers: [],
+      defaultLayer: {
+        id: "",
+        macros: [],
+      },
+    },
+    state.selectedTags,
+  );
+  const macros = useMemo(
+    () =>
+      activeLayer.macros
+        .map((mid) => state.profile.macros.find((m) => m.id === mid)!)
+        .filter((m) => m),
+    [activeLayer],
+  );
+  const keyLabel = useMemo(() => getActionLabelForMacros(macros), [macros]);
+
+  return (
+    <div
+      className={clsx(keyClassName, { "p-0.5": !compact, "p-1": compact })}
+      style={keyStyle}
+    >
+      <button
+        className={clsx("group relative size-full cursor-pointer select-none", {
+          "p-[3px]": !compact,
+        })}
+        onClick={() => dispatch({ type: "setSelectedKey", keyId: keyId })}
+      >
+        <div
+          className={clsx(
+            "inline-flex size-full items-center justify-center rounded-lg",
+            keyColorToClassName(keyColor, isSelected),
+            {
+              "outline-lime-500": isSelected,
+              "outline-3 outline-offset-3": isSelected && !compact,
+              "outline-2 outline-offset-3": isSelected && compact,
+            },
+          )}
+        >
+          <div
+            className={clsx("line-clamp-3 overflow-hidden text-ellipsis", {
+              "text-sm": compact,
+            })}
+          >
+            {keyLabel}
+          </div>
+          <div
+            className={clsx("absolute", {
+              "text-stone-50": isSelected,
+              "text-stone-50/50 group-hover:text-stone-50": !isSelected,
+              "top-1.5 left-1.5 text-xs": !compact,
+              "top-0 left-1 text-xs": compact,
+            })}
+          >
+            {keyName}
+          </div>
+          <div className="absolute top-1 right-1 text-xs">
+            {layerCount > 0 && layerCount}
+          </div>
+        </div>
+      </button>
     </div>
   );
 }
 
-function LayersPanel({
+interface KeyListBoxItem extends ListBoxItem {
+  key: DeviceKey | VirtualKey;
+}
+
+const getActionLabelForMacros = (macros: readonly DeviceMacro[]): string => {
+  switch (macros.length) {
+    case 0:
+      return "";
+    case 1:
+      return macros[0].name;
+    default:
+      return `[${macros.length} macros]`;
+  }
+};
+
+const keyColorToClassName = (
+  color: KeyColor,
+  isSelected: boolean,
+): ClassValue => {
+  switch (color) {
+    case KeyColor.Regular:
+      return {
+        "bg-stone-700 hover:bg-stone-600 active:bg-stone-800": !isSelected,
+        "bg-stone-800 text-lime-300": isSelected,
+      };
+    case KeyColor.Accent1:
+      return {
+        "bg-green-700 hover:bg-green-600 active:bg-green-800": !isSelected,
+        "bg-green-900 text-lime-300": isSelected,
+      };
+    case KeyColor.Accent2:
+      return {
+        "bg-purple-700 hover:bg-purple-600 active:bg-purple-800": !isSelected,
+        "bg-purple-900 text-lime-300": isSelected,
+      };
+    case KeyColor.Virtual:
+      return {
+        "bg-cyan-800 hover:bg-cyan-700 active:bg-cyan-900": !isSelected,
+        "bg-cyan-950 text-lime-300": isSelected,
+      };
+  }
+};
+
+function VirtualKeyPanel({ className }: { className?: string }) {
+  const { state } = useEditDeviceContext();
+  const device = state.device;
+  const vks = useMemo(
+    () =>
+      Array.from({ length: device.virtualKeyCount }, (_, i) => {
+        return {
+          keyId: getVirtualKeyId(i),
+          name: `${i + 1}`,
+
+          layers: state.profile.virtualKeys[i]?.layers,
+        };
+      }).filter((vk) => vk),
+    [state, device],
+  );
+  return (
+    <div
+      className={clsx(
+        "flex flex-col gap-1 rounded-2xl bg-stone-900 px-4 py-3",
+        className,
+      )}
+    >
+      <div>Virtual Keys</div>
+      <div className="flex flex-wrap justify-center">
+        {vks.map((vk) => (
+          <Key
+            key={vk.keyId}
+            keyId={vk.keyId}
+            keyName={vk.name}
+            keyColor={KeyColor.Virtual}
+            keyClassName="size-13"
+            compact
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// @ts-ignore
+// todo: use this guy for both physical and virtual keys when screen size is too small
+function KeysPanel({
   className,
-  layers,
-  selected,
-  setSelected,
-  onEdit,
+  showPhysicalKeys,
+  showVirtualKeys,
 }: {
   className?: string;
-  layers: readonly ListBoxItem[];
-  selected: ListBoxItem | null;
-  setSelected: (item: ListBoxItem) => void;
-  onEdit?: (item: ListBoxItem) => void;
+  showPhysicalKeys?: boolean;
+  showVirtualKeys?: boolean;
 }) {
+  const { state, dispatch } = useEditDeviceContext();
+  const device = state.device;
+
+  const keys: KeyListBoxItem[] = useMemo(() => {
+    const physicalKeys = showPhysicalKeys
+      ? device.keyMap
+          .map((k) => {
+            const key = findKeyById(k.keyId, state.profile);
+            return {
+              label: k.name,
+              value: k.keyId,
+              key: key!,
+            };
+          })
+          .filter((k) => k.key)
+      : [];
+
+    const virtualKeys = showVirtualKeys
+      ? Array.from({ length: device.virtualKeyCount }, (_, i) => {
+          const id = getVirtualKeyId(i);
+          const key = findKeyById(id, state.profile);
+          return {
+            label: `VK-${i + 1}`,
+            value: id,
+            key: key!,
+          };
+        }).filter((k) => k.key)
+      : [];
+
+    return [...physicalKeys, ...virtualKeys];
+  }, [device]);
+
+  const selectedKey = useMemo(
+    () =>
+      state.selectedKey
+        ? (keys.find((k) => k.value == state.selectedKey) ?? null)
+        : null,
+    [state],
+  );
+
   return (
-    <div className={clsx("flex grow flex-col overflow-y-auto", className)}>
+    <PanelContainer className={className}>
+      <HeaderBar>
+        <div className={headerBarIconClass}>
+          <KeysIcon />
+        </div>
+        <div className="grow">
+          {showPhysicalKeys ? "Keys" : showVirtualKeys ? "Virtual Keys" : "???"}
+        </div>
+      </HeaderBar>
+      <ListBox
+        className="grow"
+        variant="green"
+        items={keys}
+        selected={selectedKey}
+        setSelected={(v) =>
+          dispatch({ type: "setSelectedKey", keyId: v.value })
+        }
+        renderItem={(item) => {
+          const layerCount = getLayerCount(item.value, state.profile);
+          return (
+            <div className="flex size-full">
+              <div className="grow">{item.label}</div>
+              {layerCount > 0 && <div>{layerCount}</div>}
+            </div>
+          );
+        }}
+      />
+    </PanelContainer>
+  );
+}
+
+const getLayerCount = (keyId: string, profile: DeviceProfile): number =>
+  profile.keys.find((k) => k.id === keyId)?.layers.layers.length ?? 0;
+
+function BindingsPanel({ className }: { className?: string }) {
+  const { state, dispatch } = useEditDeviceContext();
+
+  const selectedLayer = findSelectedProfileLayer(state);
+  const bindings = selectedLayer
+    ? isTaggedDeviceLayer(selectedLayer)
+      ? selectedLayer.layer.macros
+      : selectedLayer.macros
+    : undefined;
+
+  const macros: readonly ({ index: number } & ListBoxItem)[] =
+    bindings?.map((m, i) => {
+      const macro = state.profile.macros.find((x) => x.id === m);
+      return macro
+        ? { label: macro.name, value: macro.id, index: i }
+        : { label: "(unknown)", value: m, index: i };
+    }) ?? [];
+
+  // const { isOver, setNodeRef } = useDroppable({
+  //   id: "macro",
+  // });
+
+  return (
+    <PanelContainer /*ref={setNodeRef}*/ className={className}>
+      <HeaderBar>
+        <div className={headerBarIconClass}>
+          <BindingsPanelIcon />
+        </div>
+        <div className="grow">Bindings</div>
+        <button
+          className={headerBarButtonClass}
+          onClick={() => {
+            dispatch({
+              type: "setSelectedBindings",
+              index: macros.map((m) => m.index),
+            });
+          }}
+        >
+          <SelectAllIcon />
+        </button>
+        <button
+          className={headerBarButtonClass}
+          onClick={() => {
+            dispatch({ type: "setSelectedBindings", index: [] });
+          }}
+        >
+          <DeselectIcon />
+        </button>
+        <button
+          className={headerBarButtonClass}
+          onClick={() => {
+            if (
+              !state.selectedKey ||
+              !state.selectedLayer ||
+              !state.selectedMacro ||
+              !bindings
+            )
+              return;
+
+            if (bindings.some((m) => m === state.selectedMacro)) return;
+
+            dispatch({
+              type: "setProfile",
+              profile: updateLayerBindings(
+                state.selectedKey,
+                state.selectedLayer,
+                state.profile,
+                [...bindings, state.selectedMacro],
+              ),
+            });
+
+            dispatch({ type: "setSelectedBindings", index: [bindings.length] });
+          }}
+        >
+          <AddIcon />
+        </button>
+        <button
+          className={headerBarButtonClass}
+          onClick={() => {
+            if (
+              !state.selectedKey ||
+              !state.selectedLayer ||
+              state.selectedBinding === null ||
+              !bindings
+            )
+              return;
+            dispatch({
+              type: "setProfile",
+              profile: updateLayerBindings(
+                state.selectedKey,
+                state.selectedLayer,
+                state.profile,
+                bindings.filter(
+                  (_, i) => !state.selectedBinding.some((b) => b === i),
+                ),
+              ),
+            });
+            dispatch({
+              type: "setSelectedBindings",
+              index: [],
+            });
+          }}
+        >
+          <RemoveIcon />
+        </button>
+      </HeaderBar>
+      <ListBox
+        className="grow"
+        items={macros}
+        isMultiSelect
+        selected={state.selectedBinding.map((i) => macros[i])}
+        setSelected={(v) =>
+          dispatch({
+            type: "setSelectedBindings",
+            index: v.map((item) => item.index),
+          })
+        }
+        onDoubleClick={(item) =>
+          dispatch({ type: "setSelectedMacro", macroId: item.value })
+        }
+        onDelete={(items) => {
+          if (
+            !state.selectedKey ||
+            !state.selectedLayer ||
+            state.selectedBinding === null ||
+            !bindings
+          )
+            return;
+          dispatch({
+            type: "setProfile",
+            profile: updateLayerBindings(
+              state.selectedKey,
+              state.selectedLayer,
+              state.profile,
+              bindings.filter((_, i) => !items.some((b) => b.index === i)),
+            ),
+          });
+          dispatch({
+            type: "setSelectedBindings",
+            index: [],
+          });
+        }}
+      />
+    </PanelContainer>
+  );
+}
+
+interface LayerListBoxItem extends ListBoxItem {
+  layer: TaggedDeviceLayer | DeviceKeyLayer;
+}
+
+const findSelectedLayerItem = (
+  state: EditDeviceState,
+): LayerListBoxItem | null => {
+  const selectedLayer = findSelectedProfileLayer(state);
+  return selectedLayer ? layerToItem(selectedLayer) : null;
+};
+
+const getSelectedKeyLayerItems = (
+  state: EditDeviceState,
+): readonly LayerListBoxItem[] => {
+  const selectedKeyLayers = getSelectedKeyProfileLayers(state);
+  return selectedKeyLayers
+    ? [
+        ...selectedKeyLayers.layers.map(layerToItem),
+        layerToItem(selectedKeyLayers.defaultLayer),
+      ]
+    : [];
+};
+
+const layerToItem = (
+  layer: TaggedDeviceLayer | DeviceKeyLayer,
+): LayerListBoxItem => {
+  if (isTaggedDeviceLayer(layer)) {
+    return {
+      label: getTaggedLayerName(layer),
+      value: layer.layer.id,
+      layer: layer,
+    };
+  }
+  return {
+    label: defaultLayerName,
+    value: layer.id,
+    layer: layer,
+  };
+};
+
+const defaultLayerName = "(default)";
+
+function LayersPanel({ className }: { className?: string }) {
+  const { state, dispatch } = useEditDeviceContext();
+
+  const selectedLayer = findSelectedLayerItem(state);
+  const layers = getSelectedKeyLayerItems(state);
+
+  const isSelectedLayerDefaultLayer = useMemo(
+    () =>
+      selectedLayer && state.selectedKey
+        ? findKeyById(state.selectedKey, state.profile)?.layers.defaultLayer
+            .id === selectedLayer.value
+        : undefined,
+    [state],
+  );
+
+  return (
+    <PanelContainer className={className}>
       <HeaderBar>
         <div className={headerBarIconClass}>
           <LayersIcon />
         </div>
         <div className="grow">Layers</div>
-        <Button
-          className={headerBarIconClass}
-          buttonStyle={{ variant: "toolbar" }}
+        <button
+          className={headerBarButtonClass}
+          onClick={() => {
+            if (!state.selectedKey) return;
+            const newLayer = newTaggedLayer();
+            const updated = insertLayer(
+              state.selectedKey,
+              state.profile,
+              state.selectedLayer,
+              newLayer,
+            );
+            dispatch({ type: "setProfile", profile: updated });
+            dispatch({ type: "setSelectedLayer", layerId: newLayer.layer.id });
+          }}
         >
           <AddIcon />
-        </Button>
-        <Button
-          className={headerBarIconClass}
-          buttonStyle={{ variant: "toolbar" }}
+        </button>
+        <button
+          className={headerBarButtonClass}
+          onClick={() => {
+            if (
+              !state.selectedKey ||
+              !state.selectedLayer ||
+              !selectedLayer ||
+              isSelectedLayerDefaultLayer === undefined
+            )
+              return;
+
+            if (isSelectedLayerDefaultLayer) return;
+
+            const newSelectedIndex = Math.min(
+              Math.max(
+                layers.findIndex((l) => l.value === state.selectedLayer) + 1,
+                0,
+              ),
+              layers.length - 1,
+            );
+            const newSelected = layers[newSelectedIndex];
+            const updated = removeLayer(
+              state.selectedKey,
+              state.profile,
+              state.selectedLayer,
+            );
+            dispatch({ type: "setProfile", profile: updated });
+            dispatch({
+              type: "setSelectedLayer",
+              layerId: newSelected.value,
+            });
+          }}
+          disabled={isSelectedLayerDefaultLayer}
         >
           <RemoveIcon />
-        </Button>
-        <Button
-          className={headerBarIconClass}
-          buttonStyle={{ variant: "toolbar" }}
+        </button>
+        <button
+          className={headerBarButtonClass}
+          onClick={() => {
+            const selectedLayer = state.selectedLayer;
+            if (!state.selectedKey || !selectedLayer) return;
+            const updatedProfile = updateKeyLayers(
+              state.selectedKey,
+              state.profile,
+              (layers) => shiftLayer(selectedLayer, layers, -1),
+            );
+            dispatch({ type: "setProfile", profile: updatedProfile });
+            dispatch({
+              type: "setSelectedLayer",
+              layerId: state.selectedLayer,
+            });
+          }}
         >
           <MoveUpIcon />
-        </Button>
-        <Button
-          className={headerBarIconClass}
-          buttonStyle={{ variant: "toolbar" }}
+        </button>
+        <button
+          className={headerBarButtonClass}
+          onClick={() => {
+            const selectedLayer = state.selectedLayer;
+            if (!state.selectedKey || !selectedLayer) return;
+            const updatedProfile = updateKeyLayers(
+              state.selectedKey,
+              state.profile,
+              (layers) => shiftLayer(selectedLayer, layers, 1),
+            );
+            dispatch({ type: "setProfile", profile: updatedProfile });
+            dispatch({
+              type: "setSelectedLayer",
+              layerId: state.selectedLayer,
+            });
+          }}
         >
           <MoveDownIcon />
-        </Button>
+        </button>
       </HeaderBar>
       <ListBox
-        variant={"red"}
+        variant="red"
         items={layers}
-        selected={selected}
-        setSelected={setSelected}
-        onEdit={onEdit}
+        selected={selectedLayer}
+        setSelected={(v) =>
+          dispatch({ type: "setSelectedLayer", layerId: v.value })
+        }
+        onDoubleClick={(item) => {
+          if ("layer" in item.layer && state.selectedKey) {
+            dispatch({
+              type: "setModal",
+              modal: {
+                type: "editTaggedLayer",
+                show: true,
+                keyId: state.selectedKey,
+                layerId: item.layer.layer.id,
+              },
+            });
+          } else {
+            // todo: edit default layer
+          }
+        }}
       />
-    </div>
+    </PanelContainer>
   );
 }
 
-function MacrosPanel({
-  className,
-  macros: keys,
-  selected,
-  setSelected,
-}: {
-  className?: string;
-  macros: ListBoxItem[];
-  selected: ListBoxItem | null;
-  setSelected: (item: ListBoxItem) => void;
-}) {
+const shiftLayer = (
+  target: string,
+  layers: DeviceLayers,
+  offset: number,
+): DeviceLayers => {
+  const index = layers.layers.findIndex((l) => l.layer.id === target);
+  if (index == -1) return layers;
+
+  const newOffset = index + offset;
+  if (newOffset < 0 || newOffset >= layers.layers.length) return layers;
+
+  const updated = layers.layers.slice();
+  [updated[index + offset], updated[index]] = [
+    updated[index],
+    updated[index + offset],
+  ];
+  return { ...layers, layers: updated };
+};
+
+function MacrosPanel({ className }: { className?: string }) {
+  const { state, dispatch } = useEditDeviceContext();
+
+  const macros: readonly ListBoxItem[] = useMemo(
+    () =>
+      state.profile.macros.map((m) => {
+        return { label: m.name, value: m.id };
+      }),
+    [state],
+  );
+
+  const selectedMacro = useMemo(
+    () =>
+      state.selectedMacro
+        ? (macros.find((l) => l.value === state.selectedMacro) ?? null)
+        : null,
+    [state],
+  );
+
   return (
-    <div className={clsx("overflow-y-auto bg-stone-800", className)}>
+    <PanelContainer className={className}>
       <HeaderBar>
         <div className="size-5">
           <MacroIcon />
         </div>
         <div className="grow">Macros</div>
-        <Button
-          className={headerBarIconClass}
-          buttonStyle={{ variant: "toolbar" }}
-        >
+        <button className={headerBarButtonClass}>
           <AddIcon />
-        </Button>
-        <Button
-          className={headerBarIconClass}
-          buttonStyle={{ variant: "toolbar" }}
-        >
+        </button>
+        <button className={headerBarButtonClass}>
           <RemoveIcon />
-        </Button>
+        </button>
       </HeaderBar>
       <ListBox
         className="grow"
-        variant={"blue"}
-        items={keys}
-        selected={selected}
-        setSelected={setSelected}
+        variant="blue"
+        items={macros}
+        selected={selectedMacro}
+        setSelected={(v) =>
+          dispatch({ type: "setSelectedMacro", macroId: v.value })
+        }
+        onDoubleClick={(item) => {
+          dispatch({
+            type: "setModal",
+            modal: {
+              type: "editMacro",
+              show: true,
+              macroId: item.value,
+            },
+          });
+        }}
       />
+    </PanelContainer>
+  );
+}
+
+function EditMacroDialog() {
+  const { state, dispatch } = useEditDeviceContext();
+  const [macroToEdit, setMacroToEdit] = useEdit<DeviceMacro>(undefined);
+
+  const [macroId, setMacroId] = useState<string | undefined>(undefined);
+
+  const showModal =
+    state.modal !== null &&
+    state.modal.type === "editMacro" &&
+    state.modal.show;
+
+  useEffect(() => {
+    if (!state.modal || state.modal.type !== "editMacro" || !state.modal.show) {
+      setMacroId(undefined);
+      return;
+    }
+
+    if (state.modal.macroId === macroId) return;
+
+    const macro = findMacroById(state.modal.macroId, state.profile);
+    if (!macro) return;
+
+    setMacroToEdit(macro);
+    setMacroId(state.modal.macroId);
+  }, [state.modal]);
+
+  const closeModal = useCallback(
+    () => dispatch({ type: "setModal", modal: null }),
+    [dispatch],
+  );
+
+  if (!macroId) return <></>;
+
+  const numberOfUsages = getMacroUsages(macroId, state.profile).length;
+
+  return (
+    <Dialog
+      className="w-5xl"
+      open={showModal}
+      onClose={closeModal}
+      closeOnBackdropClick={false}
+    >
+      <DialogHeader>
+        <DialogHeaderTitle className="text-lg font-bold">
+          Edit Macro
+        </DialogHeaderTitle>
+        <DialogHeaderDescription>
+          {numberOfUsages > 1 ? (
+            <div className="font-semibold text-sky-300">
+              {numberOfUsages} usages
+            </div>
+          ) : numberOfUsages === 1 ? (
+            "1 usage"
+          ) : (
+            "Unused"
+          )}
+        </DialogHeaderDescription>
+      </DialogHeader>
+      <DialogDivider />
+      <DialogBody className="gap-y-5">
+        <Fieldset className="space-y-8">
+          <div className="grid grid-cols-2 gap-x-8">
+            <div className="flex flex-col gap-4">
+              <Field className="flex flex-col gap-1">
+                <Label>Name</Label>
+                <Input
+                  className={clsx("w-full", InputClassName)}
+                  type="text"
+                  maxLength={255}
+                  value={macroToEdit?.name ?? ""}
+                  onChange={(e) =>
+                    setMacroToEdit((m) =>
+                      m ? { ...m, name: e.target.value } : m,
+                    )
+                  }
+                />
+              </Field>
+              <Field className="flex flex-col gap-1" disabled>
+                <Label className="data-disabled:opacity-50">Play Channel</Label>
+                <Input
+                  className={clsx("w-full", InputClassName)}
+                  type="number"
+                  min={0}
+                  max={255}
+                />
+              </Field>
+            </div>
+            <Field className="flex h-full flex-col gap-1" disabled>
+              <Label className="data-disabled:opacity-50">Cut Channels</Label>
+              <Textarea
+                className={clsx("grow resize-none", InputClassName)}
+                disabled
+              />
+            </Field>
+          </div>
+        </Fieldset>
+        <DialogDivider />
+        <TabGroup className="space-y-4">
+          <TabList className="space-x-1">
+            <Tab
+              as={Button}
+              className="px-4"
+              buttonStyle={{ variant: "navbar" }}
+            >
+              Sequences
+            </Tab>
+            <Tab
+              as={Button}
+              className="px-4"
+              buttonStyle={{ variant: "navbar" }}
+            >
+              Templates
+            </Tab>
+          </TabList>
+          <TabPanels className="h-96 rounded-lg border border-stone-900 bg-stone-800">
+            <TabPanel
+              tabIndex={-1}
+              className="grid size-full grid-cols-3 gap-2 p-2"
+            >
+              <SequenceEditor
+                type="start"
+                value={macroToEdit?.startSequence ?? { actions: [] }}
+                setValue={(s) => {
+                  if (!macroToEdit) return;
+                  setMacroToEdit({ ...macroToEdit, startSequence: s });
+                }}
+              />
+              <SequenceEditor
+                type="loop"
+                value={macroToEdit?.loopSequence ?? { actions: [] }}
+                setValue={(s) => {
+                  if (!macroToEdit) return;
+                  setMacroToEdit({ ...macroToEdit, loopSequence: s });
+                }}
+              />
+              <SequenceEditor
+                type="end"
+                value={macroToEdit?.endSequence ?? { actions: [] }}
+                setValue={(s) => {
+                  if (!macroToEdit) return;
+                  setMacroToEdit({ ...macroToEdit, endSequence: s });
+                }}
+              />
+            </TabPanel>
+            <TabPanel
+              tabIndex={-1}
+              className="flex size-full flex-wrap items-center justify-center gap-2 p-3"
+            >
+              <Template className="bg-sky-900 hover:bg-sky-800 active:bg-sky-950">
+                Basic
+              </Template>
+              <Template className="bg-orange-900 hover:bg-orange-800 active:bg-orange-950">
+                Rapid Fire
+              </Template>
+            </TabPanel>
+          </TabPanels>
+        </TabGroup>
+      </DialogBody>
+      <DialogFooter>
+        <div className="grow" />
+        <DialogConfirmButton
+          onClick={() => {
+            if (!showModal || !macroToEdit) return;
+
+            const updated = {
+              ...state.profile,
+              macros: state.profile.macros.map((m) =>
+                m.id === macroToEdit.id ? macroToEdit : m,
+              ),
+            };
+            dispatch({
+              type: "setProfile",
+              profile: updated,
+            });
+            dispatch({
+              type: "setModal",
+              modal: null,
+            });
+          }}
+        >
+          Confirm
+        </DialogConfirmButton>
+        <DialogCancelButton onClick={closeModal}>Cancel</DialogCancelButton>
+      </DialogFooter>
+    </Dialog>
+  );
+}
+
+function Template({
+  className,
+  children,
+}: {
+  className?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <button
+      className={clsx(
+        "h-24 w-56 rounded-2xl shadow-lg shadow-black/25",
+        getButtonClassName({ rounded: "none", variant: "no-color" }),
+        className,
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function PanelContainer({
+  className,
+  children,
+  ref,
+}: {
+  className?: string;
+  children?: ReactNode;
+  ref?: (element: HTMLElement | null) => void;
+}) {
+  return (
+    <div
+      ref={ref}
+      className={clsx("flex flex-col overflow-y-auto bg-stone-800", className)}
+    >
+      {children}
     </div>
+  );
+}
+
+function TagsIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M7.5 7.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+      <path d="M3 6v5.172a2 2 0 0 0 .586 1.414l7.71 7.71a2.41 2.41 0 0 0 3.408 0l5.592 -5.592a2.41 2.41 0 0 0 0 -3.408l-7.71 -7.71a2 2 0 0 0 -1.414 -.586h-5.172a3 3 0 0 0 -3 3z" />
+    </svg>
   );
 }
 
@@ -368,6 +1163,22 @@ function KeysIcon() {
 }
 
 function MacroIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M17 20h-11a3 3 0 0 1 0 -6h11a3 3 0 0 0 0 6h1a3 3 0 0 0 3 -3v-11a2 2 0 0 0 -2 -2h-10a2 2 0 0 0 -2 2v8" />
+    </svg>
+  );
+}
+
+function BindingsPanelIcon() {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -466,6 +1277,72 @@ function MoveDownIcon() {
       <path d="M12 5l0 14" />
       <path d="M18 13l-6 6" />
       <path d="M6 13l6 6" />
+    </svg>
+  );
+}
+
+function SelectAllIcon() {
+  return (
+    <svg
+      className="size-5"
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M8 8m0 1a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-6a1 1 0 0 1 -1 -1z" />
+      <path d="M12 20v.01" />
+      <path d="M16 20v.01" />
+      <path d="M8 20v.01" />
+      <path d="M4 20v.01" />
+      <path d="M4 16v.01" />
+      <path d="M4 12v.01" />
+      <path d="M4 8v.01" />
+      <path d="M4 4v.01" />
+      <path d="M8 4v.01" />
+      <path d="M12 4v.01" />
+      <path d="M16 4v.01" />
+      <path d="M20 4v.01" />
+      <path d="M20 8v.01" />
+      <path d="M20 12v.01" />
+      <path d="M20 16v.01" />
+      <path d="M20 20v.01" />
+    </svg>
+  );
+}
+
+function DeselectIcon() {
+  return (
+    <svg
+      className="size-5"
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 8h3a1 1 0 0 1 1 1v3" />
+      <path d="M16 16h-7a1 1 0 0 1 -1 -1v-7" />
+      <path d="M12 20v.01" />
+      <path d="M16 20v.01" />
+      <path d="M8 20v.01" />
+      <path d="M4 20v.01" />
+      <path d="M4 16v.01" />
+      <path d="M4 12v.01" />
+      <path d="M4 8v.01" />
+      <path d="M8 4v.01" />
+      <path d="M12 4v.01" />
+      <path d="M16 4v.01" />
+      <path d="M20 4v.01" />
+      <path d="M20 8v.01" />
+      <path d="M20 12v.01" />
+      <path d="M20 16v.01" />
+      <path d="M3 3l18 18" />
     </svg>
   );
 }

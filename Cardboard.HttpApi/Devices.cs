@@ -28,7 +28,7 @@ public static class Devices
 			.Produces(StatusCodes.Status404NotFound)
 			.WithOpenApi();
 		group
-			.MapPut("/{id}", UpdateDeviceProfile)
+			.MapPut("/{id}/profile", UpdateDeviceProfile)
 			.WithName("Update Device Profile")
 			.Produces(StatusCodes.Status204NoContent)
 			.Produces(StatusCodes.Status400BadRequest)

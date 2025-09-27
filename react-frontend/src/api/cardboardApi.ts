@@ -1,7 +1,16 @@
 const apiUrl = "http://localhost:7000/";
 
-export const getApiUrl = (key: string) => {
+export const getAssetUrl = (key: string) => {
   return new URL(key, apiUrl).href;
+};
+
+export const getApiUrl = (key: string) => {
+  const normalizedUrl = `${apiUrl.replace(/\/+$/, "")}/api/${key.replace(/^\/+|\/+$/g, "")}`;
+  try {
+    return new URL(normalizedUrl).href;
+  } catch {
+    throw new Error("Invalid URL generated");
+  }
 };
 
 export const fetcher = async (key: string) => {

@@ -6,7 +6,7 @@
 	</PropertyGroup>
 	<ItemGroup>
 		<PackageReference Include="ggbim.Cranky" Version="1.0.1" />
-		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.5" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.7" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\Cardboard.Device\Cardboard.Device.csproj" />

@@ -153,6 +153,12 @@ internal class WindowsSerialDeviceProvider : IDeviceProvider, IInitializable, ID
 											);
 										}
 
+										_logger.LogDebug(
+											"Sending command {Name} to device {DeviceInfoId}",
+											command.GetType().Name,
+											x.DeviceInfo.Id
+										);
+
 #if DEBUG
 										var stopwatch = Stopwatch.StartNew();
 #endif

@@ -1,33 +1,30 @@
-import { ButtonHTMLAttributes, useEffect, useRef, useState } from "react";
+import { CSSProperties, ReactNode, useEffect, useRef, useState } from "react";
 import { KeyInfo } from "../api/devices";
 import clsx from "clsx";
 
 export function KeyRenderer({
   className,
   keys,
-  keyClassName,
-  ...buttonProps
+  renderKey,
 }: {
+  className?: string;
   keys: readonly KeyInfo[];
-  keyClassName?: string | ((keyId: string) => string);
-} & ButtonHTMLAttributes<HTMLButtonElement>) {
+  renderKey?: (
+    key: KeyInfo,
+    keyClassName: string,
+    style: CSSProperties,
+  ) => ReactNode;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
-  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const [keyOffset, setKeyOffset] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     const updateScale = () => {
       if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
 
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-      const containerRect = containerRef.current.getBoundingClientRect();
-      setContainerSize({
-        width: containerRect.width,
-        height: containerRect.height,
-      });
-
-      // Calculate bounds of keys in units
+      // get bounds of keys
       let minX = Infinity,
         maxX = -Infinity,
         minY = Infinity,
@@ -44,15 +41,24 @@ export function KeyRenderer({
       const keysWidth = maxX - minX;
       const keysHeight = maxY - minY;
 
-      // Calculate scale to fit keys within 90% of viewport to avoid clipping
-      const padding = 0.1; // 10% padding
-      const scaleX = (viewportWidth / keysWidth) * (1 - padding);
-      const scaleY = (viewportHeight / keysHeight) * (1 - padding);
+      const keyRect = {
+        x: minX,
+        y: minY,
+        width: keysWidth,
+        height: keysHeight,
+      };
+
+      const keyCenterX = keyRect.x + keysWidth / 2;
+      const keyCenterY = keyRect.y + keysHeight / 2;
+
+      setKeyOffset({ x: keyCenterX, y: keyCenterY });
+
+      const pxPadding = 4;
+      const scaleX = (rect.width - pxPadding) / keysWidth;
+      const scaleY = (rect.height - pxPadding) / keysHeight;
       const newScale = Math.min(scaleX, scaleY);
 
-      //setScale(newScale);
-
-      setScale(100);
+      setScale(newScale);
     };
 
     updateScale();
@@ -61,42 +67,32 @@ export function KeyRenderer({
   }, [keys]);
 
   // Convert units (100u = 1 key) to pixels with scaling
-  const unitToPx = (u: number) => (u * scale) / 100;
+  const unitToPx = (u: number) => u * scale;
+  const xformPosX = (x: number) => unitToPx(x) - unitToPx(keyOffset.x);
+  const xformPosY = (y: number) => unitToPx(y) - unitToPx(keyOffset.y);
 
-  // Center of container in units
-  const centerX = (containerSize.width / 2 / scale) * 100;
-  const centerY = (containerSize.height / 2 / scale) * 100;
-
-  console.log(keys);
+  const keyClassName = "absolute -translate-x-1/2 -translate-y-1/2 transform";
 
   return (
-    <div className={clsx("grow bg-stone-950", className)}></div>
-    // <div
-    //   ref={containerRef}
-    //   className={clsx("relative h-full w-full overflow-hidden", className)}
-    // >
-    //   {keys.map((key) => {
-    //     const className =
-    //       typeof keyClassName === "function"
-    //         ? keyClassName(key.keyId)
-    //         : keyClassName || "bg-gray-200 hover:bg-gray-300";
-
-    //     return (
-    //       <button
-    //         key={key.keyId}
-    //         {...buttonProps}
-    //         className={`absolute -translate-x-1/2 -translate-y-1/2 transform rounded-md transition-colors ${className} `}
-    //         style={{
-    //           left: `calc(50% + ${unitToPx(key.offset.x - centerX)}px)`,
-    //           top: `calc(50% + ${unitToPx(key.offset.y - centerY)}px)`,
-    //           width: `${unitToPx(key.size.width)}px`,
-    //           height: `${unitToPx(key.size.height)}px`,
-    //         }}
-    //       >
-    //         {key.keyId}
-    //       </button>
-    //     );
-    //   })}
-    // </div>
+    <div
+      ref={containerRef}
+      className={clsx("relative grow overflow-hidden", className)}
+    >
+      {keys.map((key) => {
+        const style: CSSProperties = {
+          left: `calc(50% + ${xformPosX(key.offset.x)}px)`,
+          top: `calc(50% + ${xformPosY(key.offset.y)}px)`,
+          width: `${unitToPx(key.size.width)}px`,
+          height: `${unitToPx(key.size.height)}px`,
+        };
+        return renderKey ? (
+          renderKey(key, keyClassName, style)
+        ) : (
+          <button key={key.keyId} className={keyClassName} style={style}>
+            {key.name}
+          </button>
+        );
+      })}
+    </div>
   );
 }

@@ -12,6 +12,7 @@ public interface IInitializable
 
 public interface IReinitializer
 {
+	/// <remarks>Take care when calling this. With event-driven systems, this will trigger cascading refreshes in some systems.</remarks>
 	Task Reinitialize();
 }
 
@@ -20,7 +21,7 @@ file class InitializationProvider(IServiceProvider serviceProvider, IServiceColl
 	public IEnumerable<IInitializable> Initializations { get; } =
 		GetInitializations(serviceProvider, serviceCollection);
 
-	private static IReadOnlyCollection<IInitializable> GetInitializations(
+	private static List<IInitializable> GetInitializations(
 		IServiceProvider serviceProvider,
 		IServiceCollection serviceCollection
 	) =>
@@ -64,9 +65,25 @@ file class Reinitializer(InitializationProvider provider) : IReinitializer
 
 partial class Services
 {
-	private static IServiceCollection AddInitialization(this IServiceCollection services) =>
+	public static IServiceCollection AddInitialization(this IServiceCollection services) =>
 		services
 			.AddSingleton<InitializationProvider>(sp => new(sp, services))
 			.AddSingleton<IReinitializer, Reinitializer>()
 			.AddHostedService<InitializerHostedService>();
+
+	public static async Task Initialize(this IServiceProvider serviceProvider)
+	{
+		var initializationProvider = serviceProvider.GetRequiredService<InitializationProvider>();
+
+		foreach (var i in initializationProvider.Initializations)
+		{
+			await i.Initialize();
+		}
+	}
+
+	public static async Task Reinitialize(this IServiceProvider serviceProvider)
+	{
+		var reinitializer = serviceProvider.GetRequiredService<IReinitializer>();
+		await reinitializer.Reinitialize();
+	}
 }

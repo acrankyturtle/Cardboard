@@ -9,31 +9,32 @@ import clsx from "clsx";
 import { ReactNode } from "react";
 import { Button } from "./Button";
 
-export function CardboardDialog({
+export function Dialog({
   className,
   children,
   closeOnBackdropClick = true,
+  onClose = () => {},
   ...props
 }: {
   className?: string;
-  children?: React.ReactNode;
+  children?: ReactNode;
   open?: boolean;
-  onClose: (value: boolean) => void;
+  onClose?: (value: boolean) => void;
   closeOnBackdropClick?: boolean;
 }) {
   const panelClassName = clsx(
-    "flex flex-col gap-y-4 rounded-2xl bg-stone-700 p-4 text-stone-100 shadow-lg",
+    "flex flex-col gap-y-4 rounded-2xl border-2 border-stone-950 bg-stone-700 p-4 text-stone-100 shadow-lg shadow-black/50",
     className,
   );
   return (
-    <HeadlessDialog {...props}>
+    <HeadlessDialog {...props} onClose={onClose}>
       <HeadlessDialogBackdrop
         className={clsx("fixed inset-0 bg-black/30 backdrop-blur-sm", {
           "pointer-events-none": !closeOnBackdropClick,
         })}
       />
       <div className="fixed inset-0 flex w-screen items-center justify-center">
-        {closeOnBackdropClick ? (
+        {closeOnBackdropClick ? ( // todo: do we need this???
           <HeadlessDialogPanel className={panelClassName}>
             {children}
           </HeadlessDialogPanel>
@@ -67,7 +68,10 @@ export function DialogHeaderTitle({
 }) {
   return (
     <HeadlessDialogTitle
-      className={clsx("text-lg font-bold text-stone-100", className)}
+      className={clsx(
+        "text-lg font-bold drop-shadow-md drop-shadow-black/25",
+        className,
+      )}
     >
       {children}
     </HeadlessDialogTitle>
@@ -113,21 +117,7 @@ export function DialogFooter({
   className?: string;
   children?: ReactNode;
 }) {
-  return <div className={clsx("flex gap-1 pt-6", className)}>{children}</div>;
-}
-
-export function DialogFooterButtons({
-  className,
-  children,
-}: {
-  className?: string;
-  children?: ReactNode;
-}) {
-  return (
-    <div className={clsx("flex grow justify-end gap-4", className)}>
-      {children}
-    </div>
-  );
+  return <div className={clsx("flex gap-4 pt-6", className)}>{children}</div>;
 }
 
 export function DialogConfirmButton({
@@ -141,7 +131,7 @@ export function DialogConfirmButton({
 }) {
   return (
     <Button
-      className={clsx("min-w-24 px-3", className)}
+      className={clsx("min-w-24", className)}
       buttonStyle={{ variant: "submit" }}
       onClick={onClick}
       type="submit"

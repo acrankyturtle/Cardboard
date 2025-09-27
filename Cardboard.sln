@@ -4,8 +4,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.Device", "Cardboa
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.Serial", "Cardboard.Serial\Cardboard.Serial.csproj", "{7358B9C1-3761-458D-B8E6-B808423DD579}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.Configuration", "Cardboard.Configuration\Cardboard.Configuration.csproj", "{7B7340BF-6036-421C-9567-F311216F5012}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.Controller", "Cardboard.Controller\Cardboard.Controller.csproj", "{4C7543F1-874D-4A11-AA94-486B8E41EC8C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.HttpApi", "Cardboard.HttpApi\Cardboard.HttpApi.csproj", "{B29B2043-7C59-4416-A0AA-0E46EF783BDA}"
@@ -28,6 +26,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UpdateRunner", "UpdateRunne
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.JsonSchema", "Cardboard.JsonSchema\Cardboard.JsonSchema.csproj", "{BCAD0F1E-6C49-4655-A6DE-8C728EBECC11}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cardboard.FrontendHost", "Cardboard.FrontendHost\Cardboard.FrontendHost.csproj", "{BE029EB3-3964-4EAF-B3D5-74F092B6B6E6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -42,10 +42,6 @@ Global
 		{7358B9C1-3761-458D-B8E6-B808423DD579}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7358B9C1-3761-458D-B8E6-B808423DD579}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7358B9C1-3761-458D-B8E6-B808423DD579}.Release|Any CPU.Build.0 = Release|Any CPU
-		{7B7340BF-6036-421C-9567-F311216F5012}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{7B7340BF-6036-421C-9567-F311216F5012}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{7B7340BF-6036-421C-9567-F311216F5012}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{7B7340BF-6036-421C-9567-F311216F5012}.Release|Any CPU.Build.0 = Release|Any CPU
 		{4C7543F1-874D-4A11-AA94-486B8E41EC8C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{4C7543F1-874D-4A11-AA94-486B8E41EC8C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4C7543F1-874D-4A11-AA94-486B8E41EC8C}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -90,6 +86,10 @@ Global
 		{BCAD0F1E-6C49-4655-A6DE-8C728EBECC11}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BCAD0F1E-6C49-4655-A6DE-8C728EBECC11}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BCAD0F1E-6C49-4655-A6DE-8C728EBECC11}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BE029EB3-3964-4EAF-B3D5-74F092B6B6E6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BE029EB3-3964-4EAF-B3D5-74F092B6B6E6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BE029EB3-3964-4EAF-B3D5-74F092B6B6E6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BE029EB3-3964-4EAF-B3D5-74F092B6B6E6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 	EndGlobalSection

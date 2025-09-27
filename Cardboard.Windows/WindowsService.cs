@@ -72,6 +72,12 @@ file class HiddenWindow : Form
 		WindowState = FormWindowState.Minimized;
 	}
 
+	protected override void OnShown(EventArgs e)
+	{
+		Visible = false;
+		base.OnShown(e);
+	}
+
 	protected override void WndProc(ref Message m)
 	{
 		try

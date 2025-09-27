@@ -1,7 +1,7 @@
 import { getButtonClassName } from "./components/Button.tsx";
 import clsx from "clsx";
 import { ReactElement, ReactNode } from "react";
-import { Tab, TabList } from "@headlessui/react";
+import { NavLink, To } from "react-router";
 
 export function NavBar({ className }: { className?: string }) {
   return (
@@ -10,41 +10,50 @@ export function NavBar({ className }: { className?: string }) {
         <div>
           <Logo />
         </div>
-        <TabList className="mt-10 flex h-full flex-col items-center space-y-4">
-          <NavBarButton className="flex items-center">
-            {(selected) => <DashboardIcon selected={selected} />}
-          </NavBarButton>
-          <NavBarButton>
+        <div className="mt-10 flex h-full flex-col items-center space-y-4">
+          {/*<NavBarButton className="flex items-center" to="/">*/}
+          {/*  {(selected) => <DashboardIcon selected={selected} />}*/}
+          {/*</NavBarButton>*/}
+          <NavBarButton to="/devices">
             {(selected) => <DeviceIcon selected={selected} />}
           </NavBarButton>
-          <NavBarButton>
-            {(selected) => <SettingsIcon selected={selected} />}
-          </NavBarButton>
-          {/*<div className="grow" />*/}
-        </TabList>
+          {/*<NavBarButton to="/settings">*/}
+          {/*  {(selected) => <SettingsIcon selected={selected} />}*/}
+          {/*</NavBarButton>*/}
+        </div>
       </div>
     </nav>
   );
 }
+
 function NavBarButton({
   className,
   children,
+  to,
 }: {
   className?: string;
   children?: ReactNode | ((selected: boolean) => ReactElement);
+  to: To;
 }) {
   return (
-    <Tab
-      className={clsx(
-        "size-11",
-        getButtonClassName({ variant: "navbar", focusRing: "dark" }),
-        className,
-      )}
-    >
-      {({ selected }: any) =>
-        typeof children === "function" ? children(selected) : children
+    <NavLink
+      className={({ isActive }) =>
+        clsx(
+          "size-11",
+          getButtonClassName({
+            variant: "navbar",
+            focusRing: "dark",
+            isActive,
+          }),
+          className,
+        )
       }
-    </Tab>
+      to={to}
+    >
+      {({ isActive }) =>
+        typeof children === "function" ? children(isActive) : children
+      }
+    </NavLink>
   );
 }
 

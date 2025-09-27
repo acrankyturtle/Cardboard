@@ -5,5 +5,5 @@ namespace Cardboard.Services;
 public static partial class Services
 {
 	public static IServiceCollection AddCardboardServices(this IServiceCollection services) =>
-		services.AddAssociationEvents().AddInitialization().AddTagSwitcher().AddVirtualKeyDispatcher();
+		services.AddAssociationEvents().AddTagSwitcher().AddVirtualKeyDispatcher();
 }

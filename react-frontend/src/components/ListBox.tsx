@@ -1,10 +1,37 @@
-import { useEffect, useRef } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 import clsx, { ClassValue } from "clsx";
+import * as React from "react";
 
 export interface ListBoxItem {
   label: string;
   value: string;
 }
+
+interface ListBoxBaseProps<TItem extends ListBoxItem> {
+  className?: string;
+  variant?: ItemVariant;
+  items: readonly TItem[];
+  renderItem?: (item: TItem, selected: boolean) => ReactNode;
+  onDoubleClick?: (item: TItem) => void;
+}
+
+type ListBoxSingleSelectProps<TItem extends ListBoxItem> =
+  ListBoxBaseProps<TItem> & {
+    selected?: TItem | null;
+    setSelected?: (item: TItem) => void;
+    onDelete?: (item: TItem) => void;
+  };
+
+type ListBoxMultiSelectProps<TItem extends ListBoxItem> =
+  ListBoxBaseProps<TItem> & {
+    selected: readonly TItem[];
+    setSelected: (items: readonly TItem[]) => void;
+    onDelete?: (items: readonly TItem[]) => void;
+  };
+
+type ListBoxProps<TItem extends ListBoxItem> =
+  | ({ isMultiSelect?: false } & ListBoxSingleSelectProps<TItem>)
+  | ({ isMultiSelect: true } & ListBoxMultiSelectProps<TItem>);
 
 export function ListBox<TItem extends ListBoxItem>({
   className,
@@ -12,20 +39,17 @@ export function ListBox<TItem extends ListBoxItem>({
   items,
   selected,
   setSelected,
-  onEdit,
-}: {
-  className?: string;
-  variant?: ItemVariant;
-  items: readonly TItem[];
-  selected?: TItem | null;
-  setSelected?: (item: TItem) => void;
-  onEdit?: (item: TItem) => void;
-}) {
+  onDoubleClick,
+  onDelete,
+  renderItem,
+  isMultiSelect,
+}: ListBoxProps<TItem>) {
   const listRef = useRef<HTMLUListElement>(null);
   const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
 
   // Handle keyboard navigation
   const handleKeyDown = (event: React.KeyboardEvent<HTMLUListElement>) => {
+    if (isMultiSelect) return; // unsupported as of now
     if (!listRef.current) return;
 
     const currentIndex = selected
@@ -53,6 +77,8 @@ export function ListBox<TItem extends ListBoxItem>({
 
   // Ensure selected item is in view
   useEffect(() => {
+    if (isMultiSelect) return; // unsupported as of now
+
     const selectedIndex = selected
       ? items.findIndex((item) => item.value === selected.value)
       : -1;
@@ -60,6 +86,28 @@ export function ListBox<TItem extends ListBoxItem>({
       itemRefs.current[selectedIndex]?.scrollIntoView({ block: "nearest" });
     }
   }, [selected]);
+
+  // handle delete key
+  useEffect(() => {
+    if (!onDelete) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Delete") {
+        if (isMultiSelect) {
+          if (selected.length > 0) {
+            onDelete(selected);
+          }
+        } else {
+          if (selected) {
+            onDelete(selected);
+          }
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onDelete, selected, isMultiSelect]);
 
   return (
     <div className={clsx("overflow-y-auto", className)}>
@@ -69,30 +117,47 @@ export function ListBox<TItem extends ListBoxItem>({
         aria-activedescendant={selected ? `item-${selected}` : undefined}
         tabIndex={0}
         onKeyDown={handleKeyDown}
-        className="focus:ring-2 focus:ring-blue-500 focus:outline-none"
       >
-        {items.map((item, index) => (
-          <li
-            key={item.value}
-            id={`item-${item.value}`}
-            ref={(el) => {
-              itemRefs.current[index] = el;
-            }}
-            role="option"
-            aria-selected={selected?.value === item.value}
-            onClick={() => setSelected?.(item)}
-            onDoubleClick={() => onEdit?.(item)}
-            className={clsx(
-              "cursor-pointer px-4 py-2 transition-colors duration-150 select-none",
-              getVariantStyle(
-                variant ?? "violet",
-                selected?.value === item.value,
-              ),
-            )}
-          >
-            {item.label}
-          </li>
-        ))}
+        {items.map((item, index) => {
+          const isSelected = isMultiSelect
+            ? selected?.some((x) => x.value == item.value)
+            : selected?.value === item.value;
+          return (
+            <li
+              key={item.value}
+              id={`item-${item.value}`}
+              ref={(el) => {
+                itemRefs.current[index] = el;
+              }}
+              role="option"
+              aria-selected={isSelected}
+              onClick={() => {
+                if (isMultiSelect) {
+                  setSelected?.(
+                    isSelected
+                      ? selected.filter((x) => x.value !== item.value)
+                      : [...selected, item],
+                  );
+                } else {
+                  setSelected?.(item);
+                }
+              }}
+              onDoubleClick={() => onDoubleClick?.(item)}
+              className={clsx(
+                "cursor-pointer px-4 py-2 transition-colors duration-150 select-none",
+                getVariantStyle(variant ?? "violet", isSelected),
+              )}
+            >
+              {renderItem ? (
+                renderItem(item, isSelected)
+              ) : item.label.length > 0 ? (
+                item.label
+              ) : (
+                <div className="text-stone-50/25">(empty)</div>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

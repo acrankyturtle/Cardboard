@@ -6,32 +6,43 @@
 		<UserSecretsId>dotnet-Cardboard.Controller-713aafc6-76e6-4750-9881-194a8894336d</UserSecretsId>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.5" />
-		<PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.5" />
-		<PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.5" />
-		<PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.5" />
-		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.5" />
-		<PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.1" />
-		<PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="8.1.1" />
-		<PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="8.1.1" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.7" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.7" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.7" />
+		<PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.7" />
+		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.7" />
+		<PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.3" />
+		<PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="9.0.3" />
+		<PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="9.0.3" />
 	</ItemGroup>
 	<ItemGroup>
-		<ProjectReference Include="..\Cardboard.HttpApi\Cardboard.HttpApi.csproj" />
+		<ProjectReference Include="..\Cardboard.FrontendHost\Cardboard.FrontendHost.csproj" />
 		<ProjectReference Include="..\Cardboard.Services\Cardboard.Services.csproj" />
 		<ProjectReference Include="..\Cardboard.Windows\Cardboard.Windows.csproj" />
 	</ItemGroup>
-	<!--    <Target Name="BuildReact" BeforeTargets="Build">-->
-	<!--        <Exec Command="npm &#45;&#45;version" ContinueOnError="true">-->
-	<!--            <Output TaskParameter="ExitCode" PropertyName="NodeExitCode"/>-->
-	<!--        </Exec>-->
-	<!--        <Error Condition="'$(NodeExitCode)' != '0'" Text="Node.js is not installed."/>-->
-	<!--        <Exec WorkingDirectory="../react-frontend" Command="npm install"/>-->
-	<!--        <Exec WorkingDirectory="../react-frontend" Command="npm run build"/>-->
+	<!--    <PropertyGroup>-->
+	<!--        <ReactScriptPath>$(MSBuildProjectDirectory)/build-react.ps1</ReactScriptPath>-->
+	<!--    </PropertyGroup>-->
+	<!--    <Target Name="DebugProperties" BeforeTargets="BuildReact">-->
+	<!--        <Message Text="OutputPath: '$(OutputPath)'" Importance="High"/>-->
+	<!--        <Message Text="ReactScriptPath: '$(ReactScriptPath)'" Importance="High"/>-->
+	<!--        <Message Text="MSBuildProjectDirectory: '$(MSBuildProjectDirectory)'" Importance="High"/>-->
+	<!--        <Message Text="PATH: '$(PATH)'" Importance="High"/>-->
 	<!--    </Target>-->
-	<!--    <Target Name="CopyReactFiles" AfterTargets="BuildReact">-->
-	<!--        <ItemGroup>-->
-	<!--            <ReactFiles Include="../react-frontend/dist/**/*"/>-->
-	<!--        </ItemGroup>-->
-	<!--        <Copy SourceFiles="@(ReactFiles)" DestinationFolder="wwwroot/%(RecursiveDir)"/>-->
+	<!--    <Target Name="CheckPowerShellAvailability" BeforeTargets="BuildReact">-->
+	<!--        <Exec Command="powershell" IgnoreExitCode="true" ConsoleToMsBuild="true">-->
+	<!--            <Output TaskParameter="ConsoleOutput" PropertyName="PowerShellVersionOutput"/>-->
+	<!--        </Exec>-->
+	<!--        <Error-->
+	<!--                Text="PowerShell is not available in the build environment. Please ensure PowerShell is installed and accessible in the PATH."-->
+	<!--                Condition="!$(PowerShellVersionOutput.Contains('PowerShell'))"-->
+	<!--        />-->
+	<!--    </Target>-->
+	<!--    <Target Name="BuildReact" BeforeTargets="Build">-->
+	<!--        <PropertyGroup>-->
+	<!--            <ReactBuildCommand>powershell -NoProfile -ExecutionPolicy Bypass -File "$(ReactScriptPath)" -OutputPath "$(OutputPath.TrimEnd('\'))"</ReactBuildCommand>-->
+	<!--        </PropertyGroup>-->
+	<!--        <Message Text="ReactBuildCommand: '$(ReactBuildCommand)'" Importance="High"/>-->
+	<!--        <Exec Command="$(ReactBuildCommand)" ConsoleToMsBuild="true"/>-->
 	<!--    </Target>-->
 </Project>

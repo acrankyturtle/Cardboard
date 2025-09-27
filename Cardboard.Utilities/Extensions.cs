@@ -18,3 +18,19 @@ public static class EventExtensions
 	// 	return source.Select(e => Observable.Defer(() => selector(e).ToObservable())).Concat();
 	// }
 }
+
+public static class EnumerableExtensions
+{
+	public static IEnumerable<T> SelectNotNull<TSource, T>(
+		this IEnumerable<TSource> source,
+		Func<TSource, T?> selector
+	)
+		where T : struct
+	{
+		foreach (var item in source)
+		{
+			if (selector(item) is { } value)
+				yield return value;
+		}
+	}
+}

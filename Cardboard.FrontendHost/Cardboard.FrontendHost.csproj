@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net9.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+	<ItemGroup>
+		<Reference Include="Microsoft.AspNetCore.Http.Abstractions" />
+		<Reference Include="Microsoft.AspNetCore.Http.Results">
+			<HintPath>..\..\..\..\..\Program Files\dotnet\shared\Microsoft.AspNetCore.App\9.0.0\Microsoft.AspNetCore.Http.Results.dll</HintPath>
+		</Reference>
+		<Reference Include="Microsoft.AspNetCore.Routing">
+			<HintPath>..\..\..\..\..\Program Files\dotnet\shared\Microsoft.AspNetCore.App\9.0.0\Microsoft.AspNetCore.Routing.dll</HintPath>
+		</Reference>
+	</ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.7" />
+	</ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\Cardboard.HttpApi\Cardboard.HttpApi.csproj" />
+	</ItemGroup>
+</Project>

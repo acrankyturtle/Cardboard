@@ -1,5 +1,6 @@
 import { Select as HeadlessSelect } from "@headlessui/react";
 import clsx from "clsx";
+import { OptionHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
 
 export function Select({
   className,
@@ -7,12 +8,12 @@ export function Select({
   ...props
 }: {
   className?: string;
-  children?: React.ReactNode;
-} & React.SelectHTMLAttributes<HTMLSelectElement>) {
+  children?: ReactNode;
+} & SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <HeadlessSelect
       className={clsx(
-        "rounded-xl bg-stone-800 px-2 py-1 text-sm text-stone-100 shadow-sm outline-0 focus:border-stone-500 focus:ring-1 focus:ring-stone-500 data-hover:bg-stone-900",
+        "rounded-xl bg-stone-800 px-2 py-1 text-sm text-stone-100 shadow-sm outline-0 focus:border-stone-600 focus:ring-1 focus:ring-stone-500 data-hover:bg-stone-900",
         className,
       )}
       {...props}
@@ -28,16 +29,10 @@ export function SelectOption({
   ...props
 }: {
   className?: string;
-  children?: React.ReactNode;
-} & React.OptionHTMLAttributes<HTMLOptionElement>) {
+  children?: ReactNode;
+} & OptionHTMLAttributes<HTMLOptionElement>) {
   return (
-    <option
-      className={clsx(
-        "bg-stone-800 data-focus:bg-red-500 data-hover:bg-green-500",
-        className,
-      )}
-      {...props}
-    >
+    <option className={clsx("bg-stone-800", className)} {...props}>
       {children}
     </option>
   );

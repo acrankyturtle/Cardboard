@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.Text.Json;
+using System.Text.Json.Serialization;
 using Cardboard.Device;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -60,6 +61,8 @@ public sealed class DeviceDetails
 
 	public IReadOnlyCollection<KeyInfo> KeyMap { get; init; } = [];
 
+	public int VirtualKeyCount { get; init; }
+
 	public static DeviceDetails From(DeviceInfo info, DeviceStatus? status, DeviceTypeInfo typeInfo) =>
 		new()
 		{
@@ -71,6 +74,7 @@ public sealed class DeviceDetails
 			Status = status,
 			Commands = info.Commands,
 			KeyMap = typeInfo.KeyMap,
+			VirtualKeyCount = VirtualKeyHelper.GetVirtualKeyCount(info),
 		};
 }
 
@@ -97,6 +101,15 @@ public sealed class KeyInfo
 	/// 100 units = 1.0u key size
 	/// </summary>
 	public required KeySize Size { get; init; }
+
+	public required KeyColor Color { get; init; }
+}
+
+public enum KeyColor
+{
+	Regular,
+	Accent1,
+	Accent2,
 }
 
 public sealed class KeyOffset
@@ -117,8 +130,11 @@ public sealed class KeySize
 	public required int Height { get; init; }
 }
 
-file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceRepository> _logger)
-	: IDeviceRepository
+file sealed class DeviceRepository(
+	IDeviceService deviceService,
+	ILogger<DeviceRepository> _logger,
+	JsonSerializerOptions serializerOptions
+) : IDeviceRepository
 {
 	public async Task<IReadOnlyCollection<DeviceSummary>> GetDevices(
 		CancellationToken cancellationToken = default
@@ -189,6 +205,11 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 		CancellationToken cancellationToken = default
 	)
 	{
+		// TODO: remove - DEBUG
+		var json = JsonSerializer.Serialize(deviceProfile, serializerOptions);
+		_logger.LogInformation(json);
+		return UpdateDeviceProfileResult.Success;
+
 		var previous = await GetDeviceProfile(deviceId, cancellationToken);
 		if (previous is null)
 			return UpdateDeviceProfileResult.NotFound;
@@ -276,6 +297,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-1",
 					Offset = new() { X = -200, Y = -100 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Accent1,
 				},
 				new()
 				{
@@ -283,6 +305,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-2",
 					Offset = new() { X = -100, Y = -100 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -290,6 +313,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-3",
 					Offset = new() { X = 0, Y = -100 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -297,6 +321,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-4",
 					Offset = new() { X = 100, Y = -100 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -304,6 +329,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-5",
 					Offset = new() { X = 200, Y = -100 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -311,6 +337,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-6",
 					Offset = new() { X = 300, Y = -100 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Accent2,
 				},
 				new()
 				{
@@ -318,6 +345,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-7",
 					Offset = new() { X = -200, Y = 0 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -325,6 +353,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-8",
 					Offset = new() { X = -100, Y = 0 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -332,6 +361,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-9",
 					Offset = new() { X = 0, Y = 0 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Accent1,
 				},
 				new()
 				{
@@ -339,6 +369,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-10",
 					Offset = new() { X = 100, Y = 0 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -346,6 +377,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-11",
 					Offset = new() { X = 200, Y = 0 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -353,6 +385,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-12",
 					Offset = new() { X = 300, Y = 0 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Accent2,
 				},
 				new()
 				{
@@ -360,6 +393,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-13",
 					Offset = new() { X = -200, Y = 100 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -367,6 +401,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-14",
 					Offset = new() { X = -100, Y = 100 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Accent1,
 				},
 				new()
 				{
@@ -374,6 +409,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-15",
 					Offset = new() { X = 0, Y = 100 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Accent1,
 				},
 				new()
 				{
@@ -381,6 +417,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-16",
 					Offset = new() { X = 100, Y = 100 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Accent1,
 				},
 				new()
 				{
@@ -388,6 +425,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-17",
 					Offset = new() { X = 200, Y = 100 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -395,6 +433,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-18",
 					Offset = new() { X = 300, Y = 100 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Accent2,
 				},
 				new()
 				{
@@ -402,6 +441,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-19",
 					Offset = new() { X = -200, Y = 200 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -409,6 +449,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-20",
 					Offset = new() { X = -100, Y = 200 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -416,6 +457,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-21",
 					Offset = new() { X = 0, Y = 200 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -423,6 +465,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-22",
 					Offset = new() { X = 100, Y = 200 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -430,6 +473,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-23",
 					Offset = new() { X = 200, Y = 200 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -437,6 +481,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-24",
 					Offset = new() { X = 300, Y = 200 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Accent2,
 				},
 				new()
 				{
@@ -444,6 +489,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-25",
 					Offset = new() { X = -200, Y = 300 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -451,6 +497,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-26",
 					Offset = new() { X = -100, Y = 300 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -458,6 +505,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-27",
 					Offset = new() { X = 0, Y = 300 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -465,6 +513,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-28",
 					Offset = new() { X = 100, Y = 300 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -472,6 +521,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-29",
 					Offset = new() { X = 200, Y = 300 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -479,6 +529,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-30",
 					Offset = new() { X = 300, Y = 350 },
 					Size = new() { Width = 100, Height = 200 },
+					Color = KeyColor.Accent1,
 				},
 			],
 		},
@@ -495,6 +546,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-1",
 					Offset = new() { X = -200, Y = -100 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -502,6 +554,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-2",
 					Offset = new() { X = -100, Y = -100 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -509,6 +562,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-3",
 					Offset = new() { X = 0, Y = -100 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -516,6 +570,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-4",
 					Offset = new() { X = 100, Y = -100 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -523,6 +578,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-5",
 					Offset = new() { X = 200, Y = -100 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -530,6 +586,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-6",
 					Offset = new() { X = 300, Y = -100 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -537,6 +594,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-7",
 					Offset = new() { X = -200, Y = 0 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -544,6 +602,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-8",
 					Offset = new() { X = -100, Y = 0 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -551,6 +610,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-9",
 					Offset = new() { X = 0, Y = 0 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -558,6 +618,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-10",
 					Offset = new() { X = 100, Y = 0 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -565,6 +626,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-11",
 					Offset = new() { X = 200, Y = 0 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -572,6 +634,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-12",
 					Offset = new() { X = 300, Y = 0 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -579,6 +642,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-13",
 					Offset = new() { X = -200, Y = 100 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -586,6 +650,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-14",
 					Offset = new() { X = -100, Y = 100 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -593,6 +658,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-15",
 					Offset = new() { X = 0, Y = 100 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -600,6 +666,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-16",
 					Offset = new() { X = 100, Y = 100 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -607,6 +674,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-17",
 					Offset = new() { X = 200, Y = 100 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -614,6 +682,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-18",
 					Offset = new() { X = 300, Y = 100 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -621,6 +690,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-19",
 					Offset = new() { X = -200, Y = 200 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -628,6 +698,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-20",
 					Offset = new() { X = -100, Y = 200 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -635,6 +706,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-21",
 					Offset = new() { X = 0, Y = 200 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -642,6 +714,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-22",
 					Offset = new() { X = 100, Y = 200 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -649,6 +722,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-23",
 					Offset = new() { X = 200, Y = 200 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -656,6 +730,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-24",
 					Offset = new() { X = 300, Y = 200 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -663,6 +738,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-25",
 					Offset = new() { X = -200, Y = 300 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -670,6 +746,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-26",
 					Offset = new() { X = -100, Y = 300 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -677,6 +754,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-27",
 					Offset = new() { X = 0, Y = 300 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -684,6 +762,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-28",
 					Offset = new() { X = 100, Y = 300 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -691,6 +770,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-29",
 					Offset = new() { X = 200, Y = 300 },
 					Size = new() { Width = 100, Height = 100 },
+					Color = KeyColor.Regular,
 				},
 				new()
 				{
@@ -698,6 +778,7 @@ file sealed class DeviceRepository(IDeviceService deviceService, ILogger<DeviceR
 					Name = "K-30",
 					Offset = new() { X = 300, Y = 350 },
 					Size = new() { Width = 100, Height = 200 },
+					Color = KeyColor.Regular,
 				},
 			],
 		},

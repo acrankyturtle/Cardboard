@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 using Cardboard.Controller;
 using Cardboard.Device;
 using Cardboard.Events;
-using Cardboard.HttpApi;
+using Cardboard.FrontendHost;
 using Cardboard.Repositories;
 using Cardboard.Services;
 using Cardboard.Utilities;
@@ -20,8 +20,8 @@ builder.WebHost.ConfigureKestrel(options =>
 	// TODO: configure connection limits?
 });
 
-// todo: configure in AssociationRepository
-builder.Services.Configure<ApplicationRepositoryConfiguration>(builder.Configuration.GetSection("Paths"));
+builder.Services.ConfigureRepositories(builder.Configuration.GetSection("Paths"));
+builder.Services.ConfigureFrontend(builder.Configuration.GetSection("Frontend"));
 
 // web api json options
 builder.Services.Configure<JsonOptions>(options =>
@@ -54,10 +54,15 @@ builder
 	})
 	.AddEndpointsApiExplorer();
 
+builder.Services.AddHttpClient();
+
 builder
-	.Services.AddDeviceServices()
+	.Services.AddInitialization()
+	.AddDeviceServices()
 	.AddCardboardServices()
 	.AddCardboardWindowsEvents()
+	.AddFrontendHosting()
+	.AddFrontendService()
 	.AddRepositories()
 	.AddTrayIcon()
 	.AddWindowsSerialPort()
@@ -104,14 +109,9 @@ if (app.Environment.IsDevelopment())
 	app.UseCors("AllowReactApp");
 }
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 app.UseStaticFiles();
-app.UseRouting();
 
-app.MapFallbackToFile("index.html");
-
-app.MapDeviceRepositoryEndpoints();
-app.MapTagRepositoryEndpoints();
-app.MapSchemaEndpoints();
+app.MapFrontendApi();
 
 app.Run();

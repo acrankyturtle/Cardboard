@@ -1079,6 +1079,32 @@ mod tests {
 		assert_eq!(state.running[0].macro_.id, expected_macro_id);
 	}
 
+	#[test]
+	fn layers_with_empty_tags_never_match_for_any() {
+		let tag_list = TagList {
+			internal: vec![],
+			external: vec![],
+		};
+
+		assert_eq!(
+			tag_list.matches(&[LayerTag::new("".to_string())], &TagMatchType::Any),
+			false
+		);
+	}
+
+	#[test]
+	fn layers_with_empty_tags_never_match_for_all() {
+		let tag_list = TagList {
+			internal: vec![],
+			external: vec![],
+		};
+
+		assert_eq!(
+			tag_list.matches(&[LayerTag::new("".to_string())], &TagMatchType::All),
+			false
+		);
+	}
+
 	// ------- HELPERS --------
 
 	fn new_test_profile(keys: Vec<DeviceKey>, macros: Vec<Macro>) -> KeyboardProfile {

@@ -51,40 +51,32 @@ public sealed class SystemSerialPort(string name, SerialPort serialPort) : ISeri
 		CancellationToken cancellationToken = default
 	)
 	{
-		var result = await GetCommandStream(cancellationToken);
+		if (!await _lock.WaitAsync(_timeOut, cancellationToken))
+		{
+			// could not acquire lock in time -- return a TimeoutException with a populated stack trace
+			try
+			{
+				// hack: populate stack trace
+				throw new TimeoutException("Failed to acquire lock for serial port.");
+			}
+			catch (TimeoutException e)
+			{
+				return e;
+			}
+		}
 
 		try
 		{
-			if (!result.TryGetSuccess(out var commandStream))
-				return result.AssertError();
-
-			try
-			{
-				return await action(commandStream);
-			}
-			catch (Exception e)
-			{
-				return Result.Fail(e);
-			}
+			var commandStream = new SerialCommandStream(serialPort, _lock);
+			return await action(commandStream);
+		}
+		catch (Exception e)
+		{
+			return Result.Fail(e);
 		}
 		finally
 		{
 			_lock.Release();
-		}
-	}
-
-	private async Task<Result<ICommandStream, Exception>> GetCommandStream(
-		CancellationToken cancellationToken = default
-	)
-	{
-		try
-		{
-			await _lock.WaitAsync(_timeOut, cancellationToken);
-			return new SerialCommandStream(serialPort, _lock);
-		}
-		catch (Exception e)
-		{
-			return e;
 		}
 	}
 

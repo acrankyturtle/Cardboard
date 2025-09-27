@@ -4,8 +4,7 @@ namespace DeviceTool;
 
 public static class ProfileBuilder
 {
-	public static BuiltProfile Build(
-		string name,
+	public static DeviceProfile Build(
 		IEnumerable<Macro> macros,
 		IEnumerable<DeviceKey> keys,
 		IEnumerable<VirtualKey> virtualKeys
@@ -15,17 +14,23 @@ public static class ProfileBuilder
 		var keysList = keys.ToList();
 		var virtualKeysList = virtualKeys.ToList();
 
-		if (!GetMacrosInKeys(keysList, virtualKeysList).All(m => macrosList.Any(x => x.Id == m)))
-			throw new InvalidOperationException($"Not all macros in keys are defined in the macro list.");
+		var missingMacroIds = GetMacrosInKeys(keysList, virtualKeysList)
+			.Where(m => macrosList.All(x => x.Id != m))
+			.ToList();
 
-		var deviceProfile = new DeviceProfile()
+		if (missingMacroIds.Any())
+			throw new InvalidOperationException(
+				$"The following macros were not found in the provided macro list: {string.Join(", ", missingMacroIds)}"
+			);
+
+		var deviceProfile = new DeviceProfile
 		{
 			Keys = keysList,
 			VirtualKeys = virtualKeysList,
 			Macros = macrosList,
 		};
 
-		return new(name, deviceProfile);
+		return deviceProfile;
 	}
 
 	private static IEnumerable<MacroId> GetMacrosInKeys(
@@ -38,5 +43,3 @@ public static class ProfileBuilder
 			.SelectMany(x => x.Layers.SelectMany(tl => tl.Layer.Macros).Concat(x.DefaultLayer.Macros));
 	}
 }
-
-public record BuiltProfile(string Name, DeviceProfile Profile);

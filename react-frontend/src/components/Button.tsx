@@ -4,7 +4,18 @@ import clsx, { ClassValue } from "clsx";
 interface ButtonStyleOptions {
   animation?: "normal" | "none";
   focusRing?: "normal" | "dark";
-  variant?: "normal" | "submit" | "panelGhost" | "navbar" | "toolbar";
+  variant?:
+    | "normal"
+    | "submit"
+    | "ghost"
+    | "panelGhost"
+    | "navbar"
+    | "toolbar"
+    | "no-color";
+  rounded?: "full" | "none";
+  padding?: "normal" | "none";
+  disabled?: "half-opacity" | "none";
+  isActive?: boolean;
 }
 
 export function Button({
@@ -31,27 +42,38 @@ export const getButtonClassName = ({
   animation = "normal",
   focusRing = "normal",
   variant = "normal",
-}: ButtonStyleOptions) => {
+  rounded = "full",
+  padding = "normal",
+  isActive = false,
+  disabled = "half-opacity",
+}: ButtonStyleOptions): string => {
   return clsx(
     animation === "normal" ? "transition-all duration-150" : undefined,
     focusRing === "normal" ? FocusRing : undefined,
     focusRing === "dark" ? DarkFocusRing : undefined,
+    rounded === "full" ? "rounded-full" : undefined,
+    padding === "normal" ? Padding : undefined,
+    disabled === "half-opacity" ? "data-disabled:opacity-50" : undefined,
     variant === "normal"
-      ? NormalVariant
+      ? NormalVariant(isActive)
       : variant === "submit"
-        ? SubmitVariant
-        : variant === "panelGhost"
-          ? PanelGhostVariant
-          : variant === "navbar"
-            ? NavBarVariant
-            : variant === "toolbar"
-              ? ToolbarVariant
-              : undefined,
+        ? SubmitVariant(isActive)
+        : variant === "ghost"
+          ? GhostVariant(isActive)
+          : variant === "panelGhost"
+            ? PanelGhostVariant(isActive)
+            : variant === "navbar"
+              ? NavBarVariant(isActive)
+              : variant === "toolbar"
+                ? ToolbarVariant(isActive)
+                : variant === "no-color"
+                  ? NoColorVariant
+                  : undefined,
   );
 };
 
 const Base: ClassValue =
-  "inline-flex items-center rounded-full text-sm font-medium justify-center";
+  "inline-flex items-center text-sm font-medium justify-center select-none cursor-pointer";
 
 const Padding: ClassValue = "p-2";
 
@@ -61,27 +83,59 @@ const DarkFocusRing: ClassValue =
 const FocusRing: ClassValue =
   "focus:ring-1 focus:ring-stone-500/50 focus:ring-offset-1 focus:ring-offset-stone-400/50 focus:outline-none";
 
-const NormalVariant: ClassValue = clsx(
-  "bg-stone-800 text-stone-300 hover:bg-stone-700 hover:text-white active:text-white active:bg-stone-900",
-  Base,
-  Padding,
-);
-const SubmitVariant: ClassValue = clsx(
-  "bg-violet-900 text-stone-200 hover:bg-violet-800 hover:text-white active:text-white active:bg-violet-950",
-  Base,
-  Padding,
-);
-const PanelGhostVariant: ClassValue = clsx(
-  "text-stone-300 hover:bg-stone-800 hover:text-white active:text-white active:bg-stone-600",
-  Base,
-  Padding,
-);
-const NavBarVariant: ClassValue = clsx(
-  "text-stone-300 hover:bg-stone-700 hover:text-white active:text-white active:bg-stone-600 data-selected:bg-stone-900 data-selected:text-white",
-  Base,
-  Padding,
-);
-const ToolbarVariant: ClassValue = clsx(
-  "text-stone-300 hover:bg-stone-800 hover:text-white active:text-white active:bg-stone-600",
-  Base,
-);
+const NormalVariant = (isActive: boolean): ClassValue =>
+  clsx(
+    "bg-stone-800 hover:bg-stone-700 hover:text-white active:text-white active:bg-stone-900",
+    {
+      "text-stone-100": isActive,
+      "text-stone-300": !isActive,
+    },
+    Base,
+  );
+const SubmitVariant = (isActive: boolean): ClassValue =>
+  clsx(
+    "bg-violet-900 hover:bg-violet-800 hover:text-white active:text-white active:bg-violet-950",
+    {
+      "test-stone-50": isActive,
+      "text-stone-200": !isActive,
+    },
+    Base,
+  );
+const GhostVariant = (isActive: boolean): ClassValue =>
+  clsx(
+    "hover:text-white active:text-white active:bg-stone-600",
+    {
+      "text-stone-100 bg-stone-900": isActive,
+      "text-stone-300 hover:bg-stone-800": !isActive,
+    },
+    Base,
+  );
+const PanelGhostVariant = (isActive: boolean): ClassValue =>
+  clsx(
+    "hover:bg-stone-800 hover:text-white active:text-white active:bg-stone-600",
+    {
+      "text-stone-100": isActive,
+      "text-stone-300": !isActive,
+    },
+    Base,
+  );
+const NavBarVariant = (isActive: boolean): ClassValue =>
+  clsx(
+    "hover:bg-stone-700 hover:text-white active:text-white active:bg-stone-600 data-selected:bg-stone-900 data-selected:text-white",
+    {
+      "text-stone-50 bg-stone-900": isActive,
+      "text-stone-300": !isActive,
+    },
+    Base,
+  );
+const ToolbarVariant = (isActive: boolean): ClassValue =>
+  clsx(
+    "hover:bg-stone-800 hover:text-white active:text-white active:bg-stone-600",
+    {
+      "text-stone-100": isActive,
+      "text-stone-300": !isActive,
+    },
+    Base,
+  );
+
+const NoColorVariant: ClassValue = Base;
