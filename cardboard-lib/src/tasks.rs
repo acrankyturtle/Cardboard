@@ -1,13 +1,14 @@
 use crate::command::Command;
 use crate::context::{
-	ChangeProfileSignalRx, ContextSerialRx, ExternalTagsSignalRx, RebootToBootloader,
-	VirtualKeySignalRx,
+	ChangeProfileSignalRx, ContextErrorLog, ContextSerialRx, ExternalTagsSignalRx,
+	RebootToBootloader, VirtualKeySignalRx,
 };
+use crate::error::{Error, ErrorLog};
 use crate::hid::ReportHid;
 use crate::input::{KeyId, KeyState, UpdateMatrix};
 use crate::profile::{ActionEvent, DebugEvent, KeyboardProfile, LayerEvent};
-use crate::serial::SerialReaderExt;
 use crate::state::KeyboardState;
+use crate::stream::ReadExt;
 use crate::time::Duration;
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -126,7 +127,7 @@ pub async fn keypad_task<
 	}
 }
 
-pub async fn cmd_task<Clock: crate::time::Clock, Context: ContextSerialRx>(
+pub async fn cmd_task<Clock: crate::time::Clock, Context: ContextErrorLog + ContextSerialRx>(
 	clock: &Clock,
 	mut cmds: Vec<Box<dyn Command<Context>>>,
 	mut ctx: Context,
@@ -146,6 +147,12 @@ pub async fn cmd_task<Clock: crate::time::Clock, Context: ContextSerialRx>(
 				info!("Command {} executed successfully", cmd_id);
 			}
 			Err(e) => {
+				let error = Error {
+					timestamp: clock.now(),
+					message: e,
+				};
+				ctx.errors().push(error);
+
 				warn!("Error: {}", e);
 				clock.after(serial_reset_timeout).await;
 			}

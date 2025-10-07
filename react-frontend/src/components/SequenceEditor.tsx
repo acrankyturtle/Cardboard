@@ -54,11 +54,57 @@ export function SequenceEditor({
     >
       <div
         className={clsx(
-          "rounded-md-t sticky top-0 z-20 w-full px-2 py-1",
+          "rounded-md-t sticky top-0 z-20 flex w-full items-center px-2 py-1",
           sequenceClassName,
         )}
       >
-        {name}
+        <div className="grow">{name}</div>
+        {type === "start" && (
+          <button
+            className={clsx(
+              getButtonClassName({ variant: "ghost", padding: "none" }),
+              "size-6 p-0.5",
+            )}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M21 17l-18 0" />
+              <path d="M18 4l3 3l-3 3" />
+              <path d="M18 20l3 -3l-3 -3" />
+              <path d="M21 7l-18 0" />
+            </svg>
+          </button>
+        )}
+        {type === "end" && (
+          <button
+            className={clsx(
+              getButtonClassName({ variant: "ghost", padding: "none" }),
+              "size-6 p-0.5",
+            )}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M3 7l18 0" />
+              <path d="M6 20l-3 -3l3 -3" />
+              <path d="M6 4l-3 3l3 3" />
+              <path d="M3 17l18 0" />
+            </svg>
+          </button>
+        )}
       </div>
       {value.actions.length > 0 ? (
         <div className="flex flex-col items-center gap-1 p-1">

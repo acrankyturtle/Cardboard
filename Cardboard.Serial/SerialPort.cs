@@ -17,7 +17,7 @@ public interface ISerialPort : IAsyncDisposable
 
 public sealed class SystemSerialPort(string name, SerialPort serialPort) : ISerialPort
 {
-	private static readonly TimeSpan _timeOut = TimeSpan.FromSeconds(3);
+	private static readonly TimeSpan _timeOut = TimeSpan.FromSeconds(10);
 
 	private readonly SemaphoreSlim _lock = new(1, 1);
 
@@ -67,7 +67,7 @@ public sealed class SystemSerialPort(string name, SerialPort serialPort) : ISeri
 
 		try
 		{
-			var commandStream = new SerialCommandStream(serialPort, _lock);
+			var commandStream = new SerialCommandStream(serialPort);
 			return await action(commandStream);
 		}
 		catch (Exception e)
@@ -88,7 +88,7 @@ public sealed class SystemSerialPort(string name, SerialPort serialPort) : ISeri
 		_lock.Dispose();
 	}
 
-	private class SerialCommandStream(SerialPort serialPort, SemaphoreSlim semaphore) : ICommandStream
+	private class SerialCommandStream(SerialPort serialPort) : ICommandStream
 	{
 		private readonly BinaryReader _reader = new(serialPort.BaseStream, Encoding.UTF8, true);
 		private readonly BinaryWriter _writer = new(serialPort.BaseStream, Encoding.UTF8, true);
@@ -114,7 +114,6 @@ public sealed class SystemSerialPort(string name, SerialPort serialPort) : ISeri
 			_writer.Dispose();
 
 			_isDisposed = true;
-			semaphore.Release();
 		}
 	}
 }

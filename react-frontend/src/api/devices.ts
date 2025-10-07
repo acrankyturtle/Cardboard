@@ -80,6 +80,7 @@ export interface DeviceDetails {
   type: string;
   model: string;
   iconUrl?: string;
+  status: DeviceStatusReport;
   commands: readonly CommandInfo[];
   keyMap: readonly KeyInfo[];
   virtualKeyCount: number;
@@ -104,8 +105,18 @@ export enum KeyColor {
   Accent2 = "Accent2",
   Virtual = "Virtual",
 }
+export interface DeviceStatusReport {
+  tick: number;
+  allocated: number;
+  allocatorSize: number;
+  errors: readonly DeviceStatusError[];
+}
 
-// todo: probably move profile stuff to lib folder
+export interface DeviceStatusError {
+  timestamp: string;
+  message: string;
+}
+
 export interface DeviceProfile {
   keys: readonly DeviceKey[];
   virtualKeys: readonly VirtualKey[];
@@ -152,7 +163,7 @@ export enum TagMatchType {
 export interface DeviceMacro {
   id: string;
   name: string;
-  playChannel: string;
+  playChannel?: string;
   cutChannels: readonly string[];
   startSequence: Sequence;
   loopSequence: Sequence;

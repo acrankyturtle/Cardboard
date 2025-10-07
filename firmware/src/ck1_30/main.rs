@@ -29,6 +29,7 @@ use cardboard_lib::{
 	context::Context,
 	device::{DeviceInfo, DeviceTypeId},
 	embassy::{EmbassyFlashMemory, EmbassyKeypadHid, EmbassyTickClock},
+	error::HeaplessSpscErrorLog,
 	hid::{HidDevice, HidReport},
 	input::{ColPin, KeyId, KeyMatrix, RowPin},
 	profile::{KeyboardProfile, LayerTag},
@@ -111,6 +112,8 @@ type CommandContext = Context<
 	ContextVirtualKeySignal,
 	Heap,
 	EmbassyRp2040RebootToBootloader,
+	HeaplessSpscErrorLog<32>,
+	EmbassyTickClock,
 >;
 
 #[embassy_executor::main]
@@ -246,6 +249,8 @@ async fn main(spawner: Spawner) -> () {
 		serial_io_timeout,
 	);
 
+	let error_log = HeaplessSpscErrorLog::new();
+
 	let ctx = CommandContext::new(
 		device_info,
 		flash,
@@ -256,6 +261,8 @@ async fn main(spawner: Spawner) -> () {
 		&VIRTUAL_KEY_SIGNAL,
 		&ALLOCATOR,
 		bootloader,
+		error_log,
+		clock,
 	);
 
 	spawner.spawn(usb_task(usb.device)).unwrap();

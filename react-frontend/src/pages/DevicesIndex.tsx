@@ -4,97 +4,248 @@ import { EditDeviceProfile } from "../components/EditDeviceProfile.tsx";
 import {
   DeviceDetails,
   DeviceProfile,
+  DeviceStatusError,
   updateDeviceProfile,
   useDeviceDetails,
   useDeviceProfile,
 } from "../api/devices.ts";
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import clsx from "clsx";
 import { Button, getButtonClassName } from "../components/Button.tsx";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import {
   Dialog,
   DialogBody,
+  DialogCancelButton,
   DialogDivider,
+  DialogFooter,
   DialogHeader,
+  DialogHeaderTitle,
 } from "../components/Dialog.tsx";
 import { LoadingIndicator } from "../components/LoadingIndicator.tsx";
+import { getAssetUrl } from "../api/cardboardApi.ts";
+import { InputClassName } from "../components/Input.tsx";
 
-export function DevicesIndex({ deviceId }: { deviceId: string | null }) {
-  const [saving, setSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-
+export function DevicesIndex({
+  deviceId,
+  action,
+}: {
+  deviceId: string | null;
+  action: string | null;
+}) {
   return (
     <>
       <div className="flex size-full flex-col justify-items-center">
-        {deviceId ? (
+        {deviceId && action === "edit" ? (
           <DataProvider deviceId={deviceId}>
             {(device, profile) => (
-              <>
-                <DevicesHeader className="flex gap-2">
-                  <div className="grow">Devices</div>
-                  <div
-                    className={clsx("text-lg text-green-500 transition", {
-                      "opacity-0 duration-[2000ms]": !saveSuccess,
-                      "opacity-100 duration-[0ms]": saveSuccess,
-                    })}
-                  >
-                    Profile saved successfully
-                  </div>
-                  {saveError && (
-                    <div className="text-lg text-red-500">{saveError}</div>
-                  )}
-                  <Link
-                    className={clsx("min-w-18 px-3", getButtonClassName({}))}
-                    to="/devices"
-                  >
-                    Cancel
-                  </Link>
-                  <Button
-                    className="min-w-24 px-3"
-                    buttonStyle={{ variant: "submit" }}
-                    onClick={() => {
-                      if (saving) return;
-                      setSaving(true);
-                      setSaveError(null);
-
-                      updateDeviceProfile(deviceId, profile).then((v) => {
-                        setSaving(false);
-                        if (v !== "success") {
-                          setSaveError(v.error);
-                        } else {
-                          setSaveSuccess(true);
-                          setTimeout(() => setSaveSuccess(false), 5000);
-                        }
-                      });
-                    }}
-                  >
-                    Save
-                  </Button>
-                </DevicesHeader>
-                <div className="grow overflow-y-hidden border-l-3 border-stone-950">
-                  <EditDeviceProfile
-                    className="h-full"
-                    device={device}
-                    profile={profile}
-                  />
-                </div>
-              </>
+              <EditDeviceView details={device} profile={profile} />
             )}
           </DataProvider>
         ) : (
           <>
-            <DevicesHeader>
-              <div>Devices</div>
-            </DevicesHeader>
-            <div className="grow overflow-y-auto p-4">
-              <div className="flex size-full flex-col items-center">
-                <DeviceList showEdit />
-              </div>
-            </div>
+            <DeviceIndexView />
+            <DeviceInfoDialog deviceId={deviceId} />
           </>
         )}
+      </div>
+    </>
+  );
+}
+
+function DeviceIndexView() {
+  return (
+    <>
+      <DevicesHeader>
+        <div>Devices</div>
+      </DevicesHeader>
+      <div className="grow overflow-y-auto p-4">
+        <div className="flex size-full flex-col items-center">
+          <DeviceList showEdit />
+        </div>
+      </div>
+    </>
+  );
+}
+
+function DeviceInfoDialog({ deviceId }: { deviceId: string | null }) {
+  const navigate = useNavigate();
+  const [latch, setLatch] = useState(deviceId);
+  useEffect(() => {
+    if (deviceId) {
+      setLatch(deviceId);
+    }
+  }, [deviceId]);
+  return (
+    latch && (
+      <Dialog
+        open={deviceId !== null}
+        onClose={(show) => {
+          if (!show) navigate("/devices");
+        }}
+      >
+        <DataProvider deviceId={latch}>
+          {(device, profile) => (
+            <>
+              <DialogHeader>
+                <DialogHeaderTitle className="flex items-center gap-3">
+                  {device.iconUrl && (
+                    <div>
+                      <img
+                        className="size-8"
+                        src={getAssetUrl(device.iconUrl)}
+                        alt="Icon"
+                      />{" "}
+                    </div>
+                  )}
+                  Device Details
+                </DialogHeaderTitle>
+              </DialogHeader>
+              <DialogDivider />
+              <DialogBody className="w-[40rem]">
+                <StatTable>
+                  <StatName>Id</StatName>
+                  <StatValue>{device.id}</StatValue>
+                  <StatName>Name</StatName>
+                  <StatValue>{device.name}</StatValue>
+                  <StatName>Type</StatName>
+                  <StatValue>{device.type}</StatValue>
+                  <StatName>Model</StatName>
+                  <StatValue>{device.model}</StatValue>
+                  <DialogDivider className="col-span-2 my-4" />
+                  <StatName>Keys</StatName>
+                  <StatValue>{profile.keys.length}</StatValue>
+                  <StatName>Macros</StatName>
+                  <StatValue>{profile.macros.length}</StatValue>
+                  <StatName>Virtual Keys</StatName>
+                  <StatValue>
+                    {profile.virtualKeys.length}/{device.virtualKeyCount}
+                  </StatValue>
+                  <DialogDivider className="col-span-2 my-4" />
+                  <StatName>Tick</StatName>
+                  <StatValue>{device.status.tick} us</StatValue>
+                  <StatName>Allocator</StatName>
+                  <StatValue>
+                    {`${device.status.allocated} / ${device.status.allocatorSize} (${((device.status.allocated / device.status.allocatorSize) * 100).toPrecision(2)}%)`}
+                  </StatValue>
+                </StatTable>
+                {device.status.errors.length > 0 && (
+                  <>
+                    <DialogDivider className="col-span-2 my-4" />
+                    <ErrorView errors={device.status.errors} />
+                  </>
+                )}
+              </DialogBody>
+              <DialogFooter className="justify-end">
+                <DialogCancelButton
+                  className="px-5"
+                  onClick={() => navigate("/devices")}
+                >
+                  Close
+                </DialogCancelButton>
+              </DialogFooter>
+            </>
+          )}
+        </DataProvider>
+      </Dialog>
+    )
+  );
+}
+
+function StatTable({ children }: { children?: ReactNode }) {
+  return (
+    <div className="gap-y-h1 grid w-full grid-cols-[auto_1fr] items-center gap-x-8">
+      {children}
+    </div>
+  );
+}
+
+function StatName({ children }: { children?: ReactNode }) {
+  return <div className="font-semibold">{children}</div>;
+}
+
+function StatValue({ children }: { children?: ReactNode }) {
+  return <div className="">{children}</div>;
+}
+
+function ErrorView({ errors }: { errors: readonly DeviceStatusError[] }) {
+  return (
+    <>
+      <div className="font-semibold">Errors</div>
+      <div
+        className={clsx(
+          InputClassName,
+          "flex h-56 w-full flex-col gap-1 overflow-y-auto",
+        )}
+      >
+        {errors.map((e) => (
+          <div className="flex items-center gap-4 rounded border border-stone-900 bg-stone-700 p-2 shadow">
+            <div>{e.timestamp}</div>
+            <div>{e.message}</div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function EditDeviceView({
+  details,
+  profile,
+}: {
+  details: DeviceDetails;
+  profile: DeviceProfile;
+}) {
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  return (
+    <>
+      <DevicesHeader>
+        <div className="grow">Devices</div>
+        <div
+          className={clsx("text-lg text-green-500 transition", {
+            "opacity-0 duration-[2000ms]": !saveSuccess,
+            "opacity-100 duration-[0ms]": saveSuccess,
+          })}
+        >
+          Profile saved successfully
+        </div>
+        {saveError && <div className="text-lg text-red-500">{saveError}</div>}
+        <Link
+          className={clsx("min-w-18 px-3", getButtonClassName({}))}
+          to="/devices"
+        >
+          Cancel
+        </Link>
+        <Button
+          className="min-w-24 px-3"
+          buttonStyle={{ variant: "submit" }}
+          onClick={() => {
+            if (saving) return;
+            setSaving(true);
+            setSaveError(null);
+
+            updateDeviceProfile(details.id, profile).then((v) => {
+              setSaving(false);
+              if (v !== "success") {
+                setSaveError(v.error);
+              } else {
+                setSaveSuccess(true);
+                setTimeout(() => setSaveSuccess(false), 5000);
+              }
+            });
+          }}
+        >
+          Save
+        </Button>
+      </DevicesHeader>
+      <div className="grow overflow-y-hidden border-l-3 border-stone-950">
+        <EditDeviceProfile
+          className="h-full"
+          device={details}
+          profile={profile}
+        />
       </div>
       <Dialog open={saving}>
         <DialogHeader>Saving...</DialogHeader>
@@ -119,7 +270,12 @@ function DevicesHeader({
   children?: ReactNode;
 }) {
   return (
-    <Header className={clsx("sticky top-0 justify-self-start", className)}>
+    <Header
+      className={clsx(
+        "sticky top-0 flex min-h-18 gap-2 justify-self-start",
+        className,
+      )}
+    >
       {children}
     </Header>
   );

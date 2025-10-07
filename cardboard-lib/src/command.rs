@@ -1,5 +1,11 @@
+use crate::context::ContextClock;
+use crate::context::ContextErrorLog;
+use crate::error::Error;
+use crate::error::ErrorLog;
 use crate::input::KeyId;
+use crate::time::Clock;
 use async_trait::async_trait;
+use core::cell::Cell;
 use core::cmp::Ord;
 use core::module_path;
 use core::option_env;
@@ -9,6 +15,7 @@ use core::result::Result::Err;
 use core::result::Result::Ok;
 use defmt::{debug, error};
 use serde::Serialize;
+use serde::Serializer;
 
 use alloc::boxed::Box;
 use alloc::string::String;
@@ -22,8 +29,8 @@ use crate::context::{
 use crate::context::{ContextAllocator, ContextBootloader};
 use crate::device::{CommandId, DeviceInfo};
 use crate::profile::LayerTag;
-use crate::serial::{SerialReader, SerialReaderExt, SerialWriter, SerialWriterExt};
 use crate::storage::{FlashMemory, load_profile_from_flash};
+use crate::stream::{Read, ReadExt, Write, WriteExt};
 
 const CHUNK_SIZE: usize = 256; // todo: tune
 
@@ -269,7 +276,9 @@ impl<Context: ContextBootloader> Command<Context> for EnterBootloaderCommand {
 pub struct GetStatusCommand;
 
 #[async_trait(?Send)]
-impl<Context: ContextSerialTx + ContextAllocator> Command<Context> for GetStatusCommand {
+impl<Context: ContextSerialTx + ContextAllocator + ContextClock + ContextErrorLog> Command<Context>
+	for GetStatusCommand
+{
 	fn info(&self) -> CommandInfo {
 		CommandInfo {
 			id: CommandId(uuid!("b14aadb5-53a2-5e69-b463-603efce7c199")),
@@ -282,18 +291,27 @@ impl<Context: ContextSerialTx + ContextAllocator> Command<Context> for GetStatus
 		let allocator_max = ctx.allocator().max();
 
 		let response = StatusResponse {
+			now: ctx.clock().now().ticks(),
 			allocator_current,
 			allocator_max,
+			errors: ctx.errors().get_errors().collect(),
 		};
 
-		let mut buf = [0u8; 256]; // todo: tune size?
+		let mut buf = [0u8; 512]; // todo: tune size?
+		let serialize_res = serde_json_core::to_slice(&response, &mut buf);
 
-		if let Ok(len) = serde_json_core::to_slice(&response, &mut buf) {
-			ctx.serial_tx().write_u16(len as u16).await?;
-			ctx.serial_tx().write_exact(&buf[..len]).await?;
-			Ok(())
-		} else {
-			Err("Failed to serialize response")
+		match serialize_res {
+			Ok(len) => {
+				ctx.serial_tx().write_u16(len as u16).await?;
+				ctx.serial_tx().write_exact(&buf[..len]).await?;
+				Ok(())
+			}
+			Err(e) => match e {
+				serde_json_core::ser::Error::BufferFull { .. } => {
+					Err("Failed to serialize response: buffer too small")
+				}
+				_ => Err("Failed to serialize response"),
+			},
 		}
 	}
 }
@@ -354,9 +372,11 @@ where
 }
 
 #[derive(Serialize)]
-struct StatusResponse {
+struct StatusResponse<'a> {
+	pub now: u64,
 	pub allocator_current: usize,
 	pub allocator_max: usize,
+	pub errors: Vec<&'a Error>,
 }
 
 pub struct VirtualKeyCommand;

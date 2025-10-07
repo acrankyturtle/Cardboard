@@ -38,7 +38,6 @@ fn get_device_id(
 		"Failed to read unique ID from flash"
 	})?;
 
-	let unique_id = u64::from_le_bytes(bytes);
-	let uuid = (unique_id as u128) << 64 | (unique_id as u128);
-	Ok(DeviceId::new(Uuid::from_u128_le(uuid)))
+	let uuid = Uuid::new_v5(&Uuid::NAMESPACE_OID, &bytes);
+	Ok(DeviceId::new(uuid))
 }

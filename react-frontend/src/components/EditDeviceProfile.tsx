@@ -1,14 +1,7 @@
 import clsx, { ClassValue } from "clsx";
 import { Button, getButtonClassName } from "./Button.tsx";
 import { ListBox, ListBoxItem } from "./ListBox.tsx";
-import {
-  CSSProperties,
-  ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { CSSProperties, ReactNode, useCallback, useMemo } from "react";
 import {
   DeviceDetails,
   DeviceKey,
@@ -36,6 +29,7 @@ import {
   DialogHeaderTitle,
 } from "./Dialog.tsx";
 import {
+  deleteMacro,
   EditDeviceContextProvider,
   EditDeviceState,
   findKeyById,
@@ -67,7 +61,6 @@ import {
   TabPanels,
   Textarea,
 } from "@headlessui/react";
-import { useEdit } from "../hooks/useEdit.ts";
 import { InputClassName } from "./Input.tsx";
 import { SequenceEditor } from "./SequenceEditor.tsx";
 import { EditTaggedLayerDialog } from "./EditTaggedLayerDialog.tsx";
@@ -850,13 +843,16 @@ function MacrosPanel({ className }: { className?: string }) {
     [state],
   );
 
-  const selectedMacro = useMemo(
-    () =>
-      state.selectedMacro
-        ? (macros.find((l) => l.value === state.selectedMacro) ?? null)
-        : null,
-    [state],
-  );
+  const { selectedMacro, selectedMacroUsages } = useMemo(() => {
+    if (!state.selectedMacro) return {};
+    const selectedMacro =
+      macros.find((l) => l.value === state.selectedMacro) ?? null;
+    const selectedMacroUsages = getMacroUsages(
+      state.selectedMacro,
+      state.profile,
+    ).length;
+    return { selectedMacro, selectedMacroUsages };
+  }, [state]);
 
   return (
     <PanelContainer className={className}>
@@ -865,28 +861,102 @@ function MacrosPanel({ className }: { className?: string }) {
           <MacroIcon />
         </div>
         <div className="grow">Macros</div>
-        <button className={headerBarButtonClass}>
+        <button
+          className={headerBarButtonClass}
+          onClick={() => {
+            dispatch({
+              type: "setModal",
+              modal: {
+                type: "editMacro",
+                show: true,
+                macro: {
+                  id: crypto.randomUUID(),
+                  name: "New Macro",
+                  cutChannels: [],
+                  startSequence: { actions: [] },
+                  loopSequence: { actions: [] },
+                  endSequence: { actions: [] },
+                },
+              },
+            });
+          }}
+        >
           <AddIcon />
         </button>
-        <button className={headerBarButtonClass}>
+        <button
+          className={headerBarButtonClass}
+          onClick={() => {
+            if (!state.selectedMacro) return;
+            const macro = findMacroById(state.selectedMacro, state.profile);
+            if (!macro) return;
+
+            const newMacro = {
+              ...macro,
+              id: crypto.randomUUID(),
+              name: macro.name + " (Copy)",
+            };
+
+            dispatch({
+              type: "setModal",
+              modal: {
+                type: "editMacro",
+                show: true,
+                macro: newMacro,
+              },
+            });
+          }}
+          disabled={state.selectedMacro === null}
+        >
+          <CopyIcon />
+        </button>
+        <button
+          className={headerBarButtonClass}
+          onClick={() => {
+            if (!state.selectedMacro) return;
+            const result = deleteMacro(state.selectedMacro, state.profile);
+            if (result === "in use") return;
+
+            // get macro id i+1 where i is the index of the deleted macro
+            const index = state.profile.macros.findIndex(
+              (m) => m.id === state.selectedMacro,
+            );
+
+            const newSelectedMacro =
+              index < 0 || state.profile.macros.length === 1
+                ? null
+                : index + 1 < state.profile.macros.length
+                  ? state.profile.macros[index + 1].id
+                  : state.profile.macros[index - 1].id;
+
+            dispatch({ type: "setProfile", profile: result });
+
+            if (newSelectedMacro !== null) {
+              dispatch({ type: "setSelectedMacro", macroId: newSelectedMacro });
+            }
+          }}
+          disabled={selectedMacroUsages !== 0}
+        >
           <RemoveIcon />
         </button>
       </HeaderBar>
       <ListBox
         className="grow"
         variant="blue"
+        renderItem={(item) => <MacroListItem item={item} />}
         items={macros}
         selected={selectedMacro}
         setSelected={(v) =>
           dispatch({ type: "setSelectedMacro", macroId: v.value })
         }
         onDoubleClick={(item) => {
+          const macro = findMacroById(item.value, state.profile);
+          if (!macro) return;
           dispatch({
             type: "setModal",
             modal: {
               type: "editMacro",
               show: true,
-              macroId: item.value,
+              macro,
             },
           });
         }}
@@ -895,40 +965,67 @@ function MacrosPanel({ className }: { className?: string }) {
   );
 }
 
+function MacroListItem({ item }: { item: ListBoxItem }) {
+  const { state } = useEditDeviceContext();
+  const usageCount = useMemo(() => {
+    return getMacroUsages(item.value, state.profile).length;
+  }, [state]);
+  return (
+    <div className="flex">
+      <div
+        className={clsx("grow", {
+          "text-stone-400": usageCount < 1,
+        })}
+      >
+        {item.label}
+      </div>
+      <div className="text-stone-400 italic">
+        {usageCount < 1
+          ? "(no usages)"
+          : // usageCount > 1
+            //   ? `${usageCount} usages` :
+            null}
+      </div>
+    </div>
+  );
+}
+
 function EditMacroDialog() {
   const { state, dispatch } = useEditDeviceContext();
-  const [macroToEdit, setMacroToEdit] = useEdit<DeviceMacro>(undefined);
-
-  const [macroId, setMacroId] = useState<string | undefined>(undefined);
 
   const showModal =
     state.modal !== null &&
     state.modal.type === "editMacro" &&
     state.modal.show;
 
-  useEffect(() => {
-    if (!state.modal || state.modal.type !== "editMacro" || !state.modal.show) {
-      setMacroId(undefined);
-      return;
-    }
+  const { macro, setMacro } = useMemo(() => {
+    if (!state.modal || state.modal.type !== "editMacro" || !state.modal.show)
+      return {};
 
-    if (state.modal.macroId === macroId) return;
+    const macro = state.modal.macro;
+    const setMacro = (m: DeviceMacro) => {
+      if (!state.modal || state.modal.type !== "editMacro" || !state.modal.show)
+        return;
+      dispatch({
+        type: "setModal",
+        modal: { ...state.modal, macro: m },
+      });
+    };
 
-    const macro = findMacroById(state.modal.macroId, state.profile);
-    if (!macro) return;
-
-    setMacroToEdit(macro);
-    setMacroId(state.modal.macroId);
-  }, [state.modal]);
+    return { macro, setMacro };
+  }, [state]);
 
   const closeModal = useCallback(
     () => dispatch({ type: "setModal", modal: null }),
     [dispatch],
   );
 
-  if (!macroId) return <></>;
+  if (!macro) return <></>;
 
-  const numberOfUsages = getMacroUsages(macroId, state.profile).length;
+  const numberOfUsages = getMacroUsages(macro.id, state.profile).length;
+  const isNew =
+    numberOfUsages === 0 &&
+    !state.profile.macros.some((m) => m.id === macro.id);
 
   return (
     <Dialog
@@ -942,7 +1039,9 @@ function EditMacroDialog() {
           Edit Macro
         </DialogHeaderTitle>
         <DialogHeaderDescription>
-          {numberOfUsages > 1 ? (
+          {isNew ? (
+            "New macro"
+          ) : numberOfUsages > 1 ? (
             <div className="font-semibold text-sky-300">
               {numberOfUsages} usages
             </div>
@@ -964,12 +1063,8 @@ function EditMacroDialog() {
                   className={clsx("w-full", InputClassName)}
                   type="text"
                   maxLength={255}
-                  value={macroToEdit?.name ?? ""}
-                  onChange={(e) =>
-                    setMacroToEdit((m) =>
-                      m ? { ...m, name: e.target.value } : m,
-                    )
-                  }
+                  value={macro.name}
+                  onChange={(e) => setMacro({ ...macro, name: e.target.value })}
                 />
               </Field>
               <Field className="flex flex-col gap-1" disabled>
@@ -1016,26 +1111,26 @@ function EditMacroDialog() {
             >
               <SequenceEditor
                 type="start"
-                value={macroToEdit?.startSequence ?? { actions: [] }}
+                value={macro?.startSequence ?? { actions: [] }}
                 setValue={(s) => {
-                  if (!macroToEdit) return;
-                  setMacroToEdit({ ...macroToEdit, startSequence: s });
+                  if (!macro) return;
+                  setMacro({ ...macro, startSequence: s });
                 }}
               />
               <SequenceEditor
                 type="loop"
-                value={macroToEdit?.loopSequence ?? { actions: [] }}
+                value={macro?.loopSequence ?? { actions: [] }}
                 setValue={(s) => {
-                  if (!macroToEdit) return;
-                  setMacroToEdit({ ...macroToEdit, loopSequence: s });
+                  if (!macro) return;
+                  setMacro({ ...macro, loopSequence: s });
                 }}
               />
               <SequenceEditor
                 type="end"
-                value={macroToEdit?.endSequence ?? { actions: [] }}
+                value={macro?.endSequence ?? { actions: [] }}
                 setValue={(s) => {
-                  if (!macroToEdit) return;
-                  setMacroToEdit({ ...macroToEdit, endSequence: s });
+                  if (!macro) return;
+                  setMacro({ ...macro, endSequence: s });
                 }}
               />
             </TabPanel>
@@ -1057,13 +1152,15 @@ function EditMacroDialog() {
         <div className="grow" />
         <DialogConfirmButton
           onClick={() => {
-            if (!showModal || !macroToEdit) return;
-
+            if (!showModal || !macro) return;
+            const exists = findMacroById(macro.id, state.profile) !== null;
             const updated = {
               ...state.profile,
-              macros: state.profile.macros.map((m) =>
-                m.id === macroToEdit.id ? macroToEdit : m,
-              ),
+              macros: exists
+                ? state.profile.macros.map((m) =>
+                    m.id === macro.id ? macro : m,
+                  )
+                : [...state.profile.macros, macro],
             };
             dispatch({
               type: "setProfile",
@@ -1072,6 +1169,10 @@ function EditMacroDialog() {
             dispatch({
               type: "setModal",
               modal: null,
+            });
+            dispatch({
+              type: "setSelectedMacro",
+              macroId: macro.id,
             });
           }}
         >
@@ -1207,6 +1308,24 @@ function AddIcon() {
     >
       <path d="M12 5l0 14" />
       <path d="M5 12l14 0" />
+    </svg>
+  );
+}
+
+function CopyIcon() {
+  return (
+    <svg
+      className="p-0.5"
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" />
+      <path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" />
     </svg>
   );
 }

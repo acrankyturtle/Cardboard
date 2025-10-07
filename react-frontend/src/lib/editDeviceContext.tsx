@@ -92,7 +92,7 @@ type EditTaggedLayerModalOptions = {
 
 type EditMacroModalOptions = {
   type: "editMacro";
-  macroId: string;
+  macro: DeviceMacro;
 } & ModalBaseOptions;
 
 type ModalOptions = null | EditTaggedLayerModalOptions | EditMacroModalOptions;
@@ -325,6 +325,18 @@ export const newTaggedLayer = (): TaggedDeviceLayer => ({
   tags: [],
   matchType: TagMatchType.Any,
 });
+
+export const deleteMacro = (
+  macroId: string,
+  profile: DeviceProfile,
+): DeviceProfile | "in use" => {
+  const usages = getMacroUsages(macroId, profile);
+  if (usages.length > 0) return "in use";
+  return {
+    ...profile,
+    macros: profile.macros.filter((m) => m.id !== macroId),
+  };
+};
 
 export const getVirtualKeyId = (index: number): string => `vk${index}`;
 

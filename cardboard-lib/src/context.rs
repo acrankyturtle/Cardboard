@@ -3,22 +3,25 @@ use core::alloc::GlobalAlloc;
 use crate::{
 	TrackingAllocator,
 	device::DeviceInfo,
+	error::ErrorLog,
 	profile::{KeyboardProfile, LayerTag},
-	serial::{SerialReader, SerialReaderExt, SerialWriter, SerialWriterExt},
 	storage::FlashMemory,
+	stream::{Read, ReadExt, Write, WriteExt},
 };
 use alloc::vec::Vec;
 
 pub struct Context<
 	ProfileFlash: FlashMemory,
 	ChangeProfileSignal: ChangeProfileSignalTx + 'static,
-	SerialRx: SerialReader + SerialReaderExt,
-	SerialTx: SerialWriter + SerialWriterExt,
+	SerialRx: Read + ReadExt,
+	SerialTx: Write + WriteExt,
 	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
 	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
 	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
 	Allocator: GlobalAlloc + 'static,
 	Bootloader: RebootToBootloader + 'static,
+	Errors: ErrorLog,
+	Clock: crate::time::Clock + 'static,
 > {
 	pub device_info: &'static DeviceInfo,
 	pub profile_flash: ProfileFlash,
@@ -29,18 +32,22 @@ pub struct Context<
 	pub virtual_keys_signal: &'static SetVirtualKeysSignal,
 	pub allocator: &'static TrackingAllocator<Allocator>,
 	pub bootloader: &'static Bootloader,
+	pub errors: Errors,
+	pub clock: &'static Clock,
 }
 
 impl<
 	ProfileFlash: FlashMemory,
 	ChangeProfileSignal: ChangeProfileSignalTx,
-	SerialRx: SerialReader + SerialReaderExt,
-	SerialTx: SerialWriter + SerialWriterExt,
+	SerialRx: Read + ReadExt,
+	SerialTx: Write + WriteExt,
 	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
 	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
 	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
 	Allocator: GlobalAlloc + 'static,
 	Bootloader: RebootToBootloader,
+	Errors: ErrorLog,
+	Clock: crate::time::Clock,
 >
 	Context<
 		ProfileFlash,
@@ -52,6 +59,8 @@ impl<
 		SetVirtualKeysSignal,
 		Allocator,
 		Bootloader,
+		Errors,
+		Clock,
 	>
 {
 	pub fn new(
@@ -64,6 +73,8 @@ impl<
 		virtual_keys_signal: &'static SetVirtualKeysSignal,
 		allocator: &'static TrackingAllocator<Allocator>,
 		bootloader: &'static Bootloader,
+		errors: Errors,
+		clock: &'static Clock,
 	) -> Self {
 		Self {
 			device_info,
@@ -75,6 +86,8 @@ impl<
 			virtual_keys_signal,
 			allocator,
 			bootloader,
+			errors,
+			clock,
 		}
 	}
 }
@@ -84,12 +97,12 @@ pub trait ContextDeviceInfo {
 }
 
 pub trait ContextSerialRx {
-	type SerialRx: SerialReader + SerialReaderExt;
+	type SerialRx: Read + ReadExt;
 	fn serial_rx(&mut self) -> &mut Self::SerialRx;
 }
 
 pub trait ContextSerialTx {
-	type SerialTx: SerialWriter + SerialWriterExt;
+	type SerialTx: Write + WriteExt;
 	fn serial_tx(&mut self) -> &mut Self::SerialTx;
 }
 
@@ -118,16 +131,27 @@ pub trait ContextBootloader {
 	fn reboot_to_bootloader(&mut self) -> !;
 }
 
+pub trait ContextErrorLog {
+	fn errors(&mut self) -> &mut Self::Errors;
+	type Errors: ErrorLog;
+}
+
+pub trait ContextClock {
+	fn clock(&self) -> &impl crate::time::Clock;
+}
+
 impl<
 	ProfileFlash: FlashMemory,
 	ChangeProfileSignal: ChangeProfileSignalTx,
-	SerialRx: SerialReader + SerialReaderExt,
-	SerialTx: SerialWriter + SerialWriterExt,
+	SerialRx: Read + ReadExt,
+	SerialTx: Write + WriteExt,
 	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
 	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
 	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
 	Allocator: GlobalAlloc + 'static,
 	Bootloader: RebootToBootloader,
+	Errors: ErrorLog,
+	Clock: crate::time::Clock,
 > ContextDeviceInfo
 	for Context<
 		ProfileFlash,
@@ -139,6 +163,8 @@ impl<
 		SetVirtualKeysSignal,
 		Allocator,
 		Bootloader,
+		Errors,
+		Clock,
 	>
 {
 	fn device_info(&self) -> &'static DeviceInfo {
@@ -149,13 +175,15 @@ impl<
 impl<
 	ProfileFlash: FlashMemory,
 	ChangeProfileSignal: ChangeProfileSignalTx,
-	SerialRx: SerialReader + SerialReaderExt,
-	SerialTx: SerialWriter + SerialWriterExt,
+	SerialRx: Read + ReadExt,
+	SerialTx: Write + WriteExt,
 	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
 	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
 	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
 	Allocator: GlobalAlloc + 'static,
 	Bootloader: RebootToBootloader,
+	Errors: ErrorLog,
+	Clock: crate::time::Clock,
 > ContextSerialRx
 	for Context<
 		ProfileFlash,
@@ -167,6 +195,8 @@ impl<
 		SetVirtualKeysSignal,
 		Allocator,
 		Bootloader,
+		Errors,
+		Clock,
 	>
 {
 	type SerialRx = SerialRx;
@@ -178,13 +208,15 @@ impl<
 impl<
 	ProfileFlash: FlashMemory,
 	ChangeProfileSignal: ChangeProfileSignalTx,
-	SerialRx: SerialReader + SerialReaderExt,
-	SerialTx: SerialWriter + SerialWriterExt,
+	SerialRx: Read + ReadExt,
+	SerialTx: Write + WriteExt,
 	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
 	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
 	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
 	Allocator: GlobalAlloc + 'static,
 	Bootloader: RebootToBootloader,
+	Errors: ErrorLog,
+	Clock: crate::time::Clock,
 > ContextSerialTx
 	for Context<
 		ProfileFlash,
@@ -196,6 +228,8 @@ impl<
 		SetVirtualKeysSignal,
 		Allocator,
 		Bootloader,
+		Errors,
+		Clock,
 	>
 {
 	type SerialTx = SerialTx;
@@ -207,13 +241,15 @@ impl<
 impl<
 	ProfileFlash: FlashMemory,
 	ChangeProfileSignal: ChangeProfileSignalTx,
-	SerialRx: SerialReader + SerialReaderExt,
-	SerialTx: SerialWriter + SerialWriterExt,
+	SerialRx: Read + ReadExt,
+	SerialTx: Write + WriteExt,
 	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
 	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
 	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
 	Allocator: GlobalAlloc + 'static,
 	Bootloader: RebootToBootloader,
+	Errors: ErrorLog,
+	Clock: crate::time::Clock,
 > ContextProfile
 	for Context<
 		ProfileFlash,
@@ -225,6 +261,8 @@ impl<
 		SetVirtualKeysSignal,
 		Allocator,
 		Bootloader,
+		Errors,
+		Clock,
 	>
 {
 	type ProfileFlash = ProfileFlash;
@@ -241,13 +279,15 @@ impl<
 impl<
 	ProfileFlash: FlashMemory,
 	ChangeProfileSignal: ChangeProfileSignalTx,
-	SerialRx: SerialReader + SerialReaderExt,
-	SerialTx: SerialWriter + SerialWriterExt,
+	SerialRx: Read + ReadExt,
+	SerialTx: Write + WriteExt,
 	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
 	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
 	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
 	Allocator: GlobalAlloc + 'static,
 	Bootloader: RebootToBootloader,
+	Errors: ErrorLog,
+	Clock: crate::time::Clock,
 > ContextTags
 	for Context<
 		ProfileFlash,
@@ -259,6 +299,8 @@ impl<
 		SetVirtualKeysSignal,
 		Allocator,
 		Bootloader,
+		Errors,
+		Clock,
 	>
 {
 	fn set_external_tags(&mut self, tags: Vec<LayerTag>) {
@@ -269,13 +311,15 @@ impl<
 impl<
 	ProfileFlash: FlashMemory,
 	ChangeProfileSignal: ChangeProfileSignalTx + 'static,
-	SerialRx: SerialReader + SerialReaderExt,
-	SerialTx: SerialWriter + SerialWriterExt,
+	SerialRx: Read + ReadExt,
+	SerialTx: Write + WriteExt,
 	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
 	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
 	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
 	Allocator: GlobalAlloc + 'static,
 	Bootloader: RebootToBootloader + 'static,
+	Errors: ErrorLog,
+	Clock: crate::time::Clock,
 > ContextVirtualKeys<VIRTUAL_KEY_BITFIELD_BYTES>
 	for Context<
 		ProfileFlash,
@@ -287,6 +331,8 @@ impl<
 		SetVirtualKeysSignal,
 		Allocator,
 		Bootloader,
+		Errors,
+		Clock,
 	>
 {
 	fn set_virtual_keys(&mut self, state: [u8; VIRTUAL_KEY_BITFIELD_BYTES]) {
@@ -300,13 +346,15 @@ impl<
 impl<
 	ProfileFlash: FlashMemory,
 	ChangeProfileSignal: ChangeProfileSignalTx,
-	SerialRx: SerialReader + SerialReaderExt,
-	SerialTx: SerialWriter + SerialWriterExt,
+	SerialRx: Read + ReadExt,
+	SerialTx: Write + WriteExt,
 	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
 	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
 	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
 	Allocator: GlobalAlloc + 'static,
 	Bootloader: RebootToBootloader,
+	Errors: ErrorLog,
+	Clock: crate::time::Clock,
 > ContextAllocator
 	for Context<
 		ProfileFlash,
@@ -318,6 +366,8 @@ impl<
 		SetVirtualKeysSignal,
 		Allocator,
 		Bootloader,
+		Errors,
+		Clock,
 	>
 {
 	fn allocator(&self) -> &TrackingAllocator<Self::A> {
@@ -329,13 +379,15 @@ impl<
 impl<
 	ProfileFlash: FlashMemory,
 	ChangeProfileSignal: ChangeProfileSignalTx,
-	SerialRx: SerialReader + SerialReaderExt,
-	SerialTx: SerialWriter + SerialWriterExt,
+	SerialRx: Read + ReadExt,
+	SerialTx: Write + WriteExt,
 	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
 	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
 	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
 	Allocator: GlobalAlloc + 'static,
 	Bootloader: RebootToBootloader,
+	Errors: ErrorLog,
+	Clock: crate::time::Clock,
 > ContextBootloader
 	for Context<
 		ProfileFlash,
@@ -347,10 +399,77 @@ impl<
 		SetVirtualKeysSignal,
 		Allocator,
 		Bootloader,
+		Errors,
+		Clock,
 	>
 {
 	fn reboot_to_bootloader(&mut self) -> ! {
 		self.bootloader.reboot_to_bootloader()
+	}
+}
+
+impl<
+	ProfileFlash: FlashMemory,
+	ChangeProfileSignal: ChangeProfileSignalTx,
+	SerialRx: Read + ReadExt,
+	SerialTx: Write + WriteExt,
+	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
+	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
+	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
+	Allocator: GlobalAlloc + 'static,
+	Bootloader: RebootToBootloader,
+	Errors: ErrorLog,
+	Clock: crate::time::Clock,
+> ContextErrorLog
+	for Context<
+		ProfileFlash,
+		ChangeProfileSignal,
+		SerialRx,
+		SerialTx,
+		SetExternalTagsSignal,
+		VIRTUAL_KEY_BITFIELD_BYTES,
+		SetVirtualKeysSignal,
+		Allocator,
+		Bootloader,
+		Errors,
+		Clock,
+	>
+{
+	fn errors(&mut self) -> &mut Self::Errors {
+		&mut self.errors
+	}
+	type Errors = Errors;
+}
+
+impl<
+	ProfileFlash: FlashMemory,
+	ChangeProfileSignal: ChangeProfileSignalTx,
+	SerialRx: Read + ReadExt,
+	SerialTx: Write + WriteExt,
+	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
+	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
+	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
+	Allocator: GlobalAlloc + 'static,
+	Bootloader: RebootToBootloader,
+	Errors: ErrorLog,
+	Clock: crate::time::Clock,
+> ContextClock
+	for Context<
+		ProfileFlash,
+		ChangeProfileSignal,
+		SerialRx,
+		SerialTx,
+		SetExternalTagsSignal,
+		VIRTUAL_KEY_BITFIELD_BYTES,
+		SetVirtualKeysSignal,
+		Allocator,
+		Bootloader,
+		Errors,
+		Clock,
+	>
+{
+	fn clock(&self) -> &impl crate::time::Clock {
+		self.clock
 	}
 }
 
@@ -382,6 +501,6 @@ pub trait RebootToBootloader {
 	fn reboot_to_bootloader(&self) -> !;
 }
 
-pub trait WaitForSerialConnection {
-	async fn wait_for_serial_connection(&mut self);
-}
+// pub trait WaitForSerialConnection {
+// 	async fn wait_for_serial_connection(&mut self);
+// }

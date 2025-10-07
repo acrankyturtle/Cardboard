@@ -35,7 +35,7 @@ generic-array = "0.14"
 bitflags = "2.6.0"
 serde = { version = "1.0.210", default-features = false, features = ["alloc"] }
 serde-json-core = { version = "0.6.0", features = ["defmt"] }
-uuid = { version = "1.10.0", default-features = false, features = ["serde"] }
+uuid = { version = "1.10.0", default-features = false, features = ["serde", "v5"] }
 typenum = "1.17.0"
 embassy-executor = { version = "0.7.0", features = ["arch-cortex-m", "executor-thread", "executor-interrupt", "defmt", "nightly"] }
 embassy-rp = { version = "0.4.0", features = ["defmt", "unstable-pac", "time-driver", "critical-section-impl", "rp2040"] }

@@ -1,4 +1,6 @@
-﻿using System.Text.Json;
+﻿using System.Diagnostics;
+using System.Globalization;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Cardboard.Device;
 using Microsoft.Extensions.DependencyInjection;
@@ -55,7 +57,7 @@ public sealed class DeviceDetails
 	public required string Model { get; init; }
 	public string? IconUrl { get; init; }
 
-	public required DeviceStatus? Status { get; init; }
+	public required DeviceStatusReport Status { get; init; }
 
 	public required IReadOnlyCollection<CommandInfo> Commands { get; init; }
 
@@ -63,7 +65,7 @@ public sealed class DeviceDetails
 
 	public int VirtualKeyCount { get; init; }
 
-	public static DeviceDetails From(DeviceInfo info, DeviceStatus? status, DeviceTypeInfo typeInfo) =>
+	public static DeviceDetails From(DeviceInfo info, DeviceStatus status, DeviceTypeInfo typeInfo) =>
 		new()
 		{
 			Id = info.Id,
@@ -71,11 +73,46 @@ public sealed class DeviceDetails
 			Type = info.Type,
 			Model = typeInfo.Model,
 			IconUrl = typeInfo.IconUrl,
-			Status = status,
+			Status = DeviceStatusReport.From(status),
 			Commands = info.Commands,
 			KeyMap = typeInfo.KeyMap,
 			VirtualKeyCount = VirtualKeyHelper.GetVirtualKeyCount(info),
 		};
+}
+
+public sealed class DeviceStatusReport
+{
+	public required ulong Tick { get; init; }
+	public required ulong Allocated { get; init; }
+	public required ulong AllocatorSize { get; init; }
+	public required IReadOnlyCollection<DeviceStatusError> Errors { get; init; }
+
+	public static DeviceStatusReport From(DeviceStatus status)
+	{
+		var errors = status.Errors.Select(e => DeviceStatusError.From(e, status.Now)).ToList();
+		return new()
+		{
+			Tick = status.Now,
+			Allocated = status.AllocatorCurrent,
+			AllocatorSize = status.AllocatorMax,
+			Errors = errors,
+		};
+	}
+}
+
+public sealed class DeviceStatusError
+{
+	public required string Timestamp { get; init; }
+	public required string Message { get; init; }
+
+	public static DeviceStatusError From(DeviceError error, ulong tick)
+	{
+		Debug.Assert(tick >= error.Timestamp);
+		var dt = tick - error.Timestamp;
+
+		var timestamp = DateTime.Now - TimeSpan.FromMicroseconds(dt);
+		return new() { Timestamp = timestamp.ToString(CultureInfo.CurrentCulture), Message = error.Message };
+	}
 }
 
 public sealed class DeviceTypeInfo
@@ -157,29 +194,26 @@ file sealed class DeviceRepository(
 			return null;
 
 		var deviceStatus = (
-			await deviceService.SendCommand(
-				new GetStatusCommand(),
-				new(),
-				d => d.Id == deviceId,
-				cancellationToken
-			)
-		)
-			.Select(x =>
-				x.Result.Match<DeviceStatus?>(
-					x => x,
-					e =>
-					{
-						_logger.LogError(
-							e,
-							"Failed to get status for device {DeviceId}: {Message}",
-							deviceId,
-							e.Message
-						);
-						return null;
-					}
-				)
-			)
-			.SingleOrDefault();
+			await deviceService.SendCommand(new GetStatusCommand(), new(), deviceId, cancellationToken)
+		).Match<DeviceStatus?>(
+			x => x,
+			e =>
+			{
+				_logger.LogError(
+					e,
+					"Failed to get status for device {DeviceId}: {Message}",
+					deviceId,
+					e.Message
+				);
+				return null;
+			}
+		);
+
+		if (deviceStatus is null)
+		{
+			_logger.LogError("Could not get status for {DeviceId}", deviceId);
+			return null;
+		}
 
 		var deviceTypeInfo = GetDeviceTypeInfo(deviceInfo.Type);
 		return DeviceDetails.From(deviceInfo, deviceStatus, deviceTypeInfo);
@@ -205,10 +239,9 @@ file sealed class DeviceRepository(
 		CancellationToken cancellationToken = default
 	)
 	{
-		// TODO: remove - DEBUG
-		var json = JsonSerializer.Serialize(deviceProfile, serializerOptions);
-		_logger.LogInformation(json);
-		return UpdateDeviceProfileResult.Success;
+		// var json = JsonSerializer.Serialize(deviceProfile, serializerOptions);
+		// _logger.LogInformation(json);
+		// return UpdateDeviceProfileResult.Success;
 
 		var previous = await GetDeviceProfile(deviceId, cancellationToken);
 		if (previous is null)

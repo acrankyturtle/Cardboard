@@ -6,6 +6,7 @@ import {
   DelayedLoadingIndicator,
   LargeLoadingIndicator,
 } from "./LoadingIndicator.tsx";
+import { EditIcon } from "../assets/sharedIcons.tsx";
 
 export function DeviceList({ showEdit }: { showEdit?: boolean }) {
   const { devices, isLoading } = useDeviceList();
@@ -43,8 +44,8 @@ function DeviceCard({
   const [_, setSearchParams] = useSearchParams();
 
   return (
-    <div className="flex items-center justify-between rounded-lg bg-stone-700 px-4 py-2 shadow-sm">
-      <div className="flex items-center gap-3">
+    <div className="flex items-center justify-between gap-1 rounded-lg bg-stone-700 px-4 py-2 shadow-sm">
+      <div className="flex grow items-center gap-3">
         {device.iconUrl && (
           <div>
             <img
@@ -62,10 +63,18 @@ function DeviceCard({
           </div>
         </div>
       </div>
+      <Button
+        buttonStyle={{ variant: "panelGhost" }}
+        onClick={() => setSearchParams({ deviceId: device.id, action: "info" })}
+      >
+        <InfoIcon />
+      </Button>
       {showEdit && (
         <Button
           buttonStyle={{ variant: "panelGhost" }}
-          onClick={() => setSearchParams({ deviceId: device.id })}
+          onClick={() =>
+            setSearchParams({ deviceId: device.id, action: "edit" })
+          }
         >
           <EditProfileIcon />
         </Button>
@@ -83,24 +92,27 @@ function DeviceCardDetail({ name, value }: { name: string; value: string }) {
   );
 }
 
-function EditProfileIcon() {
+function InfoIcon() {
   return (
     <svg
+      className="size-6"
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
+      strokeWidth="1"
       strokeLinecap="round"
       strokeLinejoin="round"
-      width="24"
-      height="24"
-      strokeWidth="2"
     >
-      <path d="M7 7h-1a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-1"></path>
-      <path d="M20.385 6.585a2.1 2.1 0 0 0 -2.97 -2.97l-8.415 8.385v3h3l8.385 -8.415z"></path>
-      <path d="M16 5l3 3"></path>
+      <path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" />
+      <path d="M12 9h.01" />
+      <path d="M11 12h1v4h1" />
     </svg>
   );
+}
+
+function EditProfileIcon() {
+  return <EditIcon className="size-6" />;
 }
 
 // function KeyboardIcon() {

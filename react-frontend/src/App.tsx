@@ -25,7 +25,12 @@ function App() {
             <Route index element={<></>} />
             <Route
               path="/devices"
-              element={<DevicesIndex deviceId={searchParams.get("deviceId")} />}
+              element={
+                <DevicesIndex
+                  deviceId={searchParams.get("deviceId")}
+                  action={searchParams.get("action")}
+                />
+              }
             />
             <Route path="*" element={<NoMatch />} />
           </Route>

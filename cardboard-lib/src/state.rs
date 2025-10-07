@@ -84,6 +84,8 @@ impl<'a> KeyboardState<'a> {
 		}
 	}
 
+	
+
 	fn get_macros_from_key<K: KeyState<'a>>(
 		macros: &'a Vec<Macro>,
 		key: &K,
@@ -1102,6 +1104,21 @@ mod tests {
 		assert_eq!(
 			tag_list.matches(&[LayerTag::new("".to_string())], &TagMatchType::All),
 			false
+		);
+	}
+
+	#[test]
+	fn internal_tag_is_still_set_when_setting_tag_twice_and_clearing_once() {
+		let mut tag_list = TagList::new();
+
+		tag_list.add_internal(LayerTag::new("tag1".to_string()));
+		tag_list.add_internal(LayerTag::new("tag1".to_string()));
+
+		tag_list.remove_internal(LayerTag::new("tag1".to_string()));
+
+		assert_eq!(
+			tag_list.matches(&[LayerTag::new("tag1".to_string())], &TagMatchType::All),
+			true
 		);
 	}
 

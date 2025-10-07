@@ -19,6 +19,14 @@ public sealed class GetStatusCommand : ICommand<Unit, DeviceStatus>
 
 public sealed class DeviceStatus
 {
-	public ulong AllocatorCurrent { get; init; }
-	public ulong AllocatorMax { get; init; }
+	public required ulong Now { get; init; }
+	public required ulong AllocatorCurrent { get; init; }
+	public required ulong AllocatorMax { get; init; }
+	public required IReadOnlyCollection<DeviceError> Errors { get; init; }
+}
+
+public sealed class DeviceError
+{
+	public required ulong Timestamp { get; init; }
+	public required string Message { get; init; }
 }
