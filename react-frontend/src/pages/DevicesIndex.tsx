@@ -25,6 +25,7 @@ import {
 import { LoadingIndicator } from "../components/LoadingIndicator.tsx";
 import { getAssetUrl } from "../api/cardboardApi.ts";
 import { InputClassName } from "../components/Input.tsx";
+import { UpdateFirmwareButton } from "../components/UpdateFirmwareButton.tsx";
 
 export function DevicesIndex({
   deviceId,
@@ -76,78 +77,110 @@ function DeviceInfoDialog({ deviceId }: { deviceId: string | null }) {
       setLatch(deviceId);
     }
   }, [deviceId]);
+  const [lastFirmwareResult, setLastFirmwareResult] = useState<
+    "success" | { error: string } | null
+  >(null);
+
   return (
     latch && (
-      <Dialog
-        open={deviceId !== null}
-        onClose={(show) => {
-          if (!show) navigate("/devices");
-        }}
-      >
-        <DataProvider deviceId={latch}>
-          {(device, profile) => (
-            <>
-              <DialogHeader>
-                <DialogHeaderTitle className="flex items-center gap-3">
-                  {device.iconUrl && (
-                    <div>
-                      <img
-                        className="size-8"
-                        src={getAssetUrl(device.iconUrl)}
-                        alt="Icon"
-                      />{" "}
-                    </div>
-                  )}
-                  Device Details
-                </DialogHeaderTitle>
-              </DialogHeader>
-              <DialogDivider />
-              <DialogBody className="w-[40rem]">
-                <StatTable>
-                  <StatName>Id</StatName>
-                  <StatValue>{device.id}</StatValue>
-                  <StatName>Name</StatName>
-                  <StatValue>{device.name}</StatValue>
-                  <StatName>Type</StatName>
-                  <StatValue>{device.type}</StatValue>
-                  <StatName>Model</StatName>
-                  <StatValue>{device.model}</StatValue>
-                  <DialogDivider className="col-span-2 my-4" />
-                  <StatName>Keys</StatName>
-                  <StatValue>{profile.keys.length}</StatValue>
-                  <StatName>Macros</StatName>
-                  <StatValue>{profile.macros.length}</StatValue>
-                  <StatName>Virtual Keys</StatName>
-                  <StatValue>
-                    {profile.virtualKeys.length}/{device.virtualKeyCount}
-                  </StatValue>
-                  <DialogDivider className="col-span-2 my-4" />
-                  <StatName>Tick</StatName>
-                  <StatValue>{device.status.tick} us</StatValue>
-                  <StatName>Allocator</StatName>
-                  <StatValue>
-                    {`${device.status.allocated} / ${device.status.allocatorSize} (${((device.status.allocated / device.status.allocatorSize) * 100).toPrecision(2)}%)`}
-                  </StatValue>
-                </StatTable>
-                {device.status.errors.length > 0 && (
-                  <>
-                    <DialogDivider className="col-span-2 my-4" />
-                    <ErrorView errors={device.status.errors} />
-                  </>
+      <DataProvider deviceId={latch}>
+        {(device, profile) => (
+          <Dialog
+            open={deviceId !== null}
+            onClose={(show) => {
+              if (!show) navigate("/devices");
+            }}
+          >
+            <DialogHeader>
+              <DialogHeaderTitle className="flex items-center gap-3">
+                {device.iconUrl && (
+                  <div>
+                    <img
+                      className="size-8"
+                      src={getAssetUrl(device.iconUrl)}
+                      alt="Icon"
+                    />
+                  </div>
                 )}
-              </DialogBody>
-              <DialogFooter className="justify-end">
-                <DialogCancelButton
-                  className="px-5"
-                  onClick={() => navigate("/devices")}
-                >
-                  Close
-                </DialogCancelButton>
-              </DialogFooter>
-            </>
-          )}
-        </DataProvider>
-      </Dialog>
+                Device Details
+              </DialogHeaderTitle>
+            </DialogHeader>
+            <DialogDivider />
+            <DialogBody className="w-[40rem]">
+              <StatTable>
+                <StatName>Id</StatName>
+                <StatValue>{device.id}</StatValue>
+                <StatName>Name</StatName>
+                <StatValue>{device.name}</StatValue>
+                <StatName>Type</StatName>
+                <StatValue>{device.type}</StatValue>
+                <StatName>Variant</StatName>
+                <StatValue>{device.variant}</StatValue>
+                <StatName>Model</StatName>
+                <StatValue>{device.model}</StatValue>
+                <StatName>Firmware Version</StatName>
+                <StatValue>{device.version}</StatValue>
+                <StatName>Latest Version</StatName>
+                <StatValue>
+                  <div className="flex items-center gap-1.5">
+                    {device.latestVersion !== undefined &&
+                    device.latestVersion > device.version ? (
+                      <>
+                        {device.latestVersion}
+                        <UpdateFirmwareButton
+                          deviceId={device.id}
+                          onResult={(r) => setLastFirmwareResult(r)}
+                        />
+                      </>
+                    ) : (
+                      device.latestVersion
+                    )}
+                    {lastFirmwareResult === "success" ? (
+                      <div className="font-semibold text-lime-700">Success</div>
+                    ) : (
+                      <div className="font-semibold text-red-500">
+                        {lastFirmwareResult !== null &&
+                          lastFirmwareResult.error}
+                      </div>
+                    )}
+                  </div>
+                </StatValue>
+
+                <DialogDivider className="col-span-2 my-4" />
+                <StatName>Keys</StatName>
+                <StatValue>{profile.keys.length}</StatValue>
+                <StatName>Macros</StatName>
+                <StatValue>{profile.macros.length}</StatValue>
+                <StatName>Virtual Keys</StatName>
+                <StatValue>
+                  {profile.virtualKeys.length}/{device.virtualKeyCount}
+                </StatValue>
+                <DialogDivider className="col-span-2 my-4" />
+                <StatName>Tick</StatName>
+                <StatValue>{device.status.tick} us</StatValue>
+                <StatName>Allocator</StatName>
+                <StatValue>
+                  {`${device.status.allocated} / ${device.status.allocatorSize} (${((device.status.allocated / device.status.allocatorSize) * 100).toPrecision(2)}%)`}
+                </StatValue>
+              </StatTable>
+              {device.status.errors.length > 0 && (
+                <>
+                  <DialogDivider className="col-span-2 my-4" />
+                  <ErrorView errors={device.status.errors} />
+                </>
+              )}
+            </DialogBody>
+            <DialogFooter className="justify-end">
+              <DialogCancelButton
+                className="px-5"
+                onClick={() => navigate("/devices")}
+              >
+                Close
+              </DialogCancelButton>
+            </DialogFooter>
+          </Dialog>
+        )}
+      </DataProvider>
     )
   );
 }
@@ -165,7 +198,7 @@ function StatName({ children }: { children?: ReactNode }) {
 }
 
 function StatValue({ children }: { children?: ReactNode }) {
-  return <div className="">{children}</div>;
+  return <div className="text-stone-200">{children}</div>;
 }
 
 function ErrorView({ errors }: { errors: readonly DeviceStatusError[] }) {
@@ -202,7 +235,11 @@ function EditDeviceView({
   return (
     <>
       <DevicesHeader>
-        <div className="grow">Devices</div>
+        <div className="flex grow items-center gap-3">
+          <div>Edit</div>
+          <div className="text-lg font-normal">{details.name}</div>
+          <div className="text-lg font-normal">{details.id}</div>
+        </div>
         <div
           className={clsx("text-lg text-green-500 transition", {
             "opacity-0 duration-[2000ms]": !saveSuccess,

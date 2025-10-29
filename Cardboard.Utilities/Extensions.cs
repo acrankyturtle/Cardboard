@@ -25,6 +25,19 @@ public static class EnumerableExtensions
 		this IEnumerable<TSource> source,
 		Func<TSource, T?> selector
 	)
+		where T : class
+	{
+		foreach (var item in source)
+		{
+			if (selector(item) is { } value)
+				yield return value;
+		}
+	}
+
+	public static IEnumerable<T> SelectNotNull<TSource, T>(
+		this IEnumerable<TSource> source,
+		Func<TSource, T?> selector
+	)
 		where T : struct
 	{
 		foreach (var item in source)

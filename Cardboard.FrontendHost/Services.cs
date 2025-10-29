@@ -12,9 +12,6 @@ namespace Cardboard.FrontendHost;
 
 public static partial class Services
 {
-	public static IServiceCollection AddFrontendService(this IServiceCollection services) =>
-		services.AddSingleton<IFrontendService, FrontendService>();
-
 	public static IServiceCollection AddFrontendHosting(this IServiceCollection services)
 	{
 		// services.AddSingleton<IReactHostService, ReactHostService>();

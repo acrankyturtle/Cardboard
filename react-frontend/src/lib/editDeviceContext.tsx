@@ -5,6 +5,9 @@ import {
   DeviceLayers,
   DeviceMacro,
   DeviceProfile,
+  isLayerActionEvent,
+  isLayerClearEvent,
+  isLayerSetEvent,
   TaggedDeviceLayer,
   TagMatchType,
   VirtualKey,
@@ -194,8 +197,12 @@ export function EditDeviceContextProvider({
   );
 }
 
+export const useMaybeEditDeviceContext = () => {
+  return useContext(EditDeviceContext);
+};
+
 export const useEditDeviceContext = () => {
-  const context = useContext(EditDeviceContext);
+  const context = useMaybeEditDeviceContext();
   if (!context) {
     throw new Error("useEditDevice must be used within a ProfileProvider");
   }
@@ -442,6 +449,29 @@ export const findMacroById = (
 
 export const getTaggedLayerName = (layer: TaggedDeviceLayer): string => {
   return layer.tags.join(", ");
+};
+
+export const getTagsInProfile = (profile: DeviceProfile): string[] => {
+  const tagsFromLayers = profile.keys.flatMap((k) =>
+    k.layers.layers.flatMap((l) => l.tags),
+  );
+
+  const tagsFromMacros = profile.macros.flatMap((m) =>
+    [m.startSequence, m.loopSequence, m.endSequence].flatMap((s) =>
+      s.actions
+        .map((a) => {
+          const actionEvent = a.actionEvent;
+          if (!isLayerActionEvent(actionEvent)) return null!;
+          if (isLayerSetEvent(actionEvent.layer)) return actionEvent.layer.set;
+          if (isLayerClearEvent(actionEvent.layer))
+            return actionEvent.layer.clear;
+          return null!;
+        })
+        .filter((a) => a),
+    ),
+  );
+
+  return [...new Set([...tagsFromLayers, ...tagsFromMacros])].sort();
 };
 
 export const getMacroUsages = (

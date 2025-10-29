@@ -39,6 +39,12 @@ public static class Devices
 			.Produces(StatusCodes.Status204NoContent)
 			.Produces(StatusCodes.Status404NotFound)
 			.WithOpenApi();
+		group
+			.MapPost("/{id}/update", UpdateFirmware)
+			.WithName("Update Firmware")
+			.Produces(StatusCodes.Status204NoContent)
+			.Produces(StatusCodes.Status503ServiceUnavailable)
+			.WithOpenApi();
 	}
 
 	private static async Task<Ok<DeviceListResponse>> GetDevices(
@@ -92,6 +98,24 @@ public static class Devices
 		await deviceRepository.EnterBootloader(id, cancellationToken)
 			? TypedResults.NoContent()
 			: TypedResults.NotFound();
+
+	private static async Task<Results<Ok<UpdateFirmwareResponse>, InternalServerError>> UpdateFirmware(
+		[FromServices] IDeviceRepository deviceRepository,
+		[FromRoute(Name = "id")] DeviceId deviceId,
+		[FromQuery(Name = "migrate")] bool migrateProfile,
+		[FromQuery] uint? version,
+		CancellationToken cancellationToken
+	)
+	{
+		return await deviceRepository.UpdateFirmware(deviceId, version, cancellationToken) is { } updated
+			? TypedResults.Ok(
+				new UpdateFirmwareResponse
+				{
+					Action = updated ? UpdateFirmwareAction.Updated : UpdateFirmwareAction.AlreadyUpToDate,
+				}
+			)
+			: TypedResults.InternalServerError();
+	}
 }
 
 public sealed class DeviceListResponse
@@ -107,4 +131,15 @@ public sealed class DeviceDetailsResponse
 public sealed class GetDeviceProfileResponse
 {
 	public required DeviceProfile DeviceProfile { get; init; }
+}
+
+public sealed class UpdateFirmwareResponse
+{
+	public required UpdateFirmwareAction Action { get; init; }
+}
+
+public enum UpdateFirmwareAction
+{
+	Updated,
+	AlreadyUpToDate,
 }

@@ -27,7 +27,7 @@ use cardboard_lib::{
 		IdentifyCommand, SetExternalTagsCommand, SetVirtualKeysCommand,
 	},
 	context::Context,
-	device::{DeviceInfo, DeviceTypeId},
+	device::{DeviceInfo, DeviceTypeId, DeviceVariant, DeviceVersion},
 	embassy::{EmbassyFlashMemory, EmbassyKeypadHid, EmbassyTickClock},
 	error::HeaplessSpscErrorLog,
 	hid::{HidDevice, HidReport},
@@ -174,6 +174,8 @@ async fn main(spawner: Spawner) -> () {
 			name: "Cardboard",
 			manufacturer: "cranky",
 			r#type: DeviceTypeId::new(Uuid::from_u128(0x0407db48_ca74_5783_9b11_489637b7c615)),
+			variant: DeviceVariant::new(0x00000000),
+			version: DeviceVersion::new(0x00000001),
 			commands: cmds.iter().map(|cmd| cmd.info()).collect(),
 		})
 	};

@@ -1,7 +1,21 @@
 using System.Diagnostics;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 namespace Cardboard.FrontendHost;
+
+partial class Services
+{
+	public static IServiceCollection AddFrontendService(
+		this IServiceCollection services,
+		IConfigurationSection configuration
+	)
+	{
+		services.Configure<FrontendConfiguration>(configuration);
+		return services.AddSingleton<IFrontendService, FrontendService>();
+	}
+}
 
 public interface IFrontendService
 {

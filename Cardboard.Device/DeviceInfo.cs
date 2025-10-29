@@ -8,6 +8,8 @@ public sealed class DeviceInfo
 	public required string Name { get; init; }
 	public string? Manufacturer { get; init; }
 	public required DeviceTypeId Type { get; init; }
+	public required uint? Variant { get; init; }
+	public required uint Version { get; init; }
 	public required IReadOnlyList<CommandInfo> Commands { get; init; }
 }
 

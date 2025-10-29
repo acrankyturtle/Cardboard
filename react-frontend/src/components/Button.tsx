@@ -3,7 +3,7 @@ import clsx, { ClassValue } from "clsx";
 
 interface ButtonStyleOptions {
   animation?: "normal" | "none";
-  focusRing?: "normal" | "dark";
+  focusRing?: "normal" | "dark" | "none";
   variant?:
     | "normal"
     | "submit"

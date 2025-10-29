@@ -5,11 +5,12 @@ namespace Cardboard.Repositories;
 
 public static partial class Services
 {
-	public static IServiceCollection AddRepositories(this IServiceCollection services) =>
-		services.AddDeviceRepository().AddApplicationRepository().AddSchemaRepository();
-
-	public static IServiceCollection ConfigureRepositories(
+	public static IServiceCollection AddRepositories(
 		this IServiceCollection services,
 		IConfigurationSection configuration
-	) => services.Configure<ApplicationRepositoryConfiguration>(configuration);
+	)
+	{
+		services.Configure<ApplicationRepositoryConfiguration>(configuration);
+		return services.AddDeviceRepository().AddApplicationRepository().AddSchemaRepository();
+	}
 }

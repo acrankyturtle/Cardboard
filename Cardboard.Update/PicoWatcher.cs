@@ -1,3 +1,6 @@
+using Cardboard.Utilities;
+using Cranky;
+
 namespace Cardboard.Update;
 
 public static class PicoWatcher
@@ -11,7 +14,7 @@ public static class PicoWatcher
 	/// <param name="timeout">Maximum time to wait</param>
 	/// <param name="cancellationToken">Cancellation token</param>
 	/// <returns>DriveInfo for the bootloader drive, or null if not found</returns>
-	public static async Task<DriveInfo?> WaitForBootloaderDriveAsync(
+	public static async Task<Result<DriveInfo, WaitForBootloaderDriveError>> WaitForBootloaderDrive(
 		TimeSpan timeout,
 		CancellationToken cancellationToken = default
 	)
@@ -21,44 +24,48 @@ public static class PicoWatcher
 			cancellationToken,
 			timeoutCts.Token
 		);
+		return await Polling.Poll(
+			() => Task.FromResult(FindBootloaderDrive()),
+			TimeSpan.FromMilliseconds(DefaultPollIntervalMs),
+			combinedCts.Token
+		);
+	}
 
-		try
-		{
-			while (!combinedCts.Token.IsCancellationRequested)
-			{
-				var picoDrive = FindBootloaderDrive();
-				if (picoDrive != null)
-					return picoDrive;
-
-				await Task.Delay(TimeSpan.FromMilliseconds(DefaultPollIntervalMs), combinedCts.Token);
-			}
-		}
-		catch (TaskCanceledException)
-		{
-			return null;
-		}
-
-		return null;
+	public enum WaitForBootloaderDriveError
+	{
+		NotFound,
+		MultipleDrivesFound,
+		Unauthorized,
+		IOError,
 	}
 
 	/// <summary>
 	/// Finds the Pico bootloader drive
 	/// </summary>
-	private static DriveInfo? FindBootloaderDrive()
+	public static Result<DriveInfo, WaitForBootloaderDriveError> FindBootloaderDrive()
 	{
 		try
 		{
 			var drives = DriveInfo.GetDrives();
-			return drives.FirstOrDefault(drive =>
-				drive.IsReady
-				&& drive.DriveType == DriveType.Removable
-				&& string.Equals(drive.VolumeLabel, PicoBootloaderLabel, StringComparison.OrdinalIgnoreCase)
-			);
+			return drives.SingleOrDefault(Predicate) is { } picoDrive
+				? picoDrive
+				: WaitForBootloaderDriveError.NotFound;
 		}
-		catch (Exception)
+		catch (InvalidOperationException)
 		{
-			// Handle cases where drives might be temporarily inaccessible
-			return null;
+			return WaitForBootloaderDriveError.MultipleDrivesFound;
 		}
+		catch (UnauthorizedAccessException)
+		{
+			return WaitForBootloaderDriveError.Unauthorized;
+		}
+		catch (IOException)
+		{
+			return WaitForBootloaderDriveError.IOError;
+		}
+
+		bool Predicate(DriveInfo drive) =>
+			drive is { IsReady: true, DriveType: DriveType.Removable }
+			&& string.Equals(drive.VolumeLabel, PicoBootloaderLabel, StringComparison.OrdinalIgnoreCase);
 	}
 }

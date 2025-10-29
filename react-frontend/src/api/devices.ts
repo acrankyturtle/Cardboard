@@ -67,6 +67,29 @@ export const updateDeviceProfile = async (
   return "success";
 };
 
+export const updateDeviceFirmware = async (
+  deviceId: string,
+  version?: number,
+  migrateProfile: boolean = true,
+): Promise<"success" | { error: string }> => {
+  const url = new URL(getApiUrl(`devices/${deviceId}/update`));
+  url.searchParams.set("migrate", migrateProfile.toString());
+  if (version !== undefined)
+    url.searchParams.set("version", version.toString());
+
+  const response = await fetch(url, {
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    return {
+      error: `Failed to update device firmware: ${response.statusText}`,
+    };
+  }
+
+  return "success";
+};
+
 export interface DeviceSummary {
   id: string;
   name: string;
@@ -78,8 +101,11 @@ export interface DeviceDetails {
   id: string;
   name: string;
   type: string;
+  variant?: number;
   model: string;
   iconUrl?: string;
+  version: number;
+  latestVersion?: number;
   status: DeviceStatusReport;
   commands: readonly CommandInfo[];
   keyMap: readonly KeyInfo[];

@@ -24,7 +24,7 @@ import {
   MouseButtonDownActionEvent,
   MouseButtonUpActionEvent,
 } from "../api/devices.ts";
-import { ReactNode } from "react";
+import { ReactNode, useMemo } from "react";
 import clsx from "clsx";
 import { Button } from "./Button.tsx";
 import { Input } from "@headlessui/react";
@@ -35,6 +35,11 @@ import {
   MouseKeySelector,
 } from "./KeySelector.tsx";
 import { EditIcon } from "../assets/sharedIcons.tsx";
+import { ComboInput } from "./ComboInput.tsx";
+import {
+  getTagsInProfile,
+  useMaybeEditDeviceContext,
+} from "../lib/editDeviceContext.tsx";
 
 export function ActionView({
   className,
@@ -557,6 +562,18 @@ function LayerActionEventView({
   event: LayerActionEvent;
   setEvent?: (event: LayerActionEvent) => void;
 }) {
+  const context = useMaybeEditDeviceContext();
+  const items = useMemo(
+    () =>
+      context
+        ? getTagsInProfile(context.state.profile).map((t) => ({
+            id: t,
+            name: t,
+          }))
+        : [],
+    [context],
+  );
+
   return (
     <>
       <div>Layer</div>
@@ -571,12 +588,16 @@ function LayerActionEventView({
             keyDown={<SetLayerIcon />}
           />
           {setEvent ? (
-            <Input
-              type="text"
-              className={clsx("min-w-0", InputClassName)}
-              maxLength={255}
-              value={event.clear}
-              onChange={(e) => setEvent({ clear: e.target.value })}
+            <ComboInput
+              className="w-16 min-w-0"
+              value={{ id: event.clear, name: event.clear }}
+              onChange={(e) => setEvent({ clear: e.id })}
+              items={items}
+              itemFromQuery={(query) => {
+                query = query.trim().toLowerCase();
+                if (query.length < 1 || query.length > 255) return undefined;
+                return { id: query, name: query };
+              }}
             />
           ) : (
             <div>{event.clear}</div>

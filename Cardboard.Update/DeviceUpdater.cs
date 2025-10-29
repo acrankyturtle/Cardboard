@@ -1,43 +1,54 @@
-using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using Cardboard.Device;
+using Cardboard.Utilities;
+using Cranky;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Cardboard.Update;
 
-public static class Services
+partial class Services
 {
-	public static IServiceCollection AddUpdateService(this IServiceCollection services) =>
+	public static IServiceCollection AddDeviceUpdater(this IServiceCollection services) =>
 		services.AddSingleton<IDeviceUpdater, DeviceUpdate>();
 }
 
 public interface IDeviceUpdater
 {
 	/// <exception cref="UpdateDeviceException"></exception>
-	Task UpdateDeviceAsync(
+	Task UpdateDevice(
 		DeviceId deviceId,
 		DeviceFirmware firmware,
-		UpdateOptions? options = null,
+		bool migrateProfile,
 		CancellationToken cancellationToken = default
 	);
+
+	/// <exception cref="UpdateDeviceException"></exception>
+	Task UpdateDevice(DeviceFirmware firmware, CancellationToken cancellationToken = default);
 }
 
 public abstract class UpdateDeviceException(string message) : Exception(message);
 
 internal class DeviceUpdate(IDeviceService deviceService) : IDeviceUpdater
 {
-	public async Task UpdateDeviceAsync(
+	private readonly SemaphoreSlim _lock = new(1, 1);
+
+	public async Task UpdateDevice(
 		DeviceId deviceId,
 		DeviceFirmware firmware,
-		UpdateOptions? options = null,
+		bool migrateProfile,
 		CancellationToken cancellationToken = default
 	)
 	{
-		options ??= new();
-
 		DeviceProfile? deviceProfile = null;
 
-		if (!options.FlashOnly)
+		await _lock.WaitAsync(cancellationToken);
+
+		try
 		{
+			// make sure another device isn't already in bootloader mode
+			if (PicoWatcher.FindBootloaderDrive().TryGetSuccess(out var existing))
+				throw new DeviceAlreadyInBootloaderModeException(existing.RootDirectory.FullName);
+
 			// find target device
 			var devices = await deviceService.GetDevices(cancellationToken);
 			var device = devices.FirstOrDefault(d => d.Id == deviceId);
@@ -48,9 +59,9 @@ internal class DeviceUpdate(IDeviceService deviceService) : IDeviceUpdater
 			if (firmware.DeviceType != device.Type)
 				throw new DeviceTypeMismatchException(deviceId, firmware.DeviceType, device.Type);
 
-			// get profile
-			if (options.MigrateProfile)
+			if (migrateProfile)
 			{
+				// get profile
 				var getProfileResult = await deviceService.SendCommand(
 					new GetProfileCommand(),
 					new(),
@@ -70,48 +81,63 @@ internal class DeviceUpdate(IDeviceService deviceService) : IDeviceUpdater
 			);
 			if (!bootloaderResult.IsSuccess)
 				throw new FailedToSendBootloaderCommandException();
-		}
 
+			// update pico in bootloader mode
+			await UpdateDevice(firmware, cancellationToken);
+
+			var findAfterReboot = await Polling.Poll<Unit, Unit>(
+				async () =>
+				{
+					var deviceChanged = await deviceService.OnDevicesChanged.ToTask(cancellationToken);
+					if (deviceChanged.Added.Any(x => x.Id == deviceId))
+						return Result.Fail(Unit.Value);
+
+					return Result.Success(Unit.Value);
+				},
+				TimeSpan.FromMilliseconds(100),
+				cancellationToken
+			);
+
+			if (!findAfterReboot.IsSuccess)
+				throw new FailedToFindDeviceAfterUpdateException();
+
+			if (deviceProfile is not null)
+			{
+				var restoreProfileResult = await deviceService.SendCommand(
+					new ChangeProfileCommand(),
+					deviceProfile,
+					deviceId,
+					cancellationToken
+				);
+				if (!restoreProfileResult.IsSuccess)
+					throw new FailedToRestoreDeviceProfileException();
+			}
+		}
+		finally
+		{
+			_lock.Release();
+		}
+	}
+
+	public async Task UpdateDevice(DeviceFirmware firmware, CancellationToken cancellationToken = default)
+	{
 		// wait for device to present itself as USB device
-		var picoDrive = await PicoWatcher.WaitForBootloaderDriveAsync(
-			TimeSpan.FromSeconds(3),
-			cancellationToken
-		);
-		if (picoDrive is null)
-			throw new FailedToFindPicoInBootloaderException();
+		var result = await PicoWatcher.WaitForBootloaderDrive(TimeSpan.FromSeconds(3), cancellationToken);
+		if (!result.TryGet(out var picoDrive, out var error))
+			throw new FailedToFindPicoInBootloaderException(error);
 
 		// copy firmware to device
 		var targetPath = Path.Combine(picoDrive.RootDirectory.FullName, "firmware.uf2");
 		await File.WriteAllBytesAsync(targetPath, firmware.Firmware, cancellationToken);
-
-		while (true)
-		{
-			var deviceChanged = await deviceService.OnDevicesChanged;
-			if (deviceChanged.Added.Any(x => x.Id == deviceId))
-				break;
-
-			// todo: throw after a timeout?
-		}
-
-		if (!options.FlashOnly && deviceProfile is not null)
-		{
-			var restoreProfileResult = await deviceService.SendCommand(
-				new ChangeProfileCommand(),
-				deviceProfile,
-				deviceId,
-				cancellationToken
-			);
-			if (!restoreProfileResult.IsSuccess)
-				throw new FailedToRestoreDeviceProfileException();
-		}
 	}
 }
 
-public class DeviceFirmware
+public sealed class DeviceFirmware
 {
-	public required DeviceTypeId DeviceType { get; set; }
-	public required uint Version { get; set; }
-	public required ReadOnlyMemory<byte> Firmware { get; set; }
+	public required DeviceTypeId DeviceType { get; init; }
+	public required uint Version { get; init; }
+	public uint? Variant { get; init; }
+	public required ReadOnlyMemory<byte> Firmware { get; init; }
 }
 
 public class UpdateOptions
@@ -136,6 +162,9 @@ public class DeviceTypeMismatchException(
 		$"Device type mismatch for device {deviceId}: expected {expectedType}, but found {actualType}."
 	);
 
+public class DeviceAlreadyInBootloaderModeException(string path)
+	: UpdateDeviceException($"Another device is already in bootloader mode at `{path}`.");
+
 public class FailedToGetDeviceProfileException() : UpdateDeviceException("Failed to get device profile.");
 
 public class FailedToRestoreDeviceProfileException()
@@ -144,5 +173,8 @@ public class FailedToRestoreDeviceProfileException()
 public class FailedToSendBootloaderCommandException()
 	: UpdateDeviceException("Failed to send bootloader command to device.");
 
-public class FailedToFindPicoInBootloaderException()
-	: UpdateDeviceException("Failed to find a Pico device in bootloader mode.");
+public class FailedToFindPicoInBootloaderException(PicoWatcher.WaitForBootloaderDriveError error)
+	: UpdateDeviceException($"Failed to find a Pico device in bootloader mode: {error}.");
+
+public class FailedToFindDeviceAfterUpdateException()
+	: UpdateDeviceException("Failed to find device after updating firmware.");

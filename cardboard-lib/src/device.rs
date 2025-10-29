@@ -32,6 +32,24 @@ impl DeviceTypeId {
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone, PartialEq)]
+pub struct DeviceVersion(u32);
+
+impl DeviceVersion {
+	pub const fn new(version: u32) -> Self {
+		DeviceVersion(version)
+	}
+}
+
+#[derive(Serialize, Deserialize, Copy, Clone, PartialEq)]
+pub struct DeviceVariant(u32);
+
+impl DeviceVariant {
+	pub const fn new(variant: u32) -> Self {
+		DeviceVariant(variant)
+	}
+}
+
+#[derive(Serialize, Deserialize, Copy, Clone, PartialEq)]
 pub struct CommandId(pub Uuid);
 
 impl Display for CommandId {
@@ -52,5 +70,7 @@ pub struct DeviceInfo {
 	pub name: &'static str,
 	pub manufacturer: &'static str,
 	pub r#type: DeviceTypeId,
+	pub variant: DeviceVariant,
+	pub version: DeviceVersion,
 	pub commands: Vec<CommandInfo>,
 }

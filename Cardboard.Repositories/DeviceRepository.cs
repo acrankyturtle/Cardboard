@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Cardboard.Device;
+using Cardboard.Update;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -22,6 +23,12 @@ public interface IDeviceRepository
 	);
 
 	Task<bool> EnterBootloader(DeviceId deviceId, CancellationToken cancellationToken = default);
+
+	Task<bool?> UpdateFirmware(
+		DeviceId deviceId,
+		uint? version,
+		CancellationToken cancellationToken = default
+	);
 }
 
 public enum UpdateDeviceProfileResult
@@ -54,8 +61,11 @@ public sealed class DeviceDetails
 	public required DeviceId Id { get; init; }
 	public required string Name { get; init; }
 	public required DeviceTypeId Type { get; init; }
+	public required uint? Variant { get; init; }
 	public required string Model { get; init; }
 	public string? IconUrl { get; init; }
+	public required uint Version { get; init; }
+	public required uint? LatestVersion { get; init; }
 
 	public required DeviceStatusReport Status { get; init; }
 
@@ -65,14 +75,22 @@ public sealed class DeviceDetails
 
 	public int VirtualKeyCount { get; init; }
 
-	public static DeviceDetails From(DeviceInfo info, DeviceStatus status, DeviceTypeInfo typeInfo) =>
+	public static DeviceDetails From(
+		DeviceInfo info,
+		DeviceStatus status,
+		DeviceTypeInfo typeInfo,
+		uint? latestVersion
+	) =>
 		new()
 		{
 			Id = info.Id,
 			Name = info.Name,
 			Type = info.Type,
+			Variant = info.Variant,
 			Model = typeInfo.Model,
 			IconUrl = typeInfo.IconUrl,
+			Version = info.Version,
+			LatestVersion = latestVersion,
 			Status = DeviceStatusReport.From(status),
 			Commands = info.Commands,
 			KeyMap = typeInfo.KeyMap,
@@ -169,6 +187,8 @@ public sealed class KeySize
 
 file sealed class DeviceRepository(
 	IDeviceService deviceService,
+	IFirmwareSource firmwareSource,
+	IDeviceUpdater deviceUpdater,
 	ILogger<DeviceRepository> _logger,
 	JsonSerializerOptions serializerOptions
 ) : IDeviceRepository
@@ -193,6 +213,12 @@ file sealed class DeviceRepository(
 		if (deviceInfo is null)
 			return null;
 
+		var latestVersionTask = firmwareSource.GetLatestVersion(
+			deviceInfo.Type,
+			deviceInfo.Variant,
+			cancellationToken
+		);
+
 		var deviceStatus = (
 			await deviceService.SendCommand(new GetStatusCommand(), new(), deviceId, cancellationToken)
 		).Match<DeviceStatus?>(
@@ -216,7 +242,8 @@ file sealed class DeviceRepository(
 		}
 
 		var deviceTypeInfo = GetDeviceTypeInfo(deviceInfo.Type);
-		return DeviceDetails.From(deviceInfo, deviceStatus, deviceTypeInfo);
+		var latestVersion = await latestVersionTask;
+		return DeviceDetails.From(deviceInfo, deviceStatus, deviceTypeInfo, latestVersion);
 	}
 
 	public async Task<DeviceProfile?> GetDeviceProfile(
@@ -297,6 +324,51 @@ file sealed class DeviceRepository(
 				deviceId,
 				result.Message
 			);
+			return false;
+		}
+
+		return true;
+	}
+
+	public async Task<bool?> UpdateFirmware(
+		DeviceId deviceId,
+		uint? version,
+		CancellationToken cancellationToken = default
+	)
+	{
+		var device = (await deviceService.GetDevices(cancellationToken)).FirstOrDefault(x =>
+			x.Id == deviceId
+		);
+		if (device is null)
+			return null;
+
+		if (version is null)
+		{
+			version = await firmwareSource.GetLatestVersion(device.Type, device.Variant, cancellationToken);
+			if (version is null)
+				return null;
+		}
+
+		if (version <= device.Version)
+			return false;
+
+		var firmware = await firmwareSource.GetFirmware(
+			device.Type,
+			device.Variant,
+			version.Value,
+			cancellationToken
+		);
+		if (firmware is null)
+			return null;
+
+		Debug.Assert(firmware.Version == version);
+
+		try
+		{
+			await deviceUpdater.UpdateDevice(deviceId, firmware, true, cancellationToken);
+		}
+		catch (UpdateDeviceException)
+		{
 			return false;
 		}
 

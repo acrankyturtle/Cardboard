@@ -1,11 +1,12 @@
 ﻿using Cardboard.Device;
+using Cardboard.Services;
 using Cardboard.Update;
 using Cardboard.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-var deviceId = DeviceId.Parse("e6609103-c366-7c23-e660-9103c3667c23");
+var deviceId = DeviceId.Parse("8ff080b0-94cf-5ca9-b858-b26f51d205ca");
 var firmwarePath = Path.Combine(Environment.CurrentDirectory, "firmware.uf2");
 var firmwareBytes = File.ReadAllBytes(firmwarePath);
 var firmware = new DeviceFirmware
@@ -14,20 +15,27 @@ var firmware = new DeviceFirmware
 	Version = 0,
 	Firmware = firmwareBytes,
 };
-var options = new UpdateOptions { FlashOnly = true };
+var options = new UpdateOptions { FlashOnly = false, MigrateProfile = true };
 
 var builder = Host.CreateApplicationBuilder(args);
 
-builder.Services.AddDeviceServices().AddWindowsSerialPort().AddWindowsService().AddUpdateService();
+builder
+	.Services.AddInitialization()
+	.AddDeviceServices()
+	.AddDeviceUpdater()
+	.AddWindowsSerialPort()
+	.AddWindowsService();
 
 var app = builder.Build();
 
+await app.Services.Initialize();
+
 var updater = ActivatorUtilities.CreateInstance<Updater>(app.Services);
-await updater.ExecuteAsync(deviceId, firmware, options);
+await updater.Execute(deviceId, firmware, options);
 
 file class Updater(IDeviceUpdater updater, IHostApplicationLifetime lifetime, ILogger<Updater> logger)
 {
-	public async Task ExecuteAsync(
+	public async Task Execute(
 		DeviceId deviceId,
 		DeviceFirmware firmware,
 		UpdateOptions options,
@@ -36,11 +44,28 @@ file class Updater(IDeviceUpdater updater, IHostApplicationLifetime lifetime, IL
 	{
 		try
 		{
-			await updater.UpdateDeviceAsync(deviceId, firmware, options, stoppingToken);
+			await updater.UpdateDevice(deviceId, firmware, options.MigrateProfile, stoppingToken);
 		}
 		catch (Exception e)
 		{
 			logger.LogError(e, "Failed to update device {DeviceId}", deviceId);
+			throw;
+		}
+		finally
+		{
+			lifetime.StopApplication();
+		}
+	}
+
+	public async Task Execute(DeviceFirmware firmware, CancellationToken stoppingToken = default)
+	{
+		try
+		{
+			await updater.UpdateDevice(firmware, stoppingToken);
+		}
+		catch (Exception e)
+		{
+			logger.LogError(e, "Failed to update device");
 			throw;
 		}
 		finally

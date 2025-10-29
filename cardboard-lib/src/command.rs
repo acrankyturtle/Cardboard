@@ -5,7 +5,6 @@ use crate::error::ErrorLog;
 use crate::input::KeyId;
 use crate::time::Clock;
 use async_trait::async_trait;
-use core::cell::Cell;
 use core::cmp::Ord;
 use core::module_path;
 use core::option_env;
@@ -15,7 +14,6 @@ use core::result::Result::Err;
 use core::result::Result::Ok;
 use defmt::{debug, error};
 use serde::Serialize;
-use serde::Serializer;
 
 use alloc::boxed::Box;
 use alloc::string::String;

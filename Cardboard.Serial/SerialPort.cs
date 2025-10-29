@@ -2,6 +2,7 @@ using System.IO.Ports;
 using System.Text;
 using Cardboard.Device;
 using Cranky;
+using Microsoft.Extensions.Logging;
 
 namespace Cardboard.Serial;
 
@@ -15,15 +16,41 @@ public interface ISerialPort : IAsyncDisposable
 	);
 }
 
-public sealed class SystemSerialPort(string name, SerialPort serialPort) : ISerialPort
+internal class LogSemaphoreSlim(SemaphoreSlim impl, ILogger logger) : IDisposable
+{
+	public async Task<bool> WaitAsync(TimeSpan timeout, CancellationToken cancellationToken)
+	{
+		var result = await impl.WaitAsync(timeout, cancellationToken);
+
+		if (result)
+			logger.LogInformation("Acquired semaphore.");
+		else
+			logger.LogWarning("Timeout waiting for semaphore.");
+
+		return result;
+	}
+
+	public void Release()
+	{
+		impl.Release();
+		logger.LogInformation("Released semaphore.");
+	}
+
+	public void Dispose()
+	{
+		impl.Dispose();
+	}
+}
+
+public sealed class SystemSerialPort(string name, SerialPort serialPort, ILogger logger) : ISerialPort
 {
 	private static readonly TimeSpan _timeOut = TimeSpan.FromSeconds(10);
 
-	private readonly SemaphoreSlim _lock = new(1, 1);
+	private readonly LogSemaphoreSlim _lock = new(new(1, 1), logger);
 
 	public string PortName => name;
 
-	public static Result<SystemSerialPort, Exception> Create(string portName)
+	public static Result<SystemSerialPort, Exception> Create(string portName, ILogger logger)
 	{
 		var serialPort = new SerialPort(portName)
 		{
@@ -43,7 +70,7 @@ public sealed class SystemSerialPort(string name, SerialPort serialPort) : ISeri
 			return Result.Fail(ex);
 		}
 
-		return new SystemSerialPort(portName, serialPort);
+		return new SystemSerialPort(portName, serialPort, logger);
 	}
 
 	public async Task<Result<T, Exception>> With<T>(
@@ -82,8 +109,6 @@ public sealed class SystemSerialPort(string name, SerialPort serialPort) : ISeri
 
 	public async ValueTask DisposeAsync()
 	{
-		await _lock.WaitAsync();
-
 		serialPort.Dispose();
 		_lock.Dispose();
 	}

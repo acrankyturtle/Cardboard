@@ -6,6 +6,8 @@ using Cardboard.Events;
 using Cardboard.FrontendHost;
 using Cardboard.Repositories;
 using Cardboard.Services;
+using Cardboard.Update;
+using Cardboard.Update.Api;
 using Cardboard.Utilities;
 using Cardboard.Windows;
 using Microsoft.AspNetCore.Builder;
@@ -19,9 +21,6 @@ builder.WebHost.ConfigureKestrel(options =>
 {
 	// TODO: configure connection limits?
 });
-
-builder.Services.ConfigureRepositories(builder.Configuration.GetSection("Paths"));
-builder.Services.ConfigureFrontend(builder.Configuration.GetSection("Frontend"));
 
 // web api json options
 builder.Services.Configure<JsonOptions>(options =>
@@ -56,14 +55,20 @@ builder
 
 builder.Services.AddHttpClient();
 
+var updateConfig = builder.Configuration.GetSection("Update");
+var frontendConfig = builder.Configuration.GetSection("Frontend");
+var pathsConfig = builder.Configuration.GetSection("Paths");
+
 builder
 	.Services.AddInitialization()
+	.AddApiFirmwareSource(updateConfig)
 	.AddDeviceServices()
+	.AddDeviceUpdater()
 	.AddCardboardServices()
 	.AddCardboardWindowsEvents()
 	.AddFrontendHosting()
-	.AddFrontendService()
-	.AddRepositories()
+	.AddFrontendService(frontendConfig)
+	.AddRepositories(pathsConfig)
 	.AddTrayIcon()
 	.AddWindowsSerialPort()
 	.AddWindowsService();

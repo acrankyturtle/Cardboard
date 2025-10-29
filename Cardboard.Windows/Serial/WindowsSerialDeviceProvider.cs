@@ -57,7 +57,9 @@ internal class WindowsSerialDeviceProvider : IDeviceProvider, IInitializable, ID
 				await Task.WhenAll(
 					_deviceFinder
 						.GetDevices()
-						.Select(x => (ConnectionInfo: x, SerialPort: SystemSerialPort.Create(x.ComPort)))
+						.Select(x =>
+							(ConnectionInfo: x, SerialPort: SystemSerialPort.Create(x.ComPort, _logger))
+						)
 						.Where(x => x.SerialPort.IsSuccess)
 						.Select(async x =>
 						{

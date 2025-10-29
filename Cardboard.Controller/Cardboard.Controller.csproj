@@ -18,6 +18,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\Cardboard.FrontendHost\Cardboard.FrontendHost.csproj" />
 		<ProjectReference Include="..\Cardboard.Services\Cardboard.Services.csproj" />
+		<ProjectReference Include="..\Cardboard.Update.Api\Cardboard.Update.Api.csproj" />
 		<ProjectReference Include="..\Cardboard.Windows\Cardboard.Windows.csproj" />
 	</ItemGroup>
 	<!--    <PropertyGroup>-->
