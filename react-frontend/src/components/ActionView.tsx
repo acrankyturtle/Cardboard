@@ -157,7 +157,7 @@ export function ActionView({
   );
 }
 
-export function ActionEventView({
+function ActionEventView({
   event,
   setEvent,
 }: {

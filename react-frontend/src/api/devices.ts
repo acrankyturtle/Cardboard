@@ -18,6 +18,17 @@ export const useDeviceList = (): {
   };
 };
 
+export const getDeviceDetails = async (deviceId: string) => {
+  const response = await fetch(getApiUrl(`devices/${deviceId}`));
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch device details: ${response.statusText}`);
+  }
+
+  const data: { deviceDetails: DeviceDetails } = await response.json();
+  return data.deviceDetails;
+};
+
 export const useDeviceDetails = (deviceId: string) => {
   const { data, isLoading, error } = useSWR<{ deviceDetails: DeviceDetails }>(
     `devices/${deviceId}`,
@@ -28,6 +39,17 @@ export const useDeviceDetails = (deviceId: string) => {
     isLoading,
     error,
   };
+};
+
+export const getDeviceProfile = async (deviceId: string) => {
+  const response = await fetch(getApiUrl(`devices/${deviceId}/profile`));
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch device profile: ${response.statusText}`);
+  }
+
+  const data: { deviceProfile: DeviceProfile } = await response.json();
+  return data.deviceProfile;
 };
 
 export const useDeviceProfile = (
@@ -144,6 +166,7 @@ export interface DeviceStatusError {
 }
 
 export interface DeviceProfile {
+  name: string;
   keys: readonly DeviceKey[];
   virtualKeys: readonly VirtualKey[];
   macros: readonly DeviceMacro[];
@@ -158,18 +181,15 @@ export interface VirtualKey {
   layers: DeviceLayers;
 }
 
-export const isVirtualKey = (key: DeviceKey | VirtualKey): key is VirtualKey =>
-  !("id" in key);
-
 export interface DeviceLayers {
   layers: readonly TaggedDeviceLayer[];
   defaultLayer: DeviceKeyLayer;
 }
 
 export interface TaggedDeviceLayer {
-  layer: DeviceKeyLayer;
   tags: readonly string[];
   matchType: TagMatchType;
+  layer: DeviceKeyLayer;
 }
 
 export interface DeviceKeyLayer {
@@ -189,8 +209,8 @@ export enum TagMatchType {
 export interface DeviceMacro {
   id: string;
   name: string;
-  playChannel?: string;
-  cutChannels: readonly string[];
+  playChannel?: number;
+  cutChannels: readonly number[];
   startSequence: Sequence;
   loopSequence: Sequence;
   endSequence: Sequence;

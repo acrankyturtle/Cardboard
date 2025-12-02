@@ -3,7 +3,6 @@ import { Button, getButtonClassName } from "./Button.tsx";
 import { ListBox, ListBoxItem } from "./ListBox.tsx";
 import { CSSProperties, ReactNode, useCallback, useMemo } from "react";
 import {
-  DeviceDetails,
   DeviceKey,
   DeviceKeyLayer,
   DeviceLayers,
@@ -30,7 +29,6 @@ import {
 } from "./Dialog.tsx";
 import {
   deleteMacro,
-  EditDeviceContextProvider,
   EditDeviceState,
   findKeyById,
   findMacroById,
@@ -65,17 +63,9 @@ import { InputClassName } from "./Input.tsx";
 import { SequenceEditor } from "./SequenceEditor.tsx";
 import { EditTaggedLayerDialog } from "./EditTaggedLayerDialog.tsx";
 
-export function EditDeviceProfile({
-  className,
-  device,
-  profile,
-}: {
-  className?: string;
-  device: DeviceDetails;
-  profile: DeviceProfile;
-}) {
+export function EditDeviceProfile({ className }: { className?: string }) {
   return (
-    <EditDeviceContextProvider device={device} profile={profile}>
+    <>
       <DndContext>
         <div className={clsx("flex gap-0.5 bg-stone-950", className)}>
           <div className="grid min-w-56 grid-rows-2 flex-col gap-0.5">
@@ -95,7 +85,7 @@ export function EditDeviceProfile({
       </DndContext>
       <EditTaggedLayerDialog />
       <EditMacroDialog />
-    </EditDeviceContextProvider>
+    </>
   );
 }
 
@@ -246,7 +236,7 @@ function Key({
 }) {
   const { state, dispatch } = useEditDeviceContext();
   const isSelected = state.selectedKey === keyId;
-  const key = useMemo(() => findKeyById(keyId, state.profile), [keyId, state]);
+  const key = useMemo(() => findKeyById(keyId, state), [keyId, state]);
   const layerCount = key?.layers.layers.length ?? 0;
   const activeLayer = getActiveLayer(
     key?.layers ?? {
@@ -263,7 +253,7 @@ function Key({
       activeLayer.macros
         .map((mid) => state.profile.macros.find((m) => m.id === mid)!)
         .filter((m) => m),
-    [activeLayer],
+    [activeLayer, state.profile.macros],
   );
   const keyLabel = useMemo(() => getActionLabelForMacros(macros), [macros]);
 
@@ -306,7 +296,7 @@ function Key({
           >
             {keyName}
           </div>
-          <div className="absolute top-1 right-1 text-xs">
+          <div className="absolute top-1.5 right-2 text-xs">
             {layerCount > 0 && layerCount}
           </div>
         </div>
@@ -397,8 +387,6 @@ function VirtualKeyPanel({ className }: { className?: string }) {
   );
 }
 
-// @ts-ignore
-// todo: use this guy for both physical and virtual keys when screen size is too small
 function KeysPanel({
   className,
   showPhysicalKeys,
@@ -415,7 +403,7 @@ function KeysPanel({
     const physicalKeys = showPhysicalKeys
       ? device.keyMap
           .map((k) => {
-            const key = findKeyById(k.keyId, state.profile);
+            const key = findKeyById(k.keyId, state);
             return {
               label: k.name,
               value: k.keyId,
@@ -428,7 +416,7 @@ function KeysPanel({
     const virtualKeys = showVirtualKeys
       ? Array.from({ length: device.virtualKeyCount }, (_, i) => {
           const id = getVirtualKeyId(i);
-          const key = findKeyById(id, state.profile);
+          const key = findKeyById(id, state);
           return {
             label: `VK-${i + 1}`,
             value: id,
@@ -495,7 +483,7 @@ function BindingsPanel({ className }: { className?: string }) {
 
   const macros: readonly ({ index: number } & ListBoxItem)[] =
     bindings?.map((m, i) => {
-      const macro = state.profile.macros.find((x) => x.id === m);
+      const macro = findMacroById(m, state.profile);
       return macro
         ? { label: macro.name, value: macro.id, index: i }
         : { label: "(unknown)", value: m, index: i };
@@ -681,8 +669,8 @@ function LayersPanel({ className }: { className?: string }) {
   const isSelectedLayerDefaultLayer = useMemo(
     () =>
       selectedLayer && state.selectedKey
-        ? findKeyById(state.selectedKey, state.profile)?.layers.defaultLayer
-            .id === selectedLayer.value
+        ? findKeyById(state.selectedKey, state)?.layers.defaultLayer.id ===
+          selectedLayer.value
         : undefined,
     [state],
   );

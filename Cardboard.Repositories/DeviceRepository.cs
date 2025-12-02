@@ -14,15 +14,23 @@ public interface IDeviceRepository
 	Task<IReadOnlyCollection<DeviceSummary>> GetDevices(CancellationToken cancellationToken = default);
 
 	Task<DeviceDetails?> GetDeviceDetails(DeviceId deviceId, CancellationToken cancellationToken = default);
-	Task<DeviceProfile?> GetDeviceProfile(DeviceId deviceId, CancellationToken cancellationToken = default);
+	Task<Profile?> GetDeviceProfile(DeviceId deviceId, CancellationToken cancellationToken = default);
 
 	Task<UpdateDeviceProfileResult> UpdateDeviceProfile(
 		DeviceId deviceId,
-		DeviceProfile deviceProfile,
+		Profile deviceProfile,
 		CancellationToken cancellationToken = default
 	);
 
 	Task<bool> EnterBootloader(DeviceId deviceId, CancellationToken cancellationToken = default);
+
+	Task<DeviceSettings?> GetDeviceSettings(DeviceId deviceId, CancellationToken cancellationToken = default);
+
+	Task<UpdateDeviceSettingsResult> UpdateDeviceSettings(
+		DeviceId deviceId,
+		DeviceSettings deviceSettings,
+		CancellationToken cancellationToken = default
+	);
 
 	Task<bool?> UpdateFirmware(
 		DeviceId deviceId,
@@ -36,6 +44,13 @@ public enum UpdateDeviceProfileResult
 	Success,
 	NotFound,
 	ProfileError,
+	DeviceError,
+}
+
+public enum UpdateDeviceSettingsResult
+{
+	Success,
+	NotFound,
 	DeviceError,
 }
 
@@ -246,7 +261,7 @@ file sealed class DeviceRepository(
 		return DeviceDetails.From(deviceInfo, deviceStatus, deviceTypeInfo, latestVersion);
 	}
 
-	public async Task<DeviceProfile?> GetDeviceProfile(
+	public async Task<Profile?> GetDeviceProfile(
 		DeviceId deviceId,
 		CancellationToken cancellationToken = default
 	)
@@ -257,20 +272,18 @@ file sealed class DeviceRepository(
 			deviceId,
 			cancellationToken
 		);
-		return result.Match<DeviceProfile?>(p => p, _ => null);
+		return result.Match<Profile?>(Profile.FromDevice, _ => null);
 	}
 
 	public async Task<UpdateDeviceProfileResult> UpdateDeviceProfile(
 		DeviceId deviceId,
-		DeviceProfile deviceProfile,
+		Profile profile,
 		CancellationToken cancellationToken = default
 	)
 	{
-		// var json = JsonSerializer.Serialize(deviceProfile, serializerOptions);
-		// _logger.LogInformation(json);
-		// return UpdateDeviceProfileResult.Success;
+		var deviceProfile = profile.ToDevice();
 
-		var previous = await GetDeviceProfile(deviceId, cancellationToken);
+		var previous = (await GetDeviceProfile(deviceId, cancellationToken))?.ToDevice();
 		if (previous is null)
 			return UpdateDeviceProfileResult.NotFound;
 
@@ -328,6 +341,59 @@ file sealed class DeviceRepository(
 		}
 
 		return true;
+	}
+
+	public async Task<DeviceSettings?> GetDeviceSettings(
+		DeviceId deviceId,
+		CancellationToken cancellationToken = default
+	)
+	{
+		var result = await deviceService.SendCommand(
+			new GetSettingsCommand(),
+			new(),
+			deviceId,
+			cancellationToken
+		);
+		return result.TryGetSuccess(out var success) ? success : null;
+	}
+
+	public async Task<UpdateDeviceSettingsResult> UpdateDeviceSettings(
+		DeviceId deviceId,
+		DeviceSettings deviceSettings,
+		CancellationToken cancellationToken = default
+	)
+	{
+		var previous = await GetDeviceSettings(deviceId, cancellationToken);
+		if (previous is null)
+			return UpdateDeviceSettingsResult.NotFound;
+
+		var result = await deviceService.SendCommand(
+			new UpdateSettingsCommand(),
+			deviceSettings,
+			deviceId,
+			cancellationToken
+		);
+
+		if (result.IsSuccess)
+			return UpdateDeviceSettingsResult.Success;
+
+		// try to restore the previous settings
+		var restoreResults = await deviceService.SendCommand(
+			new UpdateSettingsCommand(),
+			previous,
+			d => d.Id == deviceId,
+			cancellationToken
+		);
+
+		if (restoreResults.Count == 0 || !restoreResults.Single().Result.IsSuccess)
+		{
+			_logger.LogWarning(
+				"Failed to restore device settings for {DeviceId} after failed update",
+				deviceId
+			);
+		}
+
+		return UpdateDeviceSettingsResult.DeviceError;
 	}
 
 	public async Task<bool?> UpdateFirmware(

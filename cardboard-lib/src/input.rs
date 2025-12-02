@@ -1,7 +1,8 @@
+use crate::serialize::Readable;
+use crate::stream::{ReadAsync, ReadAsyncExt};
 use crate::time::Duration;
 use alloc::boxed::Box;
 use alloc::vec::Vec;
-use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[cfg(not(test))]
@@ -148,12 +149,22 @@ impl InputKey {
 	}
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct KeyId(Uuid);
 
 impl KeyId {
 	pub const fn new(id: Uuid) -> Self {
 		KeyId(id)
+	}
+}
+
+impl Readable for KeyId {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let uuid = reader.read_uuid().await.ok_or("Failed to read KeyId")?;
+		Ok(KeyId::new(uuid))
 	}
 }
 

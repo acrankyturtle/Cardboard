@@ -7,8 +7,9 @@ use crate::error::{Error, ErrorLog};
 use crate::hid::ReportHid;
 use crate::input::{KeyId, KeyState, UpdateMatrix};
 use crate::profile::{ActionEvent, DebugEvent, KeyboardProfile, LayerEvent};
+use crate::serial::SerialDrain;
 use crate::state::KeyboardState;
-use crate::stream::ReadExt;
+use crate::stream::ReadAsyncExt;
 use crate::time::Duration;
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -105,7 +106,7 @@ pub async fn keypad_task<
 		// process each macro event and update hid statess
 		for macro_event in macro_events.drain(..) {
 			match macro_event {
-				ActionEvent::Debug(event) => match event {
+				ActionEvent::DebugAction(event) => match event {
 					DebugEvent::Log(msg) => {
 						info!("Debug event: {:?}", msg.as_str())
 					}
@@ -154,7 +155,13 @@ pub async fn cmd_task<Clock: crate::time::Clock, Context: ContextErrorLog + Cont
 				ctx.errors().push(error);
 
 				warn!("Error: {}", e);
-				clock.after(serial_reset_timeout).await;
+
+				let timeout_start = clock.now();
+				while clock.now() - timeout_start < serial_reset_timeout {
+					if !ctx.serial_rx().drop_packet().await {
+						break;
+					}
+				}
 			}
 		}
 	}

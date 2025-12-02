@@ -1,7 +1,10 @@
 use heapless::spsc::{Iter, Queue};
-use serde::{Serialize, ser::SerializeStruct};
 
-use crate::time::Instant;
+use crate::{
+	serialize::Writeable,
+	stream::{WriteAsync, WriteAsyncExt},
+	time::Instant,
+};
 
 #[derive(Clone)]
 pub struct Error {
@@ -9,15 +12,11 @@ pub struct Error {
 	pub message: &'static str,
 }
 
-impl Serialize for Error {
-	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where
-		S: serde::Serializer,
-	{
-		let mut state = serializer.serialize_struct("Error", 2)?;
-		state.serialize_field("timestamp", &self.timestamp.ticks())?;
-		state.serialize_field("message", &self.message)?;
-		state.end()
+impl Writeable for Error {
+	async fn write_to<W: WriteAsync>(&self, writer: &mut W) -> Result<(), &'static str> {
+		writer.write_u64(self.timestamp.ticks()).await?;
+		writer.write_string_u8(self.message).await?;
+		Ok(())
 	}
 }
 

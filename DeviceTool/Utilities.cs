@@ -1,4 +1,5 @@
 using Cardboard.Device;
+using Cardboard.Repositories;
 
 namespace DeviceTool;
 
@@ -23,7 +24,7 @@ public static class Utilities
 		};
 	}
 
-	public static DeviceLayers BasicKey(LayerId layerId, Macro macro) =>
+	public static KeyBindingLayers BasicKey(LayerId layerId, Macro macro) =>
 		new()
 		{
 			DefaultLayer = new() { Id = layerId, Macros = [macro.Id] },

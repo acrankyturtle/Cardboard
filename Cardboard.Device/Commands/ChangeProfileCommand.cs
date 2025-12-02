@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Cranky;
 
 namespace Cardboard.Device;
@@ -10,36 +9,28 @@ public sealed class ChangeProfileCommand : ICommand<DeviceProfile, Unit>
 
 	public Unit Execute(DeviceProfile input, ICommandStream stream)
 	{
-		var bytes = JsonSerializer.SerializeToUtf8Bytes(
-			JsonDeviceProfile.From(input),
-			DeviceJson.SerializerOptions
-		);
+		using var ms = new MemoryStream();
+		using var writer = new BinaryWriter(ms);
+		input.WriteTo(writer);
+		writer.Flush();
 
-		if (bytes.Length > ushort.MaxValue)
+		var profileData = ms.GetBuffer().AsSpan(0, (int)ms.Length);
+
+		var length = profileData.Length;
+		if (length > ushort.MaxValue)
 			throw new InvalidOperationException(
-				$"Profile size {bytes.Length} exceeds maximum allowed size of {ushort.MaxValue} bytes."
+				$"Profile is too large to send (size: {length} bytes, max: {ushort.MaxValue} bytes)."
 			);
 
-		stream.Writer.Write((ushort)bytes.Length);
-		stream.Writer.Write(bytes);
+		stream.Writer.Write((ushort)length);
+		stream.Writer.BaseStream.Write(profileData);
 		stream.Writer.Flush();
 
-		// extend our read timeout because it's normal to wait for a response when sending large profiles
-		var readTimeout = stream.Reader.BaseStream.ReadTimeout;
-		try
-		{
-			stream.Reader.BaseStream.ReadTimeout = 60_000;
-
-			var ack = stream.Reader.ReadByte();
-			if (ack != 0xFF)
-				throw new InvalidOperationException(
-					$"Failed to change profile. Received `0x{ack:x}` instead of expected `0xFF`."
-				);
-		}
-		finally
-		{
-			stream.Reader.BaseStream.ReadTimeout = readTimeout;
-		}
+		var ack = stream.Reader.ReadByte();
+		if (ack != 0xFF)
+			throw new InvalidOperationException(
+				$"Failed to change profile. Received `0x{ack:x}` instead of expected `0xFF`."
+			);
 
 		return Unit.Value;
 	}

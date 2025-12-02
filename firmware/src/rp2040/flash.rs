@@ -10,23 +10,19 @@ use uuid::Uuid;
 const FLASH_ADDR: *const u8 = 0x10000000 as *const u8;
 pub const FLASH_SIZE: usize = 2 * 1024 * 1024; // 2 MB
 
-pub async fn init_flash<const PROFILE_SIZE: usize>(
-	profile_data: *const [u8; PROFILE_SIZE],
+pub async fn init_flash<const DATA_SIZE: usize>(
+	flash_data: *const [u8; DATA_SIZE],
 	flash: FLASH,
 	dma_ch0: DMA_CH0,
-) -> (EmbassyFlashMemory<'static, FLASH_SIZE>, DeviceId) {
+) -> FlashStorage {
 	// wait to initialize flash
 	Timer::after_millis(10).await;
 	let mut flash_memory = Flash::<_, Async, FLASH_SIZE>::new(flash, dma_ch0);
 	let device_id = get_device_id(&mut flash_memory).unwrap();
-	let flash = EmbassyFlashMemory::new(
-		FLASH_ADDR,
-		profile_data as *const u8,
-		PROFILE_SIZE,
-		flash_memory,
-	);
+	let flash =
+		EmbassyFlashMemory::new(FLASH_ADDR, flash_data as *const u8, DATA_SIZE, flash_memory);
 
-	(flash, device_id)
+	FlashStorage { device_id, flash }
 }
 
 fn get_device_id(
@@ -40,4 +36,9 @@ fn get_device_id(
 
 	let uuid = Uuid::new_v5(&Uuid::NAMESPACE_OID, &bytes);
 	Ok(DeviceId::new(uuid))
+}
+
+pub struct FlashStorage {
+	pub device_id: DeviceId,
+	pub flash: EmbassyFlashMemory<'static, FLASH_SIZE>,
 }

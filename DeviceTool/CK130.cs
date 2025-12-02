@@ -1,4 +1,5 @@
 using Cardboard.Device;
+using Cardboard.Repositories;
 
 namespace DeviceTool;
 
@@ -38,20 +39,20 @@ public static class Ck130
 			DeviceKeyId.Parse("15c56a3d-0f31-5ebd-bcf1-63aa968be49a"),
 		];
 
-	public static IEnumerable<DeviceKey> Keys(params IReadOnlyCollection<DeviceLayers> deviceLayers) =>
+	public static IEnumerable<Key> Keys(params IReadOnlyCollection<KeyBindingLayers> deviceLayers) =>
 		DeviceBuilder.Keys(KeyIds, deviceLayers);
 }
 
 public static class DeviceBuilder
 {
-	public static IEnumerable<DeviceKey> Keys(
+	public static IEnumerable<Key> Keys(
 		IReadOnlyCollection<DeviceKeyId> keyIds,
-		IReadOnlyCollection<DeviceLayers> deviceLayers
+		IReadOnlyCollection<KeyBindingLayers> deviceLayers
 	)
 	{
 		if (keyIds.Count != deviceLayers.Count)
 			throw new ArgumentException("Key IDs and device layers must have the same count.");
 
-		return keyIds.Zip(deviceLayers).Select(x => new DeviceKey { Id = x.First, Layers = x.Second });
+		return keyIds.Zip(deviceLayers).Select(x => new Key { Id = x.First, Layers = x.Second });
 	}
 }

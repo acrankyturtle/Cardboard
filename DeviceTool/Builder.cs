@@ -1,12 +1,15 @@
 using Cardboard.Device;
+using Cardboard.Repositories;
 
 namespace DeviceTool;
 
 public static class ProfileBuilder
 {
-	public static DeviceProfile Build(
+	public static Profile Build(
+		DeviceId deviceId,
+		string name,
 		IEnumerable<Macro> macros,
-		IEnumerable<DeviceKey> keys,
+		IEnumerable<Key> keys,
 		IEnumerable<VirtualKey> virtualKeys
 	)
 	{
@@ -23,8 +26,9 @@ public static class ProfileBuilder
 				$"The following macros were not found in the provided macro list: {string.Join(", ", missingMacroIds)}"
 			);
 
-		var deviceProfile = new DeviceProfile
+		var deviceProfile = new Profile
 		{
+			Name = name,
 			Keys = keysList,
 			VirtualKeys = virtualKeysList,
 			Macros = macrosList,
@@ -34,7 +38,7 @@ public static class ProfileBuilder
 	}
 
 	private static IEnumerable<MacroId> GetMacrosInKeys(
-		IEnumerable<DeviceKey> keys,
+		IEnumerable<Key> keys,
 		IEnumerable<VirtualKey> virtualKeys
 	)
 	{

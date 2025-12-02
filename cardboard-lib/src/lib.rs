@@ -16,15 +16,18 @@ pub mod hid;
 pub mod input;
 pub mod profile;
 pub mod serial;
+pub mod serialize;
 pub mod state;
 pub mod storage;
 pub mod stream;
 pub mod tasks;
-mod test;
 pub mod time;
 
 #[cfg(all(not(test), feature = "embassy"))]
 pub mod embassy;
+
+#[cfg(test)]
+mod test;
 
 pub trait TrackedAllocator {
 	fn current(&self) -> usize;

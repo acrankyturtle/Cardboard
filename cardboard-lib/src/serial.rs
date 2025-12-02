@@ -1,4 +1,8 @@
-use crate::stream::{Read, Write};
+use crate::stream::{ReadAsync, WriteAsync};
+
+pub trait SerialDrain {
+	async fn drop_packet(&mut self) -> bool;
+}
 
 pub trait SerialPacketReader {
 	async fn read_packet(&mut self, buf: &mut [u8]) -> Result<usize, &'static str>;
@@ -10,7 +14,7 @@ pub trait SerialPacketSender {
 	const SIZE: usize;
 }
 
-impl<T: SerialPacketSender> Write for T {
+impl<T: SerialPacketSender> WriteAsync for T {
 	async fn write_exact(&mut self, data: &[u8]) -> Result<(), &'static str> {
 		let mut offset = 0;
 		loop {
@@ -80,26 +84,40 @@ impl<const SIZE: usize> SerialBuffer<SIZE> {
 		self.length -= bytes_to_copy;
 		bytes_to_copy
 	}
+
+	pub fn drop(&mut self) {
+		self.skip = 0;
+		self.length = 0;
+	}
 }
 
-impl<S: SerialPacketReader> Read for BufferedReader<S>
+impl<S: SerialPacketReader> ReadAsync for BufferedReader<S>
 where
 	[(); S::SIZE]:,
 {
 	async fn read_exact(&mut self, to_fill: &mut [u8]) -> Result<(), &'static str> {
-		let mut i = 0usize;
+		let mut total_read = 0usize;
 
-		let bytes_copied = self.buffer.read_up_to(to_fill);
-		i += bytes_copied;
+		total_read += self.buffer.read_up_to(to_fill);
 
-		while i < to_fill.len() {
+		while total_read < to_fill.len() {
 			self.read_packet().await?;
-			let bytes_read = self.buffer.read_up_to(&mut to_fill[i..]);
+			let bytes_read = self.buffer.read_up_to(&mut to_fill[total_read..]);
 
-			i += bytes_read;
+			total_read += bytes_read;
 		}
 
 		Ok(())
+	}
+}
+
+impl<S: SerialPacketReader + SerialDrain> SerialDrain for BufferedReader<S>
+where
+	[(); S::SIZE]:,
+{
+	async fn drop_packet(&mut self) -> bool {
+		self.buffer.drop();
+		self.source.drop_packet().await
 	}
 }
 

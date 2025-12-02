@@ -17,24 +17,16 @@ public static class SwaggerStronglyTypedId
 	)
 		where TId : struct
 	{
-		var (schemaType, format) = GetValueObjectInfo(typeof(TId), propertyName);
+		var nonNullableSchema = GetValueObjectInfo(typeof(TId), propertyName, false);
+		var nullableSchema = GetValueObjectInfo(typeof(TId), propertyName, true);
 
-		var schema = new OpenApiSchema { Type = schemaType, Format = format, };
-
-		var nullableSchema = new OpenApiSchema
-		{
-			Type = schemaType,
-			Format = format,
-			Nullable = true,
-		};
-
-		options.SchemaGeneratorOptions.CustomTypeMappings[typeof(TId)] = () => schema;
+		options.SchemaGeneratorOptions.CustomTypeMappings[typeof(TId)] = () => nonNullableSchema;
 		options.SchemaGeneratorOptions.CustomTypeMappings[typeof(TId?)] = () => nullableSchema;
 
 		return options;
 	}
 
-	private static (string Type, string? Format) GetValueObjectInfo(Type type, string propertyName)
+	private static OpenApiSchema GetValueObjectInfo(Type type, string propertyName, bool nullable)
 	{
 		var property = type.GetProperty(propertyName);
 
@@ -49,22 +41,61 @@ public static class SwaggerStronglyTypedId
 
 		if (propertyType == typeof(Guid))
 		{
-			return ("string", "uuid");
+			return new()
+			{
+				Type = "string",
+				Format = "uuid",
+				Nullable = nullable,
+			};
 		}
 
 		if (propertyType == typeof(string))
 		{
-			return ("string", null);
+			return new() { Type = "string", Nullable = nullable };
 		}
 
 		if (propertyType == typeof(long))
 		{
-			return ("integer", "int64");
+			return new()
+			{
+				Type = "integer",
+				Format = "int64",
+				Nullable = nullable,
+			};
 		}
 
 		if (propertyType == typeof(int))
 		{
-			return ("integer", "int32");
+			return new()
+			{
+				Type = "integer",
+				Format = "int32",
+				Nullable = nullable,
+			};
+		}
+
+		if (propertyType == typeof(uint))
+		{
+			return new()
+			{
+				Type = "integer",
+				Format = "int64",
+				Minimum = 0,
+				Maximum = uint.MaxValue,
+				Nullable = nullable,
+			};
+		}
+
+		if (propertyType == typeof(ushort))
+		{
+			return new()
+			{
+				Type = "integer",
+				Format = "int32",
+				Minimum = 0,
+				Maximum = ushort.MaxValue,
+				Nullable = nullable,
+			};
 		}
 
 		throw new InvalidOperationException(

@@ -84,8 +84,6 @@ impl<'a> KeyboardState<'a> {
 		}
 	}
 
-	
-
 	fn get_macros_from_key<K: KeyState<'a>>(
 		macros: &'a Vec<Macro>,
 		key: &K,
@@ -94,7 +92,7 @@ impl<'a> KeyboardState<'a> {
 			.macros
 			.iter()
 			.map(|i| {
-				let macro_ = macros.get(*i as usize).unwrap();
+				let macro_ = macros.get(i.get_index()).unwrap();
 				MacroState::from(macro_, key)
 			})
 			.collect()
@@ -499,10 +497,8 @@ mod tests {
 		MacroId::new(Uuid::from_u128_le(0x140acba7_4971_5b36_af21_ce478b891606));
 	static MACRO_ID2: MacroId =
 		MacroId::new(Uuid::from_u128_le(0x1326a82d_af4c_5e64_8619_ed6686415550));
-	static CHANNEL_ID: Channel =
-		Channel::new(Uuid::from_u128_le(0x2d3d340a_2e09_5cf6_9aad_d8e9415e4eff));
-	static CHANNEL_ID2: Channel =
-		Channel::new(Uuid::from_u128_le(0x70121fe9_d33e_5111_80bc_62cb534c4f73));
+	static CHANNEL_ID: Channel = Channel::new(3);
+	static CHANNEL_ID2: Channel = Channel::new(4);
 	static LAYER_ID: LayerId =
 		LayerId::new(Uuid::from_u128_le(0x6e30c4c9_8e84_5e71_a303_6fc00ca31d68));
 	static LAYER_ID2: LayerId =
@@ -692,7 +688,7 @@ mod tests {
 	#[test]
 	fn macro_moves_to_loop_sequence() {
 		let _macro = new_test_macro(MACRO_ID, Some(CHANNEL_ID), vec![CHANNEL_ID]);
-		let device_key = new_test_device_key(KEY_ID, vec![0]);
+		let device_key = new_test_device_key(KEY_ID, vec![MacroIndex::new(0)]);
 
 		let key_state = PhysicalKeyState::from(&device_key);
 		let mut macro_state = MacroState::from(&_macro, &key_state);
@@ -711,7 +707,7 @@ mod tests {
 	#[test]
 	fn macro_loops() {
 		let _macro = new_test_macro(MACRO_ID, Some(CHANNEL_ID), vec![CHANNEL_ID]);
-		let device_key = new_test_device_key(KEY_ID, vec![0]);
+		let device_key = new_test_device_key(KEY_ID, vec![MacroIndex::new(0)]);
 
 		let key_state = PhysicalKeyState::from(&device_key);
 		let mut macro_state = MacroState::from(&_macro, &key_state);
@@ -750,7 +746,7 @@ mod tests {
 			name: "Name".to_string(),
 			play_channel: Some(CHANNEL_ID),
 		};
-		let device_key = new_test_device_key(KEY_ID, vec![0]);
+		let device_key = new_test_device_key(KEY_ID, vec![MacroIndex::new(0)]);
 
 		let key_state = PhysicalKeyState::from(&device_key);
 		let mut macro_state = MacroState::from(&_macro, &key_state);
@@ -771,7 +767,7 @@ mod tests {
 	#[test]
 	fn macro_goes_to_end() {
 		let _macro = new_test_macro(MACRO_ID, Some(CHANNEL_ID), vec![CHANNEL_ID]);
-		let device_key = new_test_device_key(KEY_ID, vec![0]);
+		let device_key = new_test_device_key(KEY_ID, vec![MacroIndex::new(0)]);
 
 		let key_state = PhysicalKeyState::from(&device_key);
 		let mut macro_state = MacroState::from(&_macro, &key_state);
@@ -794,7 +790,7 @@ mod tests {
 	#[test]
 	fn macro_ends() {
 		let _macro = new_test_macro(MACRO_ID, Some(CHANNEL_ID), vec![CHANNEL_ID]);
-		let device_key = new_test_device_key(KEY_ID, vec![0]);
+		let device_key = new_test_device_key(KEY_ID, vec![MacroIndex::new(0)]);
 
 		let key_state = PhysicalKeyState::from(&device_key);
 		let mut macro_state = MacroState::from(&_macro, &key_state);
@@ -823,7 +819,7 @@ mod tests {
 	#[test]
 	fn macro_skips_to_end_when_released_during_start() {
 		let _macro = new_test_macro(MACRO_ID, Some(CHANNEL_ID), vec![CHANNEL_ID]);
-		let device_key = new_test_device_key(KEY_ID, vec![0]);
+		let device_key = new_test_device_key(KEY_ID, vec![MacroIndex::new(0)]);
 
 		let key_state = PhysicalKeyState::from(&device_key);
 		let mut macro_state = MacroState::from(&_macro, &key_state);
@@ -842,7 +838,10 @@ mod tests {
 	#[test]
 	fn pressing_a_key_starts_a_macro() {
 		let _macro = new_test_macro(MACRO_ID, Some(CHANNEL_ID), vec![CHANNEL_ID]);
-		let profile = new_test_profile(vec![new_test_device_key(KEY_ID, vec![0])], vec![_macro]);
+		let profile = new_test_profile(
+			vec![new_test_device_key(KEY_ID, vec![MacroIndex::new(0)])],
+			vec![_macro],
+		);
 		let mut state = KeyboardState::from(&profile);
 
 		assert_eq!(state.running.len(), 0);
@@ -853,7 +852,10 @@ mod tests {
 	#[test]
 	fn keyboard_tick_updates_macros() {
 		let _macro = new_test_macro(MACRO_ID, Some(CHANNEL_ID), vec![CHANNEL_ID]);
-		let profile = new_test_profile(vec![new_test_device_key(KEY_ID, vec![0])], vec![_macro]);
+		let profile = new_test_profile(
+			vec![new_test_device_key(KEY_ID, vec![MacroIndex::new(0)])],
+			vec![_macro],
+		);
 		let mut state = KeyboardState::from(&profile);
 
 		state.press_key(KEY_ID);
@@ -879,7 +881,10 @@ mod tests {
 	#[test]
 	fn releasing_a_key_stops_a_macro() {
 		let _macro = new_test_macro(MACRO_ID, Some(CHANNEL_ID), vec![CHANNEL_ID]);
-		let profile = new_test_profile(vec![new_test_device_key(KEY_ID, vec![0])], vec![_macro]);
+		let profile = new_test_profile(
+			vec![new_test_device_key(KEY_ID, vec![MacroIndex::new(0)])],
+			vec![_macro],
+		);
 		let mut state = KeyboardState::from(&profile);
 
 		state.press_key(KEY_ID);
@@ -895,7 +900,10 @@ mod tests {
 	#[test]
 	fn pressing_a_key_cuts_own_channel() {
 		let _macro = new_test_macro(MACRO_ID, Some(CHANNEL_ID), vec![CHANNEL_ID]);
-		let profile = new_test_profile(vec![new_test_device_key(KEY_ID, vec![0])], vec![_macro]);
+		let profile = new_test_profile(
+			vec![new_test_device_key(KEY_ID, vec![MacroIndex::new(0)])],
+			vec![_macro],
+		);
 		let mut state = KeyboardState::from(&profile);
 
 		state.press_key(KEY_ID);
@@ -922,8 +930,8 @@ mod tests {
 
 		let profile = new_test_profile(
 			vec![
-				new_test_device_key(key_1, vec![0]),
-				new_test_device_key(key_2, vec![1]),
+				new_test_device_key(key_1, vec![MacroIndex::new(0)]),
+				new_test_device_key(key_2, vec![MacroIndex::new(1)]),
 			],
 			vec![macro_0, macro_1],
 		);
@@ -987,14 +995,14 @@ mod tests {
 				layers: vec![TaggedDeviceKeyLayer {
 					layer: DeviceKeyLayer {
 						id: LAYER_ID2,
-						macros: vec![0],
+						macros: vec![MacroIndex::new(0)],
 					},
 					tags: vec![LayerTag::new("test".to_string())],
 					match_type: TagMatchType::All,
 				}],
 				default_layer: DeviceKeyLayer {
 					id: LAYER_ID,
-					macros: vec![1],
+					macros: vec![MacroIndex::new(1)],
 				},
 			},
 		};
@@ -1024,14 +1032,14 @@ mod tests {
 				layers: vec![TaggedDeviceKeyLayer {
 					layer: DeviceKeyLayer {
 						id: LAYER_ID2,
-						macros: vec![0],
+						macros: vec![MacroIndex::new(0)],
 					},
 					tags: vec![LayerTag::new("test".to_string())],
 					match_type: TagMatchType::All,
 				}],
 				default_layer: DeviceKeyLayer {
 					id: LAYER_ID,
-					macros: vec![1],
+					macros: vec![MacroIndex::new(1)],
 				},
 			},
 		};
@@ -1061,14 +1069,14 @@ mod tests {
 				layers: vec![TaggedDeviceKeyLayer {
 					layer: DeviceKeyLayer {
 						id: LAYER_ID2,
-						macros: vec![1],
+						macros: vec![MacroIndex::new(1)],
 					},
 					tags: vec![LayerTag::new("test".to_string())],
 					match_type: TagMatchType::All,
 				}],
 				default_layer: DeviceKeyLayer {
 					id: LAYER_ID,
-					macros: vec![0],
+					macros: vec![MacroIndex::new(0)],
 				},
 			},
 		};
@@ -1126,13 +1134,14 @@ mod tests {
 
 	fn new_test_profile(keys: Vec<DeviceKey>, macros: Vec<Macro>) -> KeyboardProfile {
 		KeyboardProfile {
+			name: "".to_string(),
 			keys,
 			virtual_keys: vec![],
 			macros,
 		}
 	}
 
-	fn new_test_device_key(id: KeyId, macros: Vec<u32>) -> DeviceKey {
+	fn new_test_device_key(id: KeyId, macros: Vec<MacroIndex>) -> DeviceKey {
 		DeviceKey {
 			id,
 			layers: DeviceLayers {

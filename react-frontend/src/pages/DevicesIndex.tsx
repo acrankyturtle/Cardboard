@@ -5,9 +5,9 @@ import {
   DeviceDetails,
   DeviceProfile,
   DeviceStatusError,
+  getDeviceDetails,
+  getDeviceProfile,
   updateDeviceProfile,
-  useDeviceDetails,
-  useDeviceProfile,
 } from "../api/devices.ts";
 import { ReactNode, useEffect, useState } from "react";
 import clsx from "clsx";
@@ -26,6 +26,10 @@ import { LoadingIndicator } from "../components/LoadingIndicator.tsx";
 import { getAssetUrl } from "../api/cardboardApi.ts";
 import { InputClassName } from "../components/Input.tsx";
 import { UpdateFirmwareButton } from "../components/UpdateFirmwareButton.tsx";
+import {
+  EditDeviceContextProvider,
+  useEditDeviceContext,
+} from "../lib/editDeviceContext.tsx";
 
 export function DevicesIndex({
   deviceId,
@@ -40,7 +44,12 @@ export function DevicesIndex({
         {deviceId && action === "edit" ? (
           <DataProvider deviceId={deviceId}>
             {(device, profile) => (
-              <EditDeviceView details={device} profile={profile} />
+              <EditDeviceContextProvider
+                device={device}
+                originalProfile={profile}
+              >
+                <EditDeviceView />
+              </EditDeviceContextProvider>
             )}
           </DataProvider>
         ) : (
@@ -71,6 +80,8 @@ function DeviceIndexView() {
 
 function DeviceInfoDialog({ deviceId }: { deviceId: string | null }) {
   const navigate = useNavigate();
+
+  // use latch to avoid clearing data during transitions
   const [latch, setLatch] = useState(deviceId);
   useEffect(() => {
     if (deviceId) {
@@ -222,26 +233,23 @@ function ErrorView({ errors }: { errors: readonly DeviceStatusError[] }) {
   );
 }
 
-function EditDeviceView({
-  details,
-  profile,
-}: {
-  details: DeviceDetails;
-  profile: DeviceProfile;
-}) {
+function EditDeviceView({}: {}) {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const { state } = useEditDeviceContext();
+
   return (
     <>
       <DevicesHeader>
         <div className="flex grow items-center gap-3">
           <div>Edit</div>
-          <div className="text-lg font-normal">{details.name}</div>
-          <div className="text-lg font-normal">{details.id}</div>
+          <div className="text-lg font-normal">{state.device.name}</div>
+          <div className="text-lg font-normal">{state.device.id}</div>
         </div>
         <div
-          className={clsx("text-lg text-green-500 transition", {
+          className={clsx("p-1 text-lg text-green-500 transition", {
             "opacity-0 duration-[2000ms]": !saveSuccess,
             "opacity-100 duration-[0ms]": saveSuccess,
           })}
@@ -263,7 +271,7 @@ function EditDeviceView({
             setSaving(true);
             setSaveError(null);
 
-            updateDeviceProfile(details.id, profile).then((v) => {
+            updateDeviceProfile(state.device.id, state.profile).then((v) => {
               setSaving(false);
               if (v !== "success") {
                 setSaveError(v.error);
@@ -278,11 +286,7 @@ function EditDeviceView({
         </Button>
       </DevicesHeader>
       <div className="grow overflow-y-hidden border-l-3 border-stone-950">
-        <EditDeviceProfile
-          className="h-full"
-          device={details}
-          profile={profile}
-        />
+        <EditDeviceProfile className="h-full" />
       </div>
       <Dialog open={saving}>
         <DialogHeader>Saving...</DialogHeader>
@@ -325,8 +329,23 @@ function DataProvider({
   deviceId: string;
   children: (device: DeviceDetails, profile: DeviceProfile) => ReactNode;
 }) {
-  const { device } = useDeviceDetails(deviceId);
-  const { profile } = useDeviceProfile(deviceId);
+  const [device, setDevice] = useState<DeviceDetails | undefined>(undefined);
+  const [profile, setProfile] = useState<DeviceProfile | undefined>(undefined);
+
+  useEffect(() => {
+    let canceled = false;
+    getDeviceDetails(deviceId).then((d) => {
+      if (canceled) return;
+      setDevice(d);
+    });
+    getDeviceProfile(deviceId).then((p) => {
+      if (canceled) return;
+      setProfile(p);
+    });
+    return () => {
+      canceled = true;
+    };
+  }, [deviceId]);
 
   return device && profile ? children(device, profile) : <></>;
 }

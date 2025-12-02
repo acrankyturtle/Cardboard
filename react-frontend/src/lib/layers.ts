@@ -1,4 +1,3 @@
-import { DeviceKeyLayer, TaggedDeviceLayer } from "../api/devices.ts";
 import { ListBoxItem } from "../components/ListBox.tsx";
 
 export interface LayerModelBase {
@@ -56,18 +55,18 @@ export interface LayerModelBase {
 //   };
 // };
 
-const MapMacroIdToItem = (
-  macroId: string,
-  macroList: readonly ListBoxItem[],
-): ListBoxItem => {
-  return (
-    macroList.find((m) => m.value === macroId) ?? unknownMacroListItem(macroId)
-  );
-};
-
-const unknownMacroListItem = (id: string): ListBoxItem => {
-  return {
-    label: `(not found {${id}})`,
-    value: id,
-  };
-};
+// const MapMacroIdToItem = (
+//   macroId: string,
+//   macroList: readonly ListBoxItem[],
+// ): ListBoxItem => {
+//   return (
+//     macroList.find((m) => m.value === macroId) ?? unknownMacroListItem(macroId)
+//   );
+// };
+//
+// const unknownMacroListItem = (id: string): ListBoxItem => {
+//   return {
+//     label: `(not found {${id}})`,
+//     value: id,
+//   };
+// };

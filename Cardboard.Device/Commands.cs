@@ -15,7 +15,7 @@ public static class Command
 		deviceInfo
 			.Commands.Select((c, i) => (c, i))
 			.Where(x => x.c.Id == commandId)
-			.Select(x => new CommandIndex(x.i))
+			.Select(x => (CommandIndex?)new CommandIndex(x.i))
 			.SingleOrDefault();
 }
 

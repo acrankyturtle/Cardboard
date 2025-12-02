@@ -18,23 +18,26 @@ use cardboard::{
 	rp2040::{
 		bootloader::EmbassyRp2040RebootToBootloader,
 		flash::{init_flash, FLASH_SIZE},
-		usb::{init_usb, usb_task, USB_SERIAL_PACKET_SIZE},
+		usb::{init_usb, init_usb_no_mouse, usb_task, USB_SERIAL_PACKET_SIZE},
 	},
 };
 use cardboard_lib::{
 	command::{
-		ChangeProfileCommand, Command, EnterBootloaderCommand, GetProfileCommand, GetStatusCommand,
-		IdentifyCommand, SetExternalTagsCommand, SetVirtualKeysCommand,
+		ChangeProfileCommand, Command, EnterBootloaderCommand, GetProfileCommand,
+		GetSettingsCommand, GetStatusCommand, IdentifyCommand, SetExternalTagsCommand,
+		SetVirtualKeysCommand, UpdateSettingsCommand,
 	},
 	context::Context,
-	device::{DeviceInfo, DeviceTypeId, DeviceVariant, DeviceVersion},
+	device::{DeviceInfo, DeviceTypeId, DeviceVersion},
 	embassy::{EmbassyFlashMemory, EmbassyKeypadHid, EmbassyTickClock},
 	error::HeaplessSpscErrorLog,
 	hid::{HidDevice, HidReport},
 	input::{ColPin, KeyId, KeyMatrix, RowPin},
 	profile::{KeyboardProfile, LayerTag},
 	serial::BufferedReader,
-	storage::load_profile_from_flash,
+	serialize::Readable,
+	storage::{load_profile_from_flash, load_settings_from_flash, BlockFlashExt, FlashPartition},
+	stream::{ReadAsync, ReadAsyncExt},
 	TrackingAllocator,
 };
 use cardboard_lib::{
@@ -51,17 +54,9 @@ use embassy_usb::class::hid::HidWriter;
 use fugit::ExtU64;
 use uuid::Uuid;
 
-#[cfg(debug_assertions)]
 use {defmt::*, defmt_rtt as _, panic_probe as _};
 
-#[cfg(not(debug_assertions))]
-use {
-	defmt::*,       // HACK
-	defmt_rtt as _, // HACK
-	panic_halt as _,
-};
-
-const HEAP_SIZE: usize = 64 * 1024; // 32 KB
+const HEAP_SIZE: usize = 96 * 1024; // 96 KB
 static mut HEAP: [u8; HEAP_SIZE] = [0; HEAP_SIZE];
 pub type Heap = LlffHeap;
 
@@ -75,8 +70,10 @@ const VIRTUAL_KEY_BITFIELD_SIZE: usize = 4; // 32 bits
 
 // profile flash storage
 #[link_section = ".profile"]
-static mut PROFILE: MaybeUninit<[u8; PROFILE_SIZE]> = MaybeUninit::uninit();
-const PROFILE_SIZE: usize = 500 * 1024; // 500 KB
+static mut FLASH_DATA: MaybeUninit<[u8; FLASH_DATA_SIZE]> = MaybeUninit::uninit();
+const FLASH_DATA_SIZE: usize = 500 * 1024; // 500 KB
+const SETTINGS_SIZE: usize = 4 * 1024; // 4 KB
+const PROFILE_SIZE: usize = FLASH_DATA_SIZE - SETTINGS_SIZE;
 
 // hid
 type KeyboardImpl = cardboard_lib::hid::NKROKeyboard;
@@ -123,13 +120,16 @@ async fn main(spawner: Spawner) -> () {
 	let p = embassy_rp::init(Default::default());
 
 	let cmds: Vec<Box<dyn Command<CommandContext>>> = vec![
-		Box::new(IdentifyCommand {}), // identify MUST be first
-		Box::new(ChangeProfileCommand {}),
-		Box::new(GetProfileCommand {}),
-		Box::new(SetExternalTagsCommand {}),
-		Box::new(EnterBootloaderCommand {}),
-		Box::new(GetStatusCommand {}),
-		Box::new(SetVirtualKeysCommand::<VIRTUAL_KEY_BITFIELD_SIZE> {}),
+		// identify MUST be first
+		/* 0x00 */ Box::new(IdentifyCommand {}),
+		/* 0x01 */ Box::new(ChangeProfileCommand {}),
+		/* 0x02 */ Box::new(GetProfileCommand {}),
+		/* 0x03 */ Box::new(SetExternalTagsCommand {}),
+		/* 0x04 */ Box::new(EnterBootloaderCommand {}),
+		/* 0x05 */ Box::new(GetStatusCommand {}),
+		/* 0x06 */ Box::new(SetVirtualKeysCommand::<VIRTUAL_KEY_BITFIELD_SIZE> {}),
+		/* 0x07 */ Box::new(UpdateSettingsCommand {}),
+		/* 0x08 */ Box::new(GetSettingsCommand {}),
 	];
 
 	let key_ids: [KeyId; ROWS * COLS] = [
@@ -165,7 +165,20 @@ async fn main(spawner: Spawner) -> () {
 		KeyId::new(Uuid::parse_str("15c56a3d-0f31-5ebd-bcf1-63aa968be49a").unwrap()),
 	];
 
-	let (mut flash, device_id) = init_flash(unsafe { PROFILE.as_ptr() }, p.FLASH, p.DMA_CH0).await;
+	let flash =
+		init_flash::<FLASH_DATA_SIZE>(unsafe { FLASH_DATA.as_ptr() }, p.FLASH, p.DMA_CH0).await;
+
+	let device_id = flash.device_id;
+	let mut flash = flash.flash;
+
+	let settings_partition = FlashPartition::new(0, SETTINGS_SIZE);
+	let profile_partition = FlashPartition::new(SETTINGS_SIZE, PROFILE_SIZE);
+
+	let settings: Settings = load_settings_from_flash(&mut flash.partition(&settings_partition))
+		.await
+		.unwrap_or_else(|_| Settings {
+			mouse_enabled: true,
+		});
 
 	let device_info = unsafe {
 		static mut INFO: MaybeUninit<DeviceInfo> = MaybeUninit::uninit();
@@ -174,7 +187,7 @@ async fn main(spawner: Spawner) -> () {
 			name: "Cardboard",
 			manufacturer: "cranky",
 			r#type: DeviceTypeId::new(Uuid::from_u128(0x0407db48_ca74_5783_9b11_489637b7c615)),
-			variant: DeviceVariant::new(0x00000000),
+			variant: None,
 			version: DeviceVersion::new(0x00000001),
 			commands: cmds.iter().map(|cmd| cmd.info()).collect(),
 		})
@@ -211,13 +224,13 @@ async fn main(spawner: Spawner) -> () {
 	let debounce_time = 10.millis();
 	let matrix = KeyMatrix::new(key_ids, rows, cols, debounce_time);
 
-	let profile = match load_profile_from_flash(&mut flash) {
+	let profile = match load_profile_from_flash(&mut flash.partition(&profile_partition)).await {
 		Ok(profile) => {
 			info!("Profile loaded from flash storage");
 			profile
 		}
 		Err(err) => {
-			error!("Failed to load profile from flash storage. Falling back to empty profile. Error: {}", err);
+			warn!("Failed to load profile from flash storage. Falling back to empty profile. Error: {}", err);
 			KeyboardProfile::default()
 		}
 	};
@@ -236,19 +249,43 @@ async fn main(spawner: Spawner) -> () {
 
 	let serial_number = get_serial_number(&device_id);
 
-	let usb = init_usb::<KeyboardImpl, MouseImpl, ConsumerImpl>(p.USB, &device_info, serial_number);
+	let serial_read_timeout = 100.millis();
+	let serial_write_timeout = 1.secs();
+	let serial_reset_timeout = 1.secs();
 
-	let serial_io_timeout = 1.secs();
-	let serial_reset_timeout = 100.millis();
+	let (serial_reader, serial_writer, usb_device) = if settings.mouse_enabled {
+		let usb =
+			init_usb::<KeyboardImpl, MouseImpl, ConsumerImpl>(p.USB, &device_info, serial_number);
+		spawner
+			.spawn(hid_task(
+				usb.keyboard_writer,
+				usb.mouse_writer,
+				usb.consumer_writer,
+				&HID_SIGNAL,
+			))
+			.unwrap();
+		(usb.serial_reader, usb.serial_writer, usb.device)
+	} else {
+		let usb =
+			init_usb_no_mouse::<KeyboardImpl, ConsumerImpl>(p.USB, &device_info, serial_number);
+		spawner
+			.spawn(hid_task_no_mouse(
+				usb.keyboard_writer,
+				usb.consumer_writer,
+				&HID_SIGNAL,
+			))
+			.unwrap();
+		(usb.serial_reader, usb.serial_writer, usb.device)
+	};
 
 	let serial_rx = EmbassySerialPacketReader::<{ USB_SERIAL_PACKET_SIZE }>::new(
-		usb.serial_reader,
-		serial_io_timeout,
+		serial_reader,
+		serial_read_timeout,
 	);
 	let serial_rx = BufferedReader::new(serial_rx);
 	let serial_tx = EmbassySerialPacketWriter::<{ USB_SERIAL_PACKET_SIZE }>::new(
-		usb.serial_writer,
-		serial_io_timeout,
+		serial_writer,
+		serial_write_timeout,
 	);
 
 	let error_log = HeaplessSpscErrorLog::new();
@@ -256,6 +293,8 @@ async fn main(spawner: Spawner) -> () {
 	let ctx = CommandContext::new(
 		device_info,
 		flash,
+		settings_partition,
+		profile_partition,
 		&PROFILE_CHANGED_SIGNAL,
 		serial_rx,
 		serial_tx,
@@ -267,16 +306,7 @@ async fn main(spawner: Spawner) -> () {
 		clock,
 	);
 
-	spawner.spawn(usb_task(usb.device)).unwrap();
-
-	spawner
-		.spawn(hid_task(
-			usb.keyboard_writer,
-			usb.mouse_writer,
-			usb.consumer_writer,
-			&HID_SIGNAL,
-		))
-		.unwrap();
+	spawner.spawn(usb_task(usb_device)).unwrap();
 
 	spawner
 		.spawn(keypad_task(
@@ -347,3 +377,55 @@ async fn hid_task(
 ) {
 	cardboard::rp2040::hid::hid_task(keyboard, mouse, consumer, signal).await;
 }
+#[embassy_executor::task]
+async fn hid_task_no_mouse(
+	keyboard: HidWriter<'static, Driver<'static, USB>, { KeyboardImpl::SIZE }>,
+	consumer: HidWriter<'static, Driver<'static, USB>, { ConsumerImpl::SIZE }>,
+	signal: &'static Signal<
+		HidReport<{ KeyboardImpl::SIZE }, { MouseImpl::SIZE }, { ConsumerImpl::SIZE }>,
+	>,
+) {
+	cardboard::rp2040::hid::hid_task_no_mouse(keyboard, consumer, signal).await;
+}
+
+const SETTINGS_VERSION: u32 = 1;
+
+struct Settings {
+	mouse_enabled: bool,
+}
+
+impl Readable for Settings {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let version = reader
+			.read_u32()
+			.await
+			.ok_or("Could not read settings version")?;
+
+		if version != SETTINGS_VERSION {
+			return Err("Unsupported settings version");
+		}
+
+		Ok(Self {
+			mouse_enabled: reader
+				.read_bool()
+				.await
+				.ok_or("Could not read mouse enabled")?,
+		})
+	}
+}
+
+// impl Writeable for Settings {
+// 	async fn write_to<W: WriteAsync>(&self, writer: &mut W) -> Result<(), &'static str> {
+// 		writer
+// 			.write_u32(SETTINGS_VERSION)
+// 			.await
+// 			.map_err(|_| "Could not write settings version")?;
+// 		writer
+// 			.write_bool(self.mouse_enabled)
+// 			.await
+// 			.map_err(|_| "Could not write mouse enabled")
+// 	}
+// }

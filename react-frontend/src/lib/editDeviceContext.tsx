@@ -111,9 +111,7 @@ const editDeviceReducer = (
         profile: action.profile,
       };
     case "setSelectedKey": {
-      const key = action.keyId
-        ? findKeyById(action.keyId, state.profile)
-        : null;
+      const key = action.keyId ? findKeyById(action.keyId, state) : null;
 
       const selectedLayer = key
         ? getActiveLayer(key.layers, state.selectedTags).id
@@ -144,7 +142,7 @@ const editDeviceReducer = (
       };
     case "setSelectedTags": {
       const selectedKey = state.selectedKey
-        ? findKeyById(state.selectedKey, state.profile)
+        ? findKeyById(state.selectedKey, state)
         : null;
 
       const selectedLayer = selectedKey
@@ -170,17 +168,33 @@ export const EditDeviceContext = createContext<EditDevice | undefined>(
 
 export function EditDeviceContextProvider({
   device,
-  profile,
+  originalProfile,
   children,
 }: {
   device: DeviceDetails;
-  profile: DeviceProfile;
+  originalProfile: DeviceProfile;
   children: ReactNode;
 }) {
+  // initialize empty keys
+  const initializedProfile: DeviceProfile = {
+    ...originalProfile,
+    keys: device.keyMap.map((kInfo) => {
+      const existingKey = originalProfile.keys.find(
+        (k) => k.id === kInfo.keyId,
+      );
+      return existingKey
+        ? existingKey
+        : {
+            id: kInfo.keyId,
+            layers: { layers: [], defaultLayer: { id: v4(), macros: [] } },
+          };
+    }),
+  };
+
   const initialState: EditDeviceState = {
     device,
-    profile,
-    originalProfile: profile,
+    profile: initializedProfile,
+    originalProfile: initializedProfile,
     selectedKey: null,
     selectedLayer: null,
     selectedMacro: null,
@@ -204,7 +218,9 @@ export const useMaybeEditDeviceContext = () => {
 export const useEditDeviceContext = () => {
   const context = useMaybeEditDeviceContext();
   if (!context) {
-    throw new Error("useEditDevice must be used within a ProfileProvider");
+    throw new Error(
+      "useEditDevice must be used within a EditDeviceContextProvider",
+    );
   }
   return context;
 };
@@ -353,19 +369,11 @@ const parseVirtualKeyIndex = (keyId: string): number | null => {
   return !isNaN(index) ? index : null;
 };
 
-export const findSelectedProfileKey = (
-  state: EditDeviceState,
-): DeviceKey | VirtualKey | null => {
-  return state.selectedKey
-    ? findKeyById(state.selectedKey, state.profile)
-    : null;
-};
-
 export const findSelectedProfileLayer = (
   state: EditDeviceState,
 ): TaggedDeviceLayer | DeviceKeyLayer | null => {
   return state.selectedKey && state.selectedLayer
-    ? findLayerById(state.selectedKey, state.selectedLayer, state.profile)
+    ? findLayerById(state.selectedKey, state.selectedLayer, state)
     : null;
 };
 
@@ -373,19 +381,19 @@ export const getSelectedKeyProfileLayers = (
   state: EditDeviceState,
 ): DeviceLayers | null => {
   return state.selectedKey
-    ? (findKeyById(state.selectedKey, state.profile)?.layers ?? null)
+    ? (findKeyById(state.selectedKey, state)?.layers ?? null)
     : null;
 };
 
 export const findKeyById = (
   keyId: string,
-  profile: DeviceProfile,
+  state: EditDeviceState,
 ): DeviceKey | VirtualKey | null => {
   const index = parseVirtualKeyIndex(keyId);
   if (index !== null) {
-    return profile.virtualKeys[index] ?? newVirtualKey();
+    return state.profile.virtualKeys[index] ?? newVirtualKey();
   }
-  return profile.keys.find((k) => k.id === keyId) ?? null;
+  return state.profile.keys.find((k) => k.id === keyId) ?? null;
 };
 
 const newVirtualKey = (): VirtualKey => ({
@@ -395,9 +403,9 @@ const newVirtualKey = (): VirtualKey => ({
 export const findLayerById = (
   keyId: string,
   layerId: string,
-  profile: DeviceProfile,
+  state: EditDeviceState,
 ): DeviceKeyLayer | null => {
-  const key = findKeyById(keyId, profile);
+  const key = findKeyById(keyId, state);
   if (!key) return null;
 
   const taggedLayer = key.layers.layers.find((l) => l.layer.id === layerId);
@@ -411,9 +419,9 @@ export const findLayerById = (
 export const findTaggedLayerById = (
   keyId: string,
   layerId: string,
-  profile: DeviceProfile,
+  state: EditDeviceState,
 ): TaggedDeviceLayer | null => {
-  const key = findKeyById(keyId, profile);
+  const key = findKeyById(keyId, state);
   if (!key) return null;
 
   return key.layers.layers.find((l) => l.layer.id === layerId) ?? null;

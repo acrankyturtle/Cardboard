@@ -32,10 +32,23 @@ public static class Devices
 			.WithName("Update Device Profile")
 			.Produces(StatusCodes.Status204NoContent)
 			.Produces(StatusCodes.Status400BadRequest)
+			.Produces(StatusCodes.Status404NotFound)
 			.WithOpenApi();
 		group
 			.MapPost("/{id}/bootloader", EnterBootloader)
 			.WithName("Enter Bootloader")
+			.Produces(StatusCodes.Status204NoContent)
+			.Produces(StatusCodes.Status404NotFound)
+			.WithOpenApi();
+		group
+			.MapGet("/{id}/settings", GetDeviceSettings)
+			.WithName("Get Device Settings")
+			.Produces<GetDeviceSettingsResponse>()
+			.Produces(StatusCodes.Status404NotFound)
+			.WithOpenApi();
+		group
+			.MapPut("/{id}/settings", UpdateDeviceSettings)
+			.WithName("Update Settings")
 			.Produces(StatusCodes.Status204NoContent)
 			.Produces(StatusCodes.Status404NotFound)
 			.WithOpenApi();
@@ -78,7 +91,7 @@ public static class Devices
 	> UpdateDeviceProfile(
 		[FromServices] IDeviceRepository deviceRepository,
 		[FromRoute] DeviceId id,
-		DeviceProfile deviceProfile,
+		Profile deviceProfile,
 		CancellationToken cancellationToken
 	) =>
 		await deviceRepository.UpdateDeviceProfile(id, deviceProfile, cancellationToken) switch
@@ -98,6 +111,29 @@ public static class Devices
 		await deviceRepository.EnterBootloader(id, cancellationToken)
 			? TypedResults.NoContent()
 			: TypedResults.NotFound();
+
+	private static async Task<Results<Ok<GetDeviceSettingsResponse>, NotFound>> GetDeviceSettings(
+		[FromServices] IDeviceRepository deviceRepository,
+		[FromRoute] DeviceId id,
+		CancellationToken cancellationToken
+	) =>
+		await deviceRepository.GetDeviceSettings(id, cancellationToken) is { } deviceSettings
+			? TypedResults.Ok(new GetDeviceSettingsResponse { DeviceSettings = deviceSettings })
+			: TypedResults.NotFound();
+
+	private static async Task<Results<NoContent, NotFound, InternalServerError>> UpdateDeviceSettings(
+		[FromServices] IDeviceRepository deviceRepository,
+		[FromRoute] DeviceId id,
+		DeviceSettings deviceSettings,
+		CancellationToken cancellationToken
+	) =>
+		await deviceRepository.UpdateDeviceSettings(id, deviceSettings, cancellationToken) switch
+		{
+			UpdateDeviceSettingsResult.Success => TypedResults.NoContent(),
+			UpdateDeviceSettingsResult.NotFound => TypedResults.NotFound(),
+			UpdateDeviceSettingsResult.DeviceError => TypedResults.InternalServerError(),
+			_ => throw new InvalidOperationException(),
+		};
 
 	private static async Task<Results<Ok<UpdateFirmwareResponse>, InternalServerError>> UpdateFirmware(
 		[FromServices] IDeviceRepository deviceRepository,
@@ -130,7 +166,12 @@ public sealed class DeviceDetailsResponse
 
 public sealed class GetDeviceProfileResponse
 {
-	public required DeviceProfile DeviceProfile { get; init; }
+	public required Profile DeviceProfile { get; init; }
+}
+
+public sealed class GetDeviceSettingsResponse
+{
+	public required DeviceSettings DeviceSettings { get; init; }
 }
 
 public sealed class UpdateFirmwareResponse

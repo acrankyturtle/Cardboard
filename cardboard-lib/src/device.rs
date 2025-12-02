@@ -1,13 +1,16 @@
 use core::fmt::Display;
 
-use alloc::{string::ToString, vec::Vec};
+use alloc::{string::String, string::ToString, vec::Vec};
 use defmt::Format;
-use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::command::CommandInfo;
+use crate::{
+	command::CommandInfo,
+	serialize::Writeable,
+	stream::{WriteAsync, WriteAsyncExt},
+};
 
-#[derive(Serialize, Deserialize, Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub struct DeviceId(Uuid);
 
 impl DeviceId {
@@ -22,7 +25,13 @@ impl Display for DeviceId {
 	}
 }
 
-#[derive(Serialize, Deserialize, Copy, Clone, PartialEq)]
+impl Writeable for DeviceId {
+	async fn write_to<W: WriteAsync>(&self, writer: &mut W) -> Result<(), &'static str> {
+		writer.write_uuid(self.0).await
+	}
+}
+
+#[derive(Copy, Clone, PartialEq)]
 pub struct DeviceTypeId(Uuid);
 
 impl DeviceTypeId {
@@ -31,7 +40,13 @@ impl DeviceTypeId {
 	}
 }
 
-#[derive(Serialize, Deserialize, Copy, Clone, PartialEq)]
+impl Writeable for DeviceTypeId {
+	async fn write_to<W: WriteAsync>(&self, writer: &mut W) -> Result<(), &'static str> {
+		writer.write_uuid(self.0).await
+	}
+}
+
+#[derive(Copy, Clone, PartialEq)]
 pub struct DeviceVersion(u32);
 
 impl DeviceVersion {
@@ -40,7 +55,13 @@ impl DeviceVersion {
 	}
 }
 
-#[derive(Serialize, Deserialize, Copy, Clone, PartialEq)]
+impl Writeable for DeviceVersion {
+	async fn write_to<W: WriteAsync>(&self, writer: &mut W) -> Result<(), &'static str> {
+		writer.write_u32(self.0).await
+	}
+}
+
+#[derive(Copy, Clone, PartialEq)]
 pub struct DeviceVariant(u32);
 
 impl DeviceVariant {
@@ -49,7 +70,13 @@ impl DeviceVariant {
 	}
 }
 
-#[derive(Serialize, Deserialize, Copy, Clone, PartialEq)]
+impl Writeable for DeviceVariant {
+	async fn write_to<W: WriteAsync>(&self, writer: &mut W) -> Result<(), &'static str> {
+		writer.write_u32(self.0).await
+	}
+}
+
+#[derive(Copy, Clone, PartialEq)]
 pub struct CommandId(pub Uuid);
 
 impl Display for CommandId {
@@ -64,13 +91,47 @@ impl Format for CommandId {
 	}
 }
 
-#[derive(Serialize)]
 pub struct DeviceInfo {
 	pub id: DeviceId,
 	pub name: &'static str,
 	pub manufacturer: &'static str,
 	pub r#type: DeviceTypeId,
-	pub variant: DeviceVariant,
+	pub variant: Option<DeviceVariant>,
 	pub version: DeviceVersion,
 	pub commands: Vec<CommandInfo>,
+}
+
+impl Writeable for DeviceInfo {
+	async fn write_to<W: WriteAsync>(&self, writer: &mut W) -> Result<(), &'static str> {
+		self.id.write_to(writer).await?;
+		writer.write_string_u8(self.name).await?;
+		writer.write_string_u8(self.manufacturer).await?;
+		self.r#type.write_to(writer).await?;
+		writer.write_option(self.variant).await?;
+		self.version.write_to(writer).await?;
+		writer.write_collection_u8(&self.commands).await?;
+		Ok(())
+	}
+}
+
+pub struct DeviceOptions {
+	pub name: String,
+	pub mouse_enabled: bool,
+}
+
+impl Default for DeviceOptions {
+	fn default() -> Self {
+		DeviceOptions {
+			name: "Cardboard Device".to_string(),
+			mouse_enabled: false,
+		}
+	}
+}
+
+impl Writeable for DeviceOptions {
+	async fn write_to<W: WriteAsync>(&self, writer: &mut W) -> Result<(), &'static str> {
+		writer.write_string_u8(&self.name).await?;
+		writer.write_bool(self.mouse_enabled).await?;
+		Ok(())
+	}
 }

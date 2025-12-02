@@ -1,5 +1,6 @@
 use alloc::vec::Vec;
 use defmt::error;
+use embassy_futures::select::{Either, select};
 use embassy_rp::gpio::{Input, Output};
 use embassy_rp::peripherals::USB;
 use embassy_rp::usb::Driver;
@@ -15,8 +16,8 @@ use embassy_usb::class::cdc_acm::{Receiver, Sender};
 use crate::context::{ExternalTagsSignalRx, VirtualKeySignalTx};
 use crate::hid::{HidDevice, HidReport, ReportHid};
 use crate::profile::{ConsumerControlEvent, KeyboardEvent, MouseEvent};
-use crate::serial::{SerialPacketReader, SerialPacketSender};
-use crate::storage::FlashMemory;
+use crate::serial::{SerialDrain, SerialPacketReader, SerialPacketSender};
+use crate::storage::{BlockFlash, FlashPartition, PartitionedFlashMemory};
 use crate::time::{Clock, Duration};
 use crate::{
 	context::{ChangeProfileSignalRx, ChangeProfileSignalTx, ExternalTagsSignalTx},
@@ -110,16 +111,22 @@ impl<'d, const SIZE: usize> SerialPacketReader for EmbassySerialPacketReader<'d,
 	async fn read_packet(&mut self, buf: &mut [u8]) -> Result<usize, &'static str> {
 		let timer = Timer::after(self.timeout);
 
-		let result =
-			embassy_futures::select::select(self.receiver.read_packet(buf), async { timer.await })
-				.await;
+		let result = select(self.receiver.read_packet(buf), async { timer.await }).await;
 
 		match result {
-			embassy_futures::select::Either::First(result) => result.map_err(|_| "Endpoint error"),
-			embassy_futures::select::Either::Second(_) => Err("Read timeout"),
+			Either::First(result) => result.map_err(|_| "Endpoint error"),
+			Either::Second(_) => Err("Read timeout"),
 		}
 	}
+
 	const SIZE: usize = SIZE;
+}
+
+impl<'d, const SIZE: usize> SerialDrain for EmbassySerialPacketReader<'d, SIZE> {
+	async fn drop_packet(&mut self) -> bool {
+		let mut buf = [0u8; SIZE];
+		self.read_packet(&mut buf).await.is_ok()
+	}
 }
 
 impl<'d, const SIZE: usize> SerialPacketSender for EmbassySerialPacketWriter<'d, SIZE> {
@@ -188,79 +195,77 @@ impl<'d, const SIZE: usize> EmbassyFlashMemory<'d, SIZE> {
 	fn get_flash_offset(&self) -> usize {
 		self.storage_addr as usize - self.flash_addr as usize
 	}
-
-	fn get_flash_end_offset(&self) -> usize {
-		self.get_flash_offset() + self.length
-	}
 }
 
-impl<'a, const SIZE: usize> FlashMemory for EmbassyFlashMemory<'a, SIZE> {
+impl<'a, const SIZE: usize> BlockFlash for EmbassyFlashMemory<'a, SIZE> {
 	fn as_slice(&self) -> &'static [u8] {
 		unsafe { core::slice::from_raw_parts(self.storage_addr, self.length) }
 	}
 
-	fn erase_all(&mut self) -> Result<(), &'static str> {
+	fn erase(&mut self, offset: usize, length: usize) -> Result<(), &'static str> {
+		let start = offset + self.get_flash_offset();
+		let end = start + length;
+
 		self.flash
-			.blocking_erase(
-				self.get_flash_offset() as u32,
-				self.get_flash_end_offset() as u32,
-			)
+			.blocking_erase(start as u32, end as u32)
 			.map_err(|e| {
 				error!("Error erasing flash memory: {:?}", e);
-				"Error erasing flash memory"
+				match e {
+					embassy_rp::flash::Error::OutOfBounds => "Erase out of bounds",
+					embassy_rp::flash::Error::Unaligned => "Erase not block aligned",
+					_ => "Error erasing flash memory",
+				}
 			})
 	}
 
 	fn write(&mut self, offset: usize, data: &[u8]) -> Result<(), &'static str> {
-		if offset + data.len() > self.length {
-			error!(
-				"Write out of bounds: {} + {} > {}",
-				offset,
-				data.len(),
-				self.length
-			);
-			return Err("Write out of bounds");
-		}
-
-		if offset % WRITE_SIZE != 0 {
-			error!("Offset is not block aligned ({}): {}", WRITE_SIZE, offset);
-			return Err("Offset is not block aligned");
-		}
-
-		if data.len() % WRITE_SIZE != 0 {
-			error!(
-				"Length is not block aligned ({}): {}",
-				WRITE_SIZE,
-				data.len()
-			);
-			return Err("Length is not block aligned");
-		}
-
 		self.flash
-			.blocking_write(self.get_flash_offset() as u32 + offset as u32, data)
+			.blocking_write((self.get_flash_offset() + offset) as u32, data)
 			.map_err(|e| {
 				error!("Error writing to flash memory: {:?}", e);
-				"Error writing to flash memory"
+				match e {
+					embassy_rp::flash::Error::OutOfBounds => "Write out of bounds",
+					embassy_rp::flash::Error::Unaligned => "Write not block aligned",
+					_ => "Error writing to flash memory",
+				}
 			})
 	}
 
-	const SIZE: usize = SIZE;
+	fn length(&self) -> usize {
+		self.length
+	}
+
+	const ERASE_BLOCK_SIZE: usize = ERASE_SIZE;
+
+	const WRITE_BLOCK_SIZE: usize = WRITE_SIZE;
 }
 
 pub struct EmbassyTickClock {}
 
 impl Clock for EmbassyTickClock {
 	fn now(&self) -> crate::time::Instant {
-		crate::time::Instant::from_ticks(embassy_time::Instant::now().as_micros())
+		from_embassy_instant(embassy_time::Instant::now())
 	}
 
 	async fn after(&self, duration: Duration) {
-		Timer::after(embassy_time::Duration::from_micros(duration.to_micros())).await;
+		Timer::after(to_embassy_duration(duration)).await;
 	}
 
 	async fn at(&self, instant: crate::time::Instant) {
-		Timer::at(embassy_time::Instant::from_ticks(instant.ticks())).await;
+		Timer::at(to_embassy_instant(instant)).await;
 	}
+}
+
+fn from_embassy_instant(instant: embassy_time::Instant) -> crate::time::Instant {
+	crate::time::Instant::from_ticks(instant.as_micros())
+}
+
+fn to_embassy_instant(instant: crate::time::Instant) -> embassy_time::Instant {
+	embassy_time::Instant::from_micros(instant.ticks())
+}
+
+fn to_embassy_duration(duration: crate::time::Duration) -> embassy_time::Duration {
+	embassy_time::Duration::from_micros(duration.to_micros() as u64)
 }
 
 pub struct EmbassyKeypadHid<

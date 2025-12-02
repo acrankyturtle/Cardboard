@@ -1,49 +1,150 @@
-using System.Text.Json;
 using System.Text.Json.Serialization;
-using Cardboard.JsonSchema;
 using StronglyTypedIds;
 
 namespace Cardboard.Device;
 
-[GenerateSchema]
-public sealed class DeviceProfile
+public sealed class DeviceProfile : IReadable<DeviceProfile>, IWriteable
 {
+	private const uint Version = 1;
+
+	public required string Name { get; init; }
 	public required IReadOnlyCollection<DeviceKey> Keys { get; init; }
-	public required IReadOnlyCollection<VirtualKey> VirtualKeys { get; init; }
-	public required IReadOnlyCollection<Macro> Macros { get; init; }
+	public required IReadOnlyList<DeviceVirtualKey> VirtualKeys { get; init; }
+	public required IReadOnlyList<Macro> Macros { get; init; }
+
+	public static DeviceProfile ReadFrom(BinaryReader reader)
+	{
+		var version = reader.ReadUInt32();
+		if (version != Version)
+			throw new InvalidDataException($"Unsupported {nameof(DeviceProfile)} version: {version}");
+
+		var name = reader.ReadStringU8();
+		var keys = reader.ReadCollectionU8<DeviceKey>();
+		var virtualKeys = reader.ReadCollectionU8<DeviceVirtualKey>();
+		var macros = reader.ReadCollectionU16<Macro>();
+
+		return new()
+		{
+			Name = name,
+			Keys = keys,
+			VirtualKeys = virtualKeys,
+			Macros = macros,
+		};
+	}
+
+	public void WriteTo(BinaryWriter writer)
+	{
+		writer.Write(Version);
+		writer.WriteStringU8(Name);
+		writer.WriteCollectionU8(Keys);
+		writer.WriteCollectionU8(VirtualKeys);
+		writer.WriteCollectionU16(Macros);
+	}
 }
 
-public sealed class DeviceKey
+public sealed class DeviceKey : IReadable<DeviceKey>, IWriteable
 {
 	public required DeviceKeyId Id { get; init; }
 	public required DeviceLayers Layers { get; init; }
+
+	public static DeviceKey ReadFrom(BinaryReader reader)
+	{
+		var id = DeviceKeyId.ReadFrom(reader);
+		var layers = DeviceLayers.ReadFrom(reader);
+
+		return new() { Id = id, Layers = layers };
+	}
+
+	public void WriteTo(BinaryWriter writer)
+	{
+		Id.WriteTo(writer);
+		Layers.WriteTo(writer);
+	}
 }
 
-public sealed class VirtualKey
+public sealed class DeviceVirtualKey : IReadable<DeviceVirtualKey>, IWriteable
 {
 	public required DeviceLayers Layers { get; init; }
+
+	public static DeviceVirtualKey ReadFrom(BinaryReader reader)
+	{
+		var layers = DeviceLayers.ReadFrom(reader);
+
+		return new() { Layers = layers };
+	}
+
+	public void WriteTo(BinaryWriter writer)
+	{
+		Layers.WriteTo(writer);
+	}
 }
 
-[GenerateSchema]
-public sealed class DeviceLayers
+public sealed class DeviceLayers : IReadable<DeviceLayers>, IWriteable
 {
 	public IReadOnlyCollection<TaggedDeviceKeyLayer> Layers { get; init; } = [];
 	public required DeviceKeyLayer DefaultLayer { get; init; }
+
+	public static DeviceLayers ReadFrom(BinaryReader reader)
+	{
+		var layers = reader.ReadCollectionU8<TaggedDeviceKeyLayer>();
+		var defaultLayer = DeviceKeyLayer.ReadFrom(reader);
+
+		return new() { Layers = layers, DefaultLayer = defaultLayer };
+	}
+
+	public void WriteTo(BinaryWriter writer)
+	{
+		writer.WriteCollectionU8(Layers);
+		DefaultLayer.WriteTo(writer);
+	}
 }
 
-[GenerateSchema]
-public sealed class TaggedDeviceKeyLayer
+public sealed class TaggedDeviceKeyLayer : IReadable<TaggedDeviceKeyLayer>, IWriteable
 {
-	public required DeviceKeyLayer Layer { get; init; }
 	public IReadOnlyCollection<LayerTag> Tags { get; init; } = [];
 	public required TagMatchType MatchType { get; init; }
+	public required DeviceKeyLayer Layer { get; init; }
+
+	public static TaggedDeviceKeyLayer ReadFrom(BinaryReader reader)
+	{
+		var tags = reader.ReadCollectionU8<LayerTag>();
+		var matchType = (TagMatchType)reader.ReadByte();
+		var layer = DeviceKeyLayer.ReadFrom(reader);
+
+		return new()
+		{
+			Tags = tags,
+			MatchType = matchType,
+			Layer = layer,
+		};
+	}
+
+	public void WriteTo(BinaryWriter writer)
+	{
+		writer.WriteCollectionU8(Tags);
+		writer.Write((byte)MatchType);
+		Layer.WriteTo(writer);
+	}
 }
 
-[GenerateSchema]
-public sealed class DeviceKeyLayer
+public sealed class DeviceKeyLayer : IReadable<DeviceKeyLayer>, IWriteable
 {
 	public required LayerId Id { get; init; }
-	public required IReadOnlyCollection<MacroId> Macros { get; init; }
+	public required IReadOnlyCollection<MacroIndex> Macros { get; init; }
+
+	public static DeviceKeyLayer ReadFrom(BinaryReader reader)
+	{
+		var id = LayerId.ReadFrom(reader);
+		var macros = reader.ReadCollectionU8<MacroIndex>();
+
+		return new() { Id = id, Macros = macros };
+	}
+
+	public void WriteTo(BinaryWriter writer)
+	{
+		Id.WriteTo(writer);
+		writer.WriteCollectionU8(Macros);
+	}
 }
 
 public enum TagMatchType
@@ -52,8 +153,7 @@ public enum TagMatchType
 	All,
 }
 
-[GenerateSchema]
-public sealed class Macro
+public sealed class Macro : IReadable<Macro>, IWriteable
 {
 	public required MacroId Id { get; init; }
 	public required string Name { get; init; }
@@ -62,23 +162,78 @@ public sealed class Macro
 	public required Sequence StartSequence { get; init; }
 	public required Sequence LoopSequence { get; init; }
 	public required Sequence EndSequence { get; init; }
+
+	public static Macro ReadFrom(BinaryReader reader)
+	{
+		var id = MacroId.ReadFrom(reader);
+		var name = reader.ReadStringU8();
+		var playChannel = reader.ReadOption(Channel.ReadFrom);
+		var cutChannels = reader.ReadCollectionU8<Channel>();
+		var startSequence = Sequence.ReadFrom(reader);
+		var loopSequence = Sequence.ReadFrom(reader);
+		var endSequence = Sequence.ReadFrom(reader);
+
+		return new()
+		{
+			Id = id,
+			Name = name,
+			PlayChannel = playChannel,
+			CutChannels = cutChannels,
+			StartSequence = startSequence,
+			LoopSequence = loopSequence,
+			EndSequence = endSequence,
+		};
+	}
+
+	public void WriteTo(BinaryWriter writer)
+	{
+		Id.WriteTo(writer);
+		writer.WriteStringU8(Name);
+		writer.WriteOption(PlayChannel);
+		writer.WriteCollectionU8(CutChannels);
+		StartSequence.WriteTo(writer);
+		LoopSequence.WriteTo(writer);
+		EndSequence.WriteTo(writer);
+	}
 }
 
-[GenerateSchema]
-public sealed class Sequence
+public sealed class Sequence : IReadable<Sequence>, IWriteable
 {
 	public required IReadOnlyCollection<Action> Actions { get; init; }
+
+	public static Sequence ReadFrom(BinaryReader reader)
+	{
+		var actions = reader.ReadCollectionU8<Action>();
+		return new() { Actions = actions };
+	}
+
+	public void WriteTo(BinaryWriter writer)
+	{
+		writer.WriteCollectionU8(Actions);
+	}
 }
 
-[GenerateSchema]
-public sealed class Action
+public sealed class Action : IReadable<Action>, IWriteable
 {
 	public ulong PredelayMs { get; init; }
 	public required ActionEvent ActionEvent { get; init; }
+
+	public static Action ReadFrom(BinaryReader reader)
+	{
+		var predelayMs = reader.ReadUInt64();
+		var actionEvent = ActionEvent.ReadFrom(reader);
+
+		return new() { PredelayMs = predelayMs, ActionEvent = actionEvent };
+	}
+
+	public void WriteTo(BinaryWriter writer)
+	{
+		writer.Write(PredelayMs);
+		ActionEvent.WriteTo(writer);
+	}
 }
 
-[GenerateSchema]
-public sealed class ActionEvent
+public sealed class ActionEvent : IReadable<ActionEvent>, IWriteable
 {
 	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
 	public KeyboardActionEvent? Keyboard { get; init; }
@@ -95,18 +250,91 @@ public sealed class ActionEvent
 	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
 	public DebugActionEvent? Debug { get; init; }
 
-	[GenerateSchema]
-	public sealed class KeyboardActionEvent
+	public static ActionEvent ReadFrom(BinaryReader reader)
+	{
+		var discriminator = reader.ReadByte();
+		return discriminator switch
+		{
+			0 => new(),
+			1 => new() { Keyboard = KeyboardActionEvent.ReadFrom(reader) },
+			2 => new() { Mouse = MouseActionEvent.ReadFrom(reader) },
+			3 => new() { ConsumerControl = (ConsumerControlEvent)reader.ReadByte() },
+			4 => new() { Layer = LayerActionEvent.ReadFrom(reader) },
+			5 => new() { Debug = DebugActionEvent.ReadFrom(reader) },
+			_ => throw new InvalidDataException($"Unknown ActionEvent discriminator: {discriminator}"),
+		};
+	}
+
+	public void WriteTo(BinaryWriter writer)
+	{
+		switch (Keyboard, Mouse, ConsumerControl, Layer, Debug)
+		{
+			case (null, null, null, null, null):
+				writer.Write((byte)0);
+				break;
+			case ({ } keyboard, null, null, null, null):
+				writer.Write((byte)1);
+				keyboard.WriteTo(writer);
+				break;
+			case (null, { } mouse, null, null, null):
+				writer.Write((byte)2);
+				mouse.WriteTo(writer);
+				break;
+			case (null, null, { } consumerControl, null, null):
+				writer.Write((byte)3);
+				writer.Write((byte)consumerControl);
+				break;
+			case (null, null, null, { } layer, null):
+				writer.Write((byte)4);
+				layer.WriteTo(writer);
+				break;
+			case (null, null, null, null, { } debug):
+				writer.Write((byte)5);
+				debug.WriteTo(writer);
+				break;
+			default:
+				throw new InvalidOperationException(
+					$"{nameof(ActionEvent)} must have exactly one non-null property"
+				);
+		}
+	}
+
+	public sealed class KeyboardActionEvent : IReadable<KeyboardActionEvent>, IWriteable
 	{
 		[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
 		public KeyboardKey? KeyDown { get; init; }
 
 		[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
 		public KeyboardKey? KeyUp { get; init; }
+
+		public static KeyboardActionEvent ReadFrom(BinaryReader reader)
+		{
+			var isKeyDown = reader.ReadBoolean();
+			var key = (KeyboardKey)reader.ReadByte();
+			return isKeyDown ? new() { KeyDown = key } : new() { KeyUp = key };
+		}
+
+		public void WriteTo(BinaryWriter writer)
+		{
+			switch (KeyDown, KeyUp)
+			{
+				case ({ } keyDown, null):
+					writer.Write(true);
+					writer.Write((byte)keyDown);
+					break;
+				case (null, { } keyUp):
+					writer.Write(false);
+					writer.Write((byte)keyUp);
+					break;
+				default:
+					throw new InvalidOperationException(
+						$"{nameof(KeyboardActionEvent)} must be either {nameof(KeyDown)} or {nameof(KeyUp)}"
+					);
+			}
+		}
 	}
 
-	[GenerateSchema]
-	public sealed class MouseActionEvent
+	public sealed class MouseActionEvent : IReadable<MouseActionEvent>, IWriteable
 	{
 		[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
 		public MouseButton? ButtonDown { get; init; }
@@ -119,38 +347,199 @@ public sealed class ActionEvent
 
 		[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
 		public (int X, int Y)? Move { get; init; }
+
+		public static MouseActionEvent ReadFrom(BinaryReader reader)
+		{
+			var discriminator = reader.ReadByte();
+			return discriminator switch
+			{
+				0 => new() { ButtonDown = (MouseButton)reader.ReadByte() },
+				1 => new() { ButtonUp = (MouseButton)reader.ReadByte() },
+				2 => new() { Scroll = (reader.ReadInt32(), reader.ReadInt32()) },
+				3 => new() { Move = (reader.ReadInt32(), reader.ReadInt32()) },
+				_ => throw new InvalidDataException(
+					$"Unknown MouseActionEvent discriminator: {discriminator}"
+				),
+			};
+		}
+
+		public void WriteTo(BinaryWriter writer)
+		{
+			switch (ButtonDown, ButtonUp, Scroll, Move)
+			{
+				case ({ } buttonDown, null, null, null):
+					writer.Write((byte)0);
+					writer.Write((byte)buttonDown);
+					break;
+				case (null, { } buttonUp, null, null):
+					writer.Write((byte)1);
+					writer.Write((byte)buttonUp);
+					break;
+				case (null, null, { } scroll, null):
+					writer.Write((byte)2);
+					writer.Write(scroll.X);
+					writer.Write(scroll.Y);
+					break;
+				case (null, null, null, { } move):
+					writer.Write((byte)3);
+					writer.Write(move.X);
+					writer.Write(move.Y);
+					break;
+				default:
+					throw new InvalidOperationException(
+						$"{nameof(MouseActionEvent)} must be either {nameof(ButtonDown)}, {nameof(ButtonUp)}, {nameof(Scroll)}, or {nameof(Move)}"
+					);
+			}
+		}
 	}
 
-	[GenerateSchema]
-	public sealed class LayerActionEvent
+	public sealed class LayerActionEvent : IReadable<LayerActionEvent>, IWriteable
 	{
 		[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
 		public LayerTag? Clear { get; init; }
 
 		[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
 		public LayerTag? Set { get; init; }
+
+		public static LayerActionEvent ReadFrom(BinaryReader reader)
+		{
+			var discriminator = reader.ReadByte();
+			return discriminator switch
+			{
+				0 => new() { Clear = LayerTag.ReadFrom(reader) },
+				1 => new() { Set = LayerTag.ReadFrom(reader) },
+				_ => throw new InvalidDataException(
+					$"Unknown LayerActionEvent discriminator: {discriminator}"
+				),
+			};
+		}
+
+		public void WriteTo(BinaryWriter writer)
+		{
+			switch (Clear, Set)
+			{
+				case ({ } clear, null):
+					writer.Write((byte)0);
+					clear.WriteTo(writer);
+					break;
+				case (null, { } set):
+					writer.Write((byte)1);
+					set.WriteTo(writer);
+					break;
+				default:
+					throw new InvalidOperationException(
+						$"{nameof(LayerActionEvent)} must be either {nameof(Clear)} or {nameof(Set)}"
+					);
+			}
+		}
 	}
 
-	public sealed class DebugActionEvent
+	public sealed class DebugActionEvent : IReadable<DebugActionEvent>, IWriteable
 	{
 		public required string Log { get; init; }
+
+		public static DebugActionEvent ReadFrom(BinaryReader reader)
+		{
+			var log = reader.ReadStringU8();
+			return new() { Log = log };
+		}
+
+		public void WriteTo(BinaryWriter writer)
+		{
+			writer.WriteStringU8(Log);
+		}
 	}
 }
 
 [StronglyTypedId]
-public readonly partial struct DeviceKeyId;
+public readonly partial struct DeviceKeyId : IReadable<DeviceKeyId>, IWriteable
+{
+	public static DeviceKeyId ReadFrom(BinaryReader reader)
+	{
+		var guid = reader.ReadGuid();
+		return new(guid);
+	}
+
+	public void WriteTo(BinaryWriter writer)
+	{
+		writer.WriteGuid(Value);
+	}
+}
 
 [StronglyTypedId]
-public readonly partial struct LayerId;
+public readonly partial struct LayerId : IReadable<LayerId>, IWriteable
+{
+	public static LayerId ReadFrom(BinaryReader reader)
+	{
+		var guid = reader.ReadGuid();
+		return new(guid);
+	}
+
+	public void WriteTo(BinaryWriter writer)
+	{
+		writer.WriteGuid(Value);
+	}
+}
 
 [StronglyTypedId(Template.String)]
-public readonly partial struct LayerTag;
+public readonly partial struct LayerTag : IReadable<LayerTag>, IWriteable
+{
+	public static LayerTag ReadFrom(BinaryReader reader)
+	{
+		var tag = reader.ReadStringU8();
+		return new(tag);
+	}
+
+	public void WriteTo(BinaryWriter writer)
+	{
+		writer.WriteStringU8(Value);
+	}
+}
+
+[StronglyTypedId(Template.Int)] // WISH: ushort
+public readonly partial struct MacroIndex : IReadable<MacroIndex>, IWriteable
+{
+	public static MacroIndex ReadFrom(BinaryReader reader)
+	{
+		var index = reader.ReadUInt16();
+		return new(index);
+	}
+
+	public void WriteTo(BinaryWriter writer)
+	{
+		writer.Write((ushort)Value);
+	}
+}
 
 [StronglyTypedId]
-public readonly partial struct MacroId;
+public readonly partial struct MacroId : IReadable<MacroId>, IWriteable
+{
+	public static MacroId ReadFrom(BinaryReader reader)
+	{
+		var id = reader.ReadGuid();
+		return new(id);
+	}
 
-[StronglyTypedId]
-public readonly partial struct Channel;
+	public void WriteTo(BinaryWriter writer)
+	{
+		writer.WriteGuid(Value);
+	}
+}
+
+[StronglyTypedId(Template.Long)] // WISH: uint
+public readonly partial struct Channel : IReadable<Channel>, IWriteable
+{
+	public static Channel ReadFrom(BinaryReader reader)
+	{
+		var id = reader.ReadUInt32();
+		return new(id);
+	}
+
+	public void WriteTo(BinaryWriter writer)
+	{
+		writer.Write((uint)Value);
+	}
+}
 
 public enum KeyboardKey
 {
@@ -302,313 +691,4 @@ public enum ConsumerControlEvent
 	MUTE = 0xE2,
 	VOLUME_DECREMENT = 0xEA,
 	VOLUME_INCREMENT = 0xE9,
-}
-
-public sealed class JsonDeviceProfile
-{
-	public required IReadOnlyCollection<JsonDeviceKey> Keys { get; init; }
-
-	public required IReadOnlyCollection<JsonVirtualKey> VirtualKeys { get; init; } = [];
-
-	public required IReadOnlyCollection<JsonMacro> Macros { get; init; }
-
-	public DeviceProfile ToDeviceProfile()
-	{
-		var macros = Macros.Select(x => x.ToMacro()).ToList();
-		return new()
-		{
-			Keys = Keys.Select(x => x.ToDeviceKey(macros)).ToList(),
-			VirtualKeys = VirtualKeys.Select(x => x.ToVirtualKey(macros)).ToList(),
-			Macros = macros,
-		};
-	}
-
-	public static JsonDeviceProfile From(DeviceProfile profile) =>
-		new()
-		{
-			Keys = profile.Keys.Select(x => JsonDeviceKey.From(x, profile.Macros.ToList())).ToList(),
-			VirtualKeys = profile
-				.VirtualKeys.Select(x => JsonVirtualKey.From(x, profile.Macros.ToList()))
-				.ToList(),
-			Macros = profile.Macros.Select(JsonMacro.From).ToList(),
-		};
-}
-
-public sealed class JsonDeviceKey
-{
-	public required DeviceKeyId Id { get; init; }
-	public required JsonDeviceLayers Layers { get; init; }
-
-	public DeviceKey ToDeviceKey(IReadOnlyList<Macro> macros) =>
-		new() { Id = Id, Layers = Layers.ToDeviceLayers(macros) };
-
-	public static JsonDeviceKey From(DeviceKey key, IReadOnlyList<Macro> macros) =>
-		new() { Id = key.Id, Layers = JsonDeviceLayers.From(key.Layers, macros) };
-}
-
-public sealed class JsonVirtualKey
-{
-	public required JsonDeviceLayers Layers { get; init; }
-
-	public VirtualKey ToVirtualKey(IReadOnlyList<Macro> macros) =>
-		new() { Layers = Layers.ToDeviceLayers(macros) };
-
-	public static JsonVirtualKey From(VirtualKey key, IReadOnlyList<Macro> macros) =>
-		new() { Layers = JsonDeviceLayers.From(key.Layers, macros) };
-}
-
-public sealed class JsonDeviceLayers
-{
-	public IReadOnlyCollection<JsonTaggedDeviceKeyLayer> Layers { get; init; } = [];
-	public required JsonDeviceKeyLayer DefaultLayer { get; init; }
-
-	public DeviceLayers ToDeviceLayers(IReadOnlyList<Macro> macros) =>
-		new()
-		{
-			Layers = Layers.Select(x => x.ToTaggedDeviceKeyLayer(macros)).ToList(),
-			DefaultLayer = DefaultLayer.ToDeviceKeyLayer(macros),
-		};
-
-	public static JsonDeviceLayers From(DeviceLayers layers, IReadOnlyList<Macro> macros) =>
-		new()
-		{
-			Layers = layers.Layers.Select(x => JsonTaggedDeviceKeyLayer.From(x, macros)).ToList(),
-			DefaultLayer = JsonDeviceKeyLayer.From(layers.DefaultLayer, macros),
-		};
-}
-
-public sealed class JsonTaggedDeviceKeyLayer
-{
-	public required JsonDeviceKeyLayer Layer { get; init; }
-	public IReadOnlyCollection<LayerTag> Tags { get; init; } = [];
-	public required TagMatchType MatchType { get; init; }
-
-	public TaggedDeviceKeyLayer ToTaggedDeviceKeyLayer(IReadOnlyList<Macro> macros) =>
-		new()
-		{
-			Layer = Layer.ToDeviceKeyLayer(macros),
-			Tags = Tags,
-			MatchType = MatchType,
-		};
-
-	public static JsonTaggedDeviceKeyLayer From(TaggedDeviceKeyLayer layer, IReadOnlyList<Macro> macros) =>
-		new()
-		{
-			Layer = JsonDeviceKeyLayer.From(layer.Layer, macros),
-			Tags = layer.Tags,
-			MatchType = layer.MatchType,
-		};
-}
-
-public sealed class JsonDeviceKeyLayer
-{
-	public required LayerId Id { get; init; }
-	public required IReadOnlyCollection<int> Macros { get; init; }
-
-	public DeviceKeyLayer ToDeviceKeyLayer(IReadOnlyList<Macro> macros) =>
-		new() { Id = Id, Macros = Macros.Select(x => macros[x].Id).ToList() };
-
-	public static JsonDeviceKeyLayer From(DeviceKeyLayer layer, IReadOnlyList<Macro> macros) =>
-		new()
-		{
-			Id = layer.Id,
-			Macros = layer
-				.Macros.Select(m => macros.Index().FirstOrDefault(x => x.Item.Id == m).Index)
-				.ToList(),
-		};
-}
-
-public sealed class JsonMacro
-{
-	public required MacroId Id { get; init; }
-	public required string Name { get; init; }
-	public Channel? PlayChannel { get; init; }
-	public required IReadOnlyCollection<Channel> CutChannels { get; init; }
-	public required JsonSequence StartSequence { get; init; }
-	public required JsonSequence LoopSequence { get; init; }
-	public required JsonSequence EndSequence { get; init; }
-
-	public Macro ToMacro() =>
-		new()
-		{
-			Id = Id,
-			Name = Name,
-			PlayChannel = PlayChannel,
-			CutChannels = CutChannels,
-			StartSequence = StartSequence.ToSequence(),
-			LoopSequence = LoopSequence.ToSequence(),
-			EndSequence = EndSequence.ToSequence(),
-		};
-
-	public static JsonMacro From(Macro macro) =>
-		new()
-		{
-			Id = macro.Id,
-			Name = macro.Name,
-			PlayChannel = macro.PlayChannel,
-			CutChannels = macro.CutChannels,
-			StartSequence = JsonSequence.From(macro.StartSequence),
-			LoopSequence = JsonSequence.From(macro.LoopSequence),
-			EndSequence = JsonSequence.From(macro.EndSequence),
-		};
-}
-
-public sealed class JsonSequence
-{
-	public required IReadOnlyCollection<JsonAction> Actions { get; init; }
-
-	public Sequence ToSequence() =>
-		new()
-		{
-			Actions = Actions
-				.Select(x => new Action
-				{
-					PredelayMs = x.PredelayMs,
-					ActionEvent = x.ActionEvent.ToActionEvent(),
-				})
-				.ToList(),
-		};
-
-	public static JsonSequence From(Sequence seq) =>
-		new() { Actions = seq.Actions.Select(JsonAction.From).ToList() };
-}
-
-public sealed class JsonAction
-{
-	public ulong PredelayMs { get; init; }
-	public required JsonActionEvent ActionEvent { get; init; }
-
-	public Action ToAction() => new() { PredelayMs = PredelayMs, ActionEvent = ActionEvent.ToActionEvent() };
-
-	public static JsonAction From(Action action) =>
-		new() { PredelayMs = action.PredelayMs, ActionEvent = JsonActionEvent.From(action.ActionEvent) };
-}
-
-public sealed class JsonActionEvent
-{
-	[JsonPropertyName("Keyboard")]
-	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-	public JsonKeyboardActionEvent? Keyboard { get; init; }
-
-	[JsonPropertyName("Mouse")]
-	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-	public JsonMouseActionEvent? Mouse { get; init; }
-
-	[JsonPropertyName("ConsumerControl")]
-	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-	public ConsumerControlEvent? ConsumerControl { get; init; }
-
-	[JsonPropertyName("Layer")]
-	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-	public JsonLayerActionEvent? Layer { get; init; }
-
-	[JsonPropertyName("Debug")]
-	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-	public ActionEvent.DebugActionEvent? Debug { get; init; }
-
-	public ActionEvent ToActionEvent() =>
-		new()
-		{
-			Keyboard = Keyboard?.ToKeyboardActionEvent(),
-			Mouse = Mouse?.ToMouseActionEvent(),
-			ConsumerControl = ConsumerControl,
-			Layer = Layer?.ToLayerActionEvent(),
-			Debug = Debug,
-		};
-
-	public static JsonActionEvent From(ActionEvent e)
-	{
-		if (
-			((object?[])[e.Keyboard, e.Mouse, e.ConsumerControl, e.Layer, e.Debug]).Count(x => x is not null)
-			> 1
-		)
-		{
-			throw new JsonException("Only one action event type can be set.");
-		}
-
-		return new()
-		{
-			Keyboard = e.Keyboard is not null ? JsonKeyboardActionEvent.From(e.Keyboard) : null,
-			Mouse = e.Mouse is not null ? JsonMouseActionEvent.From(e.Mouse) : null,
-			ConsumerControl = e.ConsumerControl,
-			Layer = e.Layer is not null ? JsonLayerActionEvent.From(e.Layer) : null,
-			Debug = e.Debug,
-		};
-	}
-
-	public sealed class JsonKeyboardActionEvent
-	{
-		[JsonPropertyName("KeyDown")]
-		[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-		public KeyboardKey? KeyDown { get; init; }
-
-		[JsonPropertyName("KeyUp")]
-		[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-		public KeyboardKey? KeyUp { get; init; }
-
-		public ActionEvent.KeyboardActionEvent ToKeyboardActionEvent() =>
-			new() { KeyDown = KeyDown, KeyUp = KeyUp };
-
-		public static JsonKeyboardActionEvent From(ActionEvent.KeyboardActionEvent e) =>
-			new() { KeyDown = e.KeyDown, KeyUp = e.KeyUp };
-	}
-
-	public sealed class JsonMouseActionEvent
-	{
-		[JsonPropertyName("ButtonDown")]
-		[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-		public MouseButton? ButtonDown { get; init; }
-
-		[JsonPropertyName("ButtonUp")]
-		[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-		public MouseButton? ButtonUp { get; init; }
-
-		[JsonPropertyName("Scroll")]
-		[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-		public JsonCoords? Scroll { get; init; }
-
-		[JsonPropertyName("Move")]
-		[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-		public JsonCoords? Move { get; init; }
-
-		public ActionEvent.MouseActionEvent ToMouseActionEvent() =>
-			new()
-			{
-				ButtonDown = ButtonDown,
-				ButtonUp = ButtonUp,
-				Scroll = Scroll is not null ? (Scroll.X, Scroll.Y) : null,
-				Move = Move is not null ? (Move.X, Move.Y) : null,
-			};
-
-		public static JsonMouseActionEvent From(ActionEvent.MouseActionEvent e) =>
-			new()
-			{
-				ButtonDown = e.ButtonDown,
-				ButtonUp = e.ButtonUp,
-				Scroll = e.Scroll is not null ? new() { X = e.Scroll.Value.X, Y = e.Scroll.Value.Y } : null,
-				Move = e.Move is not null ? new() { X = e.Move.Value.X, Y = e.Move.Value.Y } : null,
-			};
-
-		public sealed class JsonCoords
-		{
-			public required int X { get; init; }
-			public required int Y { get; init; }
-		}
-	}
-
-	public sealed class JsonLayerActionEvent
-	{
-		[JsonPropertyName("Clear")]
-		[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-		public LayerTag? Clear { get; init; }
-
-		[JsonPropertyName("Set")]
-		[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-		public LayerTag? Set { get; init; }
-
-		public ActionEvent.LayerActionEvent ToLayerActionEvent() => new() { Clear = Clear, Set = Set };
-
-		public static JsonLayerActionEvent From(ActionEvent.LayerActionEvent e) =>
-			new() { Clear = e.Clear, Set = e.Set };
-	}
 }

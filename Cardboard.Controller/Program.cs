@@ -48,6 +48,7 @@ builder
 		options.MapStronglyTypedId<LayerId>();
 		options.MapStronglyTypedId<LayerTag>();
 		options.MapStronglyTypedId<MacroId>();
+		options.MapStronglyTypedId<MacroIndex>();
 		options.MapStronglyTypedId<ApplicationAssociationId>();
 		options.MapStronglyTypedId<SchemaName>();
 	})

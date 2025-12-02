@@ -55,8 +55,12 @@ public sealed class SystemSerialPort(string name, SerialPort serialPort, ILogger
 		var serialPort = new SerialPort(portName)
 		{
 			BaudRate = 115200,
+			DataBits = 8,
 			DtrEnable = true, // required for CircuitPython data serial connections... todo: is this required with Rust?
 			Handshake = Handshake.None,
+			NewLine = "\n",
+			Parity = Parity.None,
+			StopBits = StopBits.One,
 			ReadTimeout = 10000,
 			WriteTimeout = 10000,
 		};

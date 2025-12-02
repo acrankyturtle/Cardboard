@@ -3,43 +3,101 @@ extern crate alloc;
 use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
-use defmt::{Format, error};
-use serde::{Deserialize, Serialize};
+use core::fmt::Debug;
+use num_enum::TryFromPrimitive;
 use uuid::Uuid;
 
 use crate::input::KeyId;
+use crate::serialize::Readable;
 use crate::state::TagList;
+use crate::stream::{ReadAsync, ReadAsyncExt};
 
-#[derive(Serialize, Deserialize, Default)]
+const VERSION: u32 = 1;
+
+#[derive(Default)]
 pub struct KeyboardProfile {
+	pub name: String,
 	pub keys: Vec<DeviceKey>,
 	pub virtual_keys: Vec<VirtualKey>,
 	pub macros: Vec<Macro>,
 }
 
-impl KeyboardProfile {
-	pub fn from_json_bytes(json: &[u8]) -> Result<Self, &'static str> {
-		serde_json_core::from_slice(json)
-			.map(|(profile, _)| profile)
-			.map_err(|e| {
-				error!("Failed to read profile: {:?}", e);
-				"Failed to read profile from json bytes"
-			})
+impl Readable for KeyboardProfile {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let version = reader
+			.read_u32()
+			.await
+			.ok_or("Failed to read profile version")?;
+		if version != VERSION {
+			return Err("Unsupported profile version");
+		}
+
+		let name = reader
+			.read_string_u8()
+			.await
+			.ok_or("Failed to read profile name")?;
+		let keys = reader
+			.read_collection_u8()
+			.await
+			.ok_or("Failed to read keys")?;
+
+		let virtual_keys = reader
+			.read_collection_u8()
+			.await
+			.ok_or("Failed to read virtual_keys")?;
+		if virtual_keys.len() > 32 {
+			return Err("Number of virtual keys exceeds 32");
+		}
+
+		let macros = reader
+			.read_collection_u16()
+			.await
+			.ok_or("Failed to read macros")?;
+
+		Ok(KeyboardProfile {
+			name,
+			keys,
+			virtual_keys,
+			macros,
+		})
 	}
 }
 
-#[derive(Serialize, Deserialize)]
 pub struct DeviceKey {
 	pub id: KeyId,
 	pub layers: DeviceLayers,
 }
 
-#[derive(Serialize, Deserialize)]
+impl Readable for DeviceKey {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let id = KeyId::read_from(reader).await?;
+		let layers: DeviceLayers = DeviceLayers::read_from(reader).await?;
+
+		Ok(DeviceKey { id, layers })
+	}
+}
+
 pub struct VirtualKey {
 	pub layers: DeviceLayers,
 }
 
-#[derive(Serialize, Deserialize)]
+impl Readable for VirtualKey {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let layers: DeviceLayers = DeviceLayers::read_from(reader).await?;
+
+		Ok(VirtualKey { layers })
+	}
+}
+
 pub struct DeviceLayers {
 	pub layers: Vec<TaggedDeviceKeyLayer>,
 	pub default_layer: DeviceKeyLayer,
@@ -54,11 +112,28 @@ impl DeviceLayers {
 	}
 }
 
-#[derive(Serialize, Deserialize)]
+impl Readable for DeviceLayers {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let layers = reader
+			.read_collection_u8()
+			.await
+			.ok_or("Failed to read layers")?;
+		let default_layer: DeviceKeyLayer = DeviceKeyLayer::read_from(reader).await?;
+
+		Ok(DeviceLayers {
+			layers,
+			default_layer,
+		})
+	}
+}
+
 pub struct TaggedDeviceKeyLayer {
-	pub layer: DeviceKeyLayer,
 	pub tags: Vec<LayerTag>,
 	pub match_type: TagMatchType,
+	pub layer: DeviceKeyLayer,
 }
 
 impl TaggedDeviceKeyLayer {
@@ -67,31 +142,114 @@ impl TaggedDeviceKeyLayer {
 	}
 }
 
-#[derive(Serialize, Deserialize)]
+impl Readable for TaggedDeviceKeyLayer {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let tags = reader
+			.read_collection_u8()
+			.await
+			.ok_or("Failed to read tags")?;
+
+		let match_type = TagMatchType::read_from(reader).await?;
+
+		let layer: DeviceKeyLayer = DeviceKeyLayer::read_from(reader).await?;
+
+		Ok(TaggedDeviceKeyLayer {
+			tags,
+			match_type,
+			layer,
+		})
+	}
+}
+
 pub struct DeviceKeyLayer {
 	// TODO: remove this and modify state to keep track of active layer with something like Option<usize | ()>, where usize is the layer index, or where () is default layer
 	pub id: LayerId,
-	pub macros: Vec<u32>,
+	pub macros: Vec<MacroIndex>,
 }
 
-#[derive(Serialize, Deserialize)]
+impl Readable for DeviceKeyLayer {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let layer_id = LayerId::read_from(reader).await?;
+		let macros = reader
+			.read_collection_u8()
+			.await
+			.ok_or("Failed to read macro bindings for key")?;
+
+		Ok(DeviceKeyLayer {
+			id: layer_id,
+			macros,
+		})
+	}
+}
+
 pub struct Macro {
 	pub id: MacroId,
 	pub name: String,
-	#[serde(default)]
 	pub play_channel: Option<Channel>,
 	pub cut_channels: Vec<Channel>,
-	#[serde(default)]
 	pub start_sequence: Sequence,
-	#[serde(default)]
 	pub loop_sequence: Sequence,
-	#[serde(default)]
 	pub end_sequence: Sequence,
 }
 
-#[derive(Serialize, Deserialize)]
+impl Readable for Macro {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let id = MacroId::read_from(reader).await?;
+
+		let name = reader
+			.read_string_u8()
+			.await
+			.ok_or("Failed to read macro name")?;
+
+		let play_channel = reader
+			.read_option()
+			.await
+			.ok_or("Failed to read play channel")?;
+		let cut_channels = reader
+			.read_collection_u8()
+			.await
+			.ok_or("Failed to read cut channels")?;
+
+		let start_sequence = Sequence::read_from(reader).await?;
+		let loop_sequence = Sequence::read_from(reader).await?;
+		let end_sequence = Sequence::read_from(reader).await?;
+
+		Ok(Macro {
+			id,
+			name,
+			play_channel,
+			cut_channels,
+			start_sequence,
+			loop_sequence,
+			end_sequence,
+		})
+	}
+}
+
 pub struct Sequence {
 	pub actions: Vec<Action>,
+}
+
+impl Readable for Sequence {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let actions = reader
+			.read_collection_u8()
+			.await
+			.ok_or("Failed to read actions")?;
+		Ok(Sequence { actions })
+	}
 }
 
 impl Default for Sequence {
@@ -100,30 +258,82 @@ impl Default for Sequence {
 	}
 }
 
-#[derive(Serialize, Deserialize)]
 pub struct Action {
-	#[serde(default)]
 	pub predelay_ms: u64,
 	pub action_event: ActionEvent,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+impl Readable for Action {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let predelay_ms = reader
+			.read_u64()
+			.await
+			.ok_or("Failed to read predelay ms")?;
+		let action_event = ActionEvent::read_from(reader).await?;
+
+		Ok(Action {
+			predelay_ms,
+			action_event,
+		})
+	}
+}
+
+#[derive(Clone, Debug)]
 pub enum ActionEvent {
 	None,
 	Keyboard(KeyboardEvent),
 	Mouse(MouseEvent),
 	ConsumerControl(ConsumerControlEvent),
 	Layer(LayerEvent),
-	Debug(DebugEvent),
+	DebugAction(DebugEvent),
 }
 
-#[derive(Serialize, Deserialize)]
+impl Readable for ActionEvent {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let discriminator = reader
+			.read_u8()
+			.await
+			.ok_or("Failed to read discriminator")?;
+		let value = match discriminator {
+			0 => ActionEvent::None,
+			1 => ActionEvent::Keyboard(KeyboardEvent::read_from(reader).await?),
+			2 => ActionEvent::Mouse(MouseEvent::read_from(reader).await?),
+			3 => ActionEvent::ConsumerControl(ConsumerControlEvent::read_from(reader).await?),
+			4 => ActionEvent::Layer(LayerEvent::read_from(reader).await?),
+			5 => ActionEvent::DebugAction(DebugEvent::read_from(reader).await?),
+			_ => return Err("Invalid action event discriminator"),
+		};
+
+		Ok(value)
+	}
+}
+
 pub enum TagMatchType {
 	All,
 	Any,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+impl Readable for TagMatchType {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let match_type_byte = reader.read_u8().await.ok_or("Failed to read match type")?;
+		match match_type_byte {
+			0 => Ok(TagMatchType::All),
+			1 => Ok(TagMatchType::Any),
+			_ => Err("Invalid match type"),
+		}
+	}
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LayerId(Uuid);
 
 impl LayerId {
@@ -132,7 +342,17 @@ impl LayerId {
 	}
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+impl Readable for LayerId {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let uuid = reader.read_uuid().await.ok_or("Failed to read LayerId")?;
+		Ok(LayerId::new(uuid))
+	}
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct MacroId(Uuid);
 
 impl MacroId {
@@ -141,16 +361,62 @@ impl MacroId {
 	}
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct Channel(Uuid);
+impl Readable for MacroId {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let uuid = reader.read_uuid().await.ok_or("Failed to read MacroId")?;
+		Ok(MacroId::new(uuid))
+	}
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct MacroIndex(u16);
+
+impl MacroIndex {
+	pub const fn new(index: u16) -> Self {
+		MacroIndex(index)
+	}
+
+	pub fn get_index(&self) -> usize {
+		self.0 as usize
+	}
+}
+
+impl Readable for MacroIndex {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let index = reader.read_u16().await.ok_or("Failed to read MacroIndex")? as u16;
+		Ok(MacroIndex(index))
+	}
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Channel(u8);
 
 impl Channel {
-	pub const fn new(id: Uuid) -> Self {
+	pub const fn new(id: u8) -> Self {
 		Channel(id)
 	}
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+impl Readable for Channel {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let id = reader
+			.read_u8()
+			.await
+			.ok_or("Failed to read play channel")?;
+		Ok(Channel::new(id))
+	}
+}
+
+#[derive(Debug, PartialEq, Clone)]
 
 pub struct LayerTag(String);
 
@@ -160,13 +426,51 @@ impl LayerTag {
 	}
 }
 
-#[derive(Debug, Format, Serialize, Deserialize, Clone)]
+impl Readable for LayerTag {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let str = match reader.read_string_u8().await {
+			Some(s) => s,
+			None => return Err("Failed to read LayerTag"),
+		};
+		// let str = reader
+		// 	.read_string_u8()
+		// 	.await
+		// 	.ok_or("Failed to read LayerTag")?;
+		Ok(LayerTag::new(str))
+	}
+}
+
+#[derive(Debug, Clone)]
 pub enum KeyboardEvent {
 	KeyDown(KeyboardKey),
 	KeyUp(KeyboardKey),
 }
 
-#[derive(Debug, Format, Serialize, Deserialize, Clone, Copy)]
+impl Readable for KeyboardEvent {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let is_key_down = reader
+			.read_bool()
+			.await
+			.ok_or("Failed to read is_key_down")?;
+
+		if is_key_down {
+			let event = KeyboardEvent::KeyDown(KeyboardKey::read_from(reader).await?);
+			Ok(event)
+		} else {
+			let event = KeyboardEvent::KeyUp(KeyboardKey::read_from(reader).await?);
+			Ok(event)
+		}
+	}
+}
+
+#[derive(Debug, Clone, Copy, TryFromPrimitive)]
+#[repr(u8)]
 pub enum KeyboardKey {
 	A = 0x04,
 	B = 0x05,
@@ -293,7 +597,17 @@ pub enum KeyboardKey {
 	RIGHT_GUI = 0xE7,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+impl Readable for KeyboardKey {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let value = reader.read_u8().await.ok_or("Failed to read key")?;
+		Ok(KeyboardKey::try_from(value).or(Err("Failed to parse key"))?)
+	}
+}
+
+#[derive(Clone, Debug)]
 pub enum MouseEvent {
 	ButtonDown(MouseButton),
 	ButtonUp(MouseButton),
@@ -301,7 +615,29 @@ pub enum MouseEvent {
 	Move(MouseMove),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+impl Readable for MouseEvent {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let discriminator = reader
+			.read_u8()
+			.await
+			.ok_or("Failed to read mouse event discriminator")?;
+		let value = match discriminator {
+			0 => MouseEvent::ButtonDown(MouseButton::read_from(reader).await?),
+			1 => MouseEvent::ButtonUp(MouseButton::read_from(reader).await?),
+			2 => MouseEvent::Scroll(MouseScroll::read_from(reader).await?),
+			3 => MouseEvent::Move(MouseMove::read_from(reader).await?),
+			_ => return Err("Invalid mouse event discriminator"),
+		};
+
+		Ok(value)
+	}
+}
+
+#[derive(Clone, Debug, TryFromPrimitive)]
+#[repr(u8)]
 pub enum MouseButton {
 	Left,
 	Right,
@@ -310,19 +646,67 @@ pub enum MouseButton {
 	Forward,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+impl Readable for MouseButton {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let value = reader
+			.read_u8()
+			.await
+			.ok_or("Failed to read mouse button")?;
+		Ok(MouseButton::try_from(value).or(Err("Failed to parse mouse button"))?)
+	}
+}
+
+#[derive(Clone, Debug)]
 pub struct MouseScroll {
 	pub x: i32,
 	pub y: i32,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+impl Readable for MouseScroll {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let x = reader
+			.read_u16()
+			.await
+			.ok_or("Failed to read mouse scroll x")? as i32;
+		let y = reader
+			.read_u16()
+			.await
+			.ok_or("Failed to read mouse scroll y")? as i32;
+		Ok(MouseScroll { x, y })
+	}
+}
+
+#[derive(Clone, Debug)]
 pub struct MouseMove {
 	pub x: i32,
 	pub y: i32,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+impl Readable for MouseMove {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let x = reader
+			.read_u32()
+			.await
+			.ok_or("Failed to read mouse move x")? as i32;
+		let y = reader
+			.read_u32()
+			.await
+			.ok_or("Failed to read mouse move y")? as i32;
+		Ok(MouseMove { x, y })
+	}
+}
+
+#[derive(Clone, Debug, TryFromPrimitive)]
+#[repr(u8)]
 pub enum ConsumerControlEvent {
 	RECORD = 0xB2,
 	FAST_FORWARD = 0xB3,
@@ -338,13 +722,56 @@ pub enum ConsumerControlEvent {
 	// todo: add more
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+impl Readable for ConsumerControlEvent {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let value = reader
+			.read_u8()
+			.await
+			.ok_or("Failed to read consumer control event")?;
+		Ok(ConsumerControlEvent::try_from(value)
+			.or(Err("Failed to parse consumer control event"))?)
+	}
+}
+
+#[derive(Clone, Debug)]
 pub enum LayerEvent {
 	Clear(LayerTag),
 	Set(LayerTag),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+impl Readable for LayerEvent {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let value = reader.read_bool().await.ok_or("Failed to read value")?;
+		let tag = LayerTag::read_from(reader).await?;
+
+		if value {
+			Ok(LayerEvent::Clear(tag))
+		} else {
+			Ok(LayerEvent::Set(tag))
+		}
+	}
+}
+
+#[derive(Clone, Debug)]
 pub enum DebugEvent {
 	Log(String),
+}
+
+impl Readable for DebugEvent {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let log = reader
+			.read_string_u8()
+			.await
+			.ok_or("Failed to read debug log")?;
+		Ok(DebugEvent::Log(log))
+	}
 }

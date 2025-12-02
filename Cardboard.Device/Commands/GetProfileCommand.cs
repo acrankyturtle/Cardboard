@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Cranky;
 
 namespace Cardboard.Device;
@@ -12,33 +11,39 @@ public sealed class GetProfileCommand : ICommand<Unit, DeviceProfile>
 	{
 		// check if profile is valid
 		var isValid = stream.Reader.ReadByte() == 0xFF;
+		var length = stream.Reader.ReadUInt16();
+
+		var data = ReadProfileData();
 
 		if (!isValid)
+		{
 			return new()
 			{
+				Name = "(empty)",
 				Keys = [],
 				VirtualKeys = [],
 				Macros = [],
 			};
-
-		// extend our read timeout because it's normal to wait for a response when sending large profiles
-		var readTimeout = stream.Reader.BaseStream.ReadTimeout;
-		try
-		{
-			stream.Reader.BaseStream.ReadTimeout = 60_000;
-
-			var length = stream.Reader.ReadUInt16();
-			var bytes = stream.Reader.ReadBytes(length);
-
-			var profile =
-				JsonSerializer.Deserialize<JsonDeviceProfile>(bytes, DeviceJson.SerializerOptions)
-				?? throw new JsonException();
-
-			return profile.ToDeviceProfile();
 		}
-		finally
+
+		var ms = new MemoryStream(data);
+		var dataReader = new BinaryReader(ms);
+		var profile = DeviceProfile.ReadFrom(dataReader);
+		return profile;
+
+		byte[] ReadProfileData()
 		{
-			stream.Reader.BaseStream.ReadTimeout = readTimeout;
+			// extend our read timeout because it's normal to wait for a response when sending large profiles
+			var readTimeout = stream.Reader.BaseStream.ReadTimeout;
+			try
+			{
+				stream.Reader.BaseStream.ReadTimeout = 60_000;
+				return stream.Reader.ReadBytes(length);
+			}
+			finally
+			{
+				stream.Reader.BaseStream.ReadTimeout = readTimeout;
+			}
 		}
 	}
 }
