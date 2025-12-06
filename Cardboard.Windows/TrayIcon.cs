@@ -161,7 +161,7 @@ file class TrayIconService(
 
 		var emblemBounds = new Rectangle(emblemOffset.X, emblemOffset.Y, emblemSize, emblemSize);
 
-		var path = new GraphicsPath();
+		using var path = new GraphicsPath();
 		switch (emblem.Shape)
 		{
 			case ApplicationIconEmblemShape.Circle:

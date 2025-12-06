@@ -52,7 +52,7 @@ export function EditTaggedLayerDialog() {
     const layer = findTaggedLayerById(
       state.modal.keyId,
       state.modal.layerId,
-      state.profile,
+      state,
     );
     if (!layer) return;
 

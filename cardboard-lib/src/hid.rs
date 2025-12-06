@@ -358,7 +358,7 @@ impl HidDevice<MouseEvent> for Scroll {
 	// const SIZE: usize = Mouse::REPORT_SIZE;
 }
 
-pub fn map_button(key: &MouseButton) -> HidMouseButtons {
+pub(crate) fn map_button(key: &MouseButton) -> HidMouseButtons {
 	match key {
 		MouseButton::Left => HidMouseButtons::LEFT,
 		MouseButton::Right => HidMouseButtons::RIGHT,
@@ -369,7 +369,7 @@ pub fn map_button(key: &MouseButton) -> HidMouseButtons {
 }
 
 bitflags! {
-	pub struct HidMouseButtons: u8 {
+	pub(crate) struct HidMouseButtons: u8 {
 		const LEFT = 0b00000001;
 		const RIGHT = 0b00000010;
 		const MIDDLE = 0b00000100;
@@ -444,7 +444,7 @@ impl HidDevice<ConsumerControlEvent> for ConsumerControl {
 	// const SIZE: usize = CONSUMER_CONTROL_REPORT_SIZE;
 }
 
-pub fn map_cc(key: &ConsumerControlEvent) -> Consumer {
+pub(crate) fn map_cc(key: &ConsumerControlEvent) -> Consumer {
 	match key {
 		ConsumerControlEvent::RECORD => Consumer::Record,
 		ConsumerControlEvent::FAST_FORWARD => Consumer::FastForward,
@@ -462,7 +462,7 @@ pub fn map_cc(key: &ConsumerControlEvent) -> Consumer {
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Format)]
 #[repr(u16)]
-pub enum Consumer {
+pub(crate) enum Consumer {
 	Unassigned = 0x00,
 	ConsumerControl = 0x01,
 	NumericKeyPad = 0x02,

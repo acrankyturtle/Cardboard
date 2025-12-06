@@ -1,5 +1,5 @@
 use cardboard_lib::hid::HidReport;
-use defmt::info;
+use defmt::{info, warn};
 use embassy_rp::{peripherals::USB, usb::Driver};
 use embassy_sync::{blocking_mutex::raw::RawMutex, signal::Signal};
 use embassy_time::Timer;
@@ -32,13 +32,22 @@ pub async fn hid_task<
 		let report: HidReport<KEYBOARD_PACKET_SIZE, MOUSE_PACKET_SIZE, CONSUMER_PACKET_SIZE> =
 			signal.wait().await;
 		if let Some(keyboard_report) = report.keyboard {
-			keyboard.write(&keyboard_report[..]).await.unwrap();
+			let result = keyboard.write(&keyboard_report[..]).await;
+			if let Err(e) = result {
+				warn!("Error writing keyboard report: {:?}", e);
+			}
 		}
 		if let Some(mouse_report) = report.mouse {
-			mouse.write(&mouse_report[..]).await.unwrap();
+			let result = mouse.write(&mouse_report[..]).await;
+			if let Err(e) = result {
+				warn!("Error writing mouse report: {:?}", e);
+			}
 		}
 		if let Some(consumer_report) = report.consumer {
-			consumer.write(&consumer_report[..]).await.unwrap();
+			let result = consumer.write(&consumer_report[..]).await;
+			if let Err(e) = result {
+				warn!("Error writing consumer report: {:?}", e);
+			}
 		}
 	}
 }
@@ -68,10 +77,16 @@ pub async fn hid_task_no_mouse<
 		let report: HidReport<KEYBOARD_PACKET_SIZE, MOUSE_PACKET_SIZE, CONSUMER_PACKET_SIZE> =
 			signal.wait().await;
 		if let Some(keyboard_report) = report.keyboard {
-			keyboard.write(&keyboard_report[..]).await.unwrap();
+			let result = keyboard.write(&keyboard_report[..]).await;
+			if let Err(e) = result {
+				warn!("Error writing keyboard report: {:?}", e);
+			}
 		}
 		if let Some(consumer_report) = report.consumer {
-			consumer.write(&consumer_report[..]).await.unwrap();
+			let result = consumer.write(&consumer_report[..]).await;
+			if let Err(e) = result {
+				warn!("Error writing consumer report: {:?}", e);
+			}
 		}
 	}
 }

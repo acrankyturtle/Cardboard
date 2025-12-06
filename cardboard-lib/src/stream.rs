@@ -65,7 +65,7 @@ impl<T: ReadAsync> ReadAsyncExt for T {
 	async fn read_u16(&mut self) -> Option<u16> {
 		let mut buf = [0; 2];
 		self.read_exact(&mut buf).await.ok()?;
-		Some(u16::from_le_bytes(buf) as u16)
+		Some(u16::from_le_bytes(buf))
 	}
 
 	async fn read_u32(&mut self) -> Option<u32> {

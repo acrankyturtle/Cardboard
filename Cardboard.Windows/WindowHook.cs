@@ -1,10 +1,11 @@
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Text;
+using Microsoft.Extensions.Logging;
 
 namespace Cardboard.Windows;
 
-internal class WindowHook : IDisposable
+internal class WindowHook(ILogger<WindowHook>? logger = null) : IDisposable
 {
 	private WinEventDelegate? _dele;
 	private IntPtr _hookPtr;
@@ -62,9 +63,9 @@ internal class WindowHook : IDisposable
 			ActiveWindowChanged?.Invoke(application);
 	}
 
-	public static ActiveApplicationInfo? GetCurrent() => GetAppInfo(GetForegroundWindow());
+	public ActiveApplicationInfo? GetCurrent() => GetAppInfo(GetForegroundWindow());
 
-	private static ActiveApplicationInfo? GetAppInfo(IntPtr hWnd)
+	private ActiveApplicationInfo? GetAppInfo(IntPtr hWnd)
 	{
 		try
 		{
@@ -86,8 +87,9 @@ internal class WindowHook : IDisposable
 
 			return new(windowTitle, path, timestamp);
 		}
-		catch
+		catch (Exception ex)
 		{
+			logger?.LogWarning(ex, "Failed to get application info for window handle {Handle}", hWnd);
 			return null;
 		}
 	}

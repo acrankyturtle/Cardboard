@@ -1,6 +1,7 @@
 ﻿using Cardboard.Events;
 using Cardboard.Services;
 using Cardboard.Utilities;
+using Microsoft.Extensions.Logging;
 
 namespace Cardboard.Windows;
 
@@ -13,12 +14,13 @@ internal sealed class ApplicationEventService : IApplicationEventService, IIniti
 
 	public IObservable<ApplicationChangedEvent> OnApplicationChanged { get; }
 
-	public ApplicationEventService(IWindowsService windowsService)
+	public ApplicationEventService(IWindowsService windowsService, ILoggerFactory loggerFactory)
 	{
-		// hook needs to be enabled on the form thread
+		// hook needs to be created on the form thread
 		_windowHook = windowsService.Invoke(_ =>
 		{
-			var windowHook = new WindowHook();
+			var logger = loggerFactory.CreateLogger<WindowHook>();
+			var windowHook = new WindowHook(logger);
 			windowHook.ActiveWindowChanged += appInfo =>
 				_applicationChangedSubject.OnNext(new(appInfo.ExecutablePath));
 
@@ -35,7 +37,7 @@ internal sealed class ApplicationEventService : IApplicationEventService, IIniti
 
 	public Task Initialize()
 	{
-		var activeApp = WindowHook.GetCurrent();
+		var activeApp = _windowHook.GetCurrent();
 		if (activeApp is not null)
 			_applicationChangedSubject.OnNext(new(activeApp.ExecutablePath));
 

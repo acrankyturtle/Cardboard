@@ -7,77 +7,65 @@ use crate::{
 	profile::{KeyboardProfile, LayerTag},
 	serial::SerialDrain,
 	storage::{BlockFlash, BlockFlashExt, FlashPartition, PartitionedFlashMemory},
-	stream::{ReadAsync, ReadAsyncExt, WriteAsync, WriteAsyncExt},
+	stream::{ReadAsync, WriteAsync},
 };
 use alloc::vec::Vec;
 
+/// Main context struct holding all runtime dependencies.
 pub struct Context<
-	Flash: BlockFlash,
-	ChangeProfileSignal: ChangeProfileSignalTx + 'static,
-	SerialRx: ReadAsync + ReadAsyncExt,
-	SerialTx: WriteAsync + WriteAsyncExt,
-	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
+	Flash,
+	SerialRx,
+	SerialTx,
 	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
-	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
+	Allocator,
+	Errors,
+	Clock,
+> where
+	Flash: BlockFlash,
+	SerialRx: ReadAsync,
+	SerialTx: WriteAsync,
 	Allocator: GlobalAlloc + 'static,
-	Bootloader: RebootToBootloader + 'static,
 	Errors: ErrorLog,
 	Clock: crate::time::Clock + 'static,
-> {
+{
 	pub device_info: &'static DeviceInfo,
 	pub flash: Flash,
 	pub settings_partition: FlashPartition<Flash>,
 	pub profile_partition: FlashPartition<Flash>,
-	pub change_profile_signal: &'static ChangeProfileSignal,
+	pub change_profile_signal: &'static dyn ChangeProfileSignalTx,
 	pub serial_rx: SerialRx,
 	pub serial_tx: SerialTx,
-	pub external_tags_signal: &'static SetExternalTagsSignal,
-	pub virtual_keys_signal: &'static SetVirtualKeysSignal,
+	pub external_tags_signal: &'static dyn ExternalTagsSignalTx,
+	pub virtual_keys_signal: &'static dyn VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES>,
 	pub allocator: &'static TrackingAllocator<Allocator>,
-	pub bootloader: &'static Bootloader,
+	pub bootloader: &'static dyn RebootToBootloader,
 	pub errors: Errors,
 	pub clock: &'static Clock,
 }
 
-impl<
+impl<Flash, SerialRx, SerialTx, const VIRTUAL_KEY_BITFIELD_BYTES: usize, Allocator, Errors, Clock>
+	Context<Flash, SerialRx, SerialTx, VIRTUAL_KEY_BITFIELD_BYTES, Allocator, Errors, Clock>
+where
 	Flash: BlockFlash,
-	ChangeProfileSignal: ChangeProfileSignalTx,
-	SerialRx: ReadAsync + ReadAsyncExt,
-	SerialTx: WriteAsync + WriteAsyncExt,
-	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
-	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
-	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
+	SerialRx: ReadAsync,
+	SerialTx: WriteAsync,
 	Allocator: GlobalAlloc + 'static,
-	Bootloader: RebootToBootloader,
 	Errors: ErrorLog,
-	Clock: crate::time::Clock,
->
-	Context<
-		Flash,
-		ChangeProfileSignal,
-		SerialRx,
-		SerialTx,
-		SetExternalTagsSignal,
-		VIRTUAL_KEY_BITFIELD_BYTES,
-		SetVirtualKeysSignal,
-		Allocator,
-		Bootloader,
-		Errors,
-		Clock,
-	>
+	Clock: crate::time::Clock + 'static,
 {
+	#[allow(clippy::too_many_arguments)]
 	pub fn new(
 		device_info: &'static DeviceInfo,
 		flash: Flash,
 		settings_partition: FlashPartition<Flash>,
 		profile_partition: FlashPartition<Flash>,
-		change_profile_signal: &'static ChangeProfileSignal,
+		change_profile_signal: &'static dyn ChangeProfileSignalTx,
 		serial_rx: SerialRx,
 		serial_tx: SerialTx,
-		external_tags_signal: &'static SetExternalTagsSignal,
-		virtual_keys_signal: &'static SetVirtualKeysSignal,
+		external_tags_signal: &'static dyn ExternalTagsSignalTx,
+		virtual_keys_signal: &'static dyn VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES>,
 		allocator: &'static TrackingAllocator<Allocator>,
-		bootloader: &'static Bootloader,
+		bootloader: &'static dyn RebootToBootloader,
 		errors: Errors,
 		clock: &'static Clock,
 	) -> Self {
@@ -99,17 +87,20 @@ impl<
 	}
 }
 
+// Context capability traits - these define what features a context provides
+// Commands use these as trait bounds to specify their requirements
+
 pub trait ContextDeviceInfo {
 	fn device_info(&self) -> &'static DeviceInfo;
 }
 
 pub trait ContextSerialRx {
-	type SerialRx: ReadAsync + ReadAsyncExt + SerialDrain;
+	type SerialRx: ReadAsync + SerialDrain;
 	fn serial_rx(&mut self) -> &mut Self::SerialRx;
 }
 
 pub trait ContextSerialTx {
-	type SerialTx: WriteAsync + WriteAsyncExt; // todo: is ext required?
+	type SerialTx: WriteAsync;
 	fn serial_tx(&mut self) -> &mut Self::SerialTx;
 }
 
@@ -124,7 +115,7 @@ pub trait ContextProfileFlash {
 }
 
 pub trait ContextChangeProfile {
-	type ChangeProfileSignal: ChangeProfileSignalTx;
+	type ChangeProfileSignal: ChangeProfileSignalTx + ?Sized;
 	fn profile_signal(&mut self) -> &Self::ChangeProfileSignal;
 }
 
@@ -154,64 +145,34 @@ pub trait ContextClock {
 	fn clock(&self) -> &impl crate::time::Clock;
 }
 
-impl<
+// Trait implementations for Context
+
+impl<Flash, SerialRx, SerialTx, const VIRTUAL_KEY_BITFIELD_BYTES: usize, Allocator, Errors, Clock>
+	ContextDeviceInfo
+	for Context<Flash, SerialRx, SerialTx, VIRTUAL_KEY_BITFIELD_BYTES, Allocator, Errors, Clock>
+where
 	Flash: BlockFlash,
-	ChangeProfileSignal: ChangeProfileSignalTx,
-	SerialRx: ReadAsync + ReadAsyncExt,
-	SerialTx: WriteAsync + WriteAsyncExt,
-	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
-	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
-	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
+	SerialRx: ReadAsync + SerialDrain,
+	SerialTx: WriteAsync,
 	Allocator: GlobalAlloc + 'static,
-	Bootloader: RebootToBootloader,
 	Errors: ErrorLog,
-	Clock: crate::time::Clock,
-> ContextDeviceInfo
-	for Context<
-		Flash,
-		ChangeProfileSignal,
-		SerialRx,
-		SerialTx,
-		SetExternalTagsSignal,
-		VIRTUAL_KEY_BITFIELD_BYTES,
-		SetVirtualKeysSignal,
-		Allocator,
-		Bootloader,
-		Errors,
-		Clock,
-	>
+	Clock: crate::time::Clock + 'static,
 {
 	fn device_info(&self) -> &'static DeviceInfo {
 		self.device_info
 	}
 }
 
-impl<
+impl<Flash, SerialRx, SerialTx, const VIRTUAL_KEY_BITFIELD_BYTES: usize, Allocator, Errors, Clock>
+	ContextSerialRx
+	for Context<Flash, SerialRx, SerialTx, VIRTUAL_KEY_BITFIELD_BYTES, Allocator, Errors, Clock>
+where
 	Flash: BlockFlash,
-	ChangeProfileSignal: ChangeProfileSignalTx,
-	SerialRx: ReadAsync + ReadAsyncExt + SerialDrain,
-	SerialTx: WriteAsync + WriteAsyncExt,
-	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
-	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
-	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
+	SerialRx: ReadAsync + SerialDrain,
+	SerialTx: WriteAsync,
 	Allocator: GlobalAlloc + 'static,
-	Bootloader: RebootToBootloader,
 	Errors: ErrorLog,
-	Clock: crate::time::Clock,
-> ContextSerialRx
-	for Context<
-		Flash,
-		ChangeProfileSignal,
-		SerialRx,
-		SerialTx,
-		SetExternalTagsSignal,
-		VIRTUAL_KEY_BITFIELD_BYTES,
-		SetVirtualKeysSignal,
-		Allocator,
-		Bootloader,
-		Errors,
-		Clock,
-	>
+	Clock: crate::time::Clock + 'static,
 {
 	type SerialRx = SerialRx;
 	fn serial_rx(&mut self) -> &mut Self::SerialRx {
@@ -219,32 +180,16 @@ impl<
 	}
 }
 
-impl<
+impl<Flash, SerialRx, SerialTx, const VIRTUAL_KEY_BITFIELD_BYTES: usize, Allocator, Errors, Clock>
+	ContextSerialTx
+	for Context<Flash, SerialRx, SerialTx, VIRTUAL_KEY_BITFIELD_BYTES, Allocator, Errors, Clock>
+where
 	Flash: BlockFlash,
-	ChangeProfileSignal: ChangeProfileSignalTx,
-	SerialRx: ReadAsync + ReadAsyncExt,
-	SerialTx: WriteAsync + WriteAsyncExt,
-	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
-	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
-	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
+	SerialRx: ReadAsync,
+	SerialTx: WriteAsync,
 	Allocator: GlobalAlloc + 'static,
-	Bootloader: RebootToBootloader,
 	Errors: ErrorLog,
-	Clock: crate::time::Clock,
-> ContextSerialTx
-	for Context<
-		Flash,
-		ChangeProfileSignal,
-		SerialRx,
-		SerialTx,
-		SetExternalTagsSignal,
-		VIRTUAL_KEY_BITFIELD_BYTES,
-		SetVirtualKeysSignal,
-		Allocator,
-		Bootloader,
-		Errors,
-		Clock,
-	>
+	Clock: crate::time::Clock + 'static,
 {
 	type SerialTx = SerialTx;
 	fn serial_tx(&mut self) -> &mut Self::SerialTx {
@@ -252,32 +197,16 @@ impl<
 	}
 }
 
-impl<
+impl<Flash, SerialRx, SerialTx, const VIRTUAL_KEY_BITFIELD_BYTES: usize, Allocator, Errors, Clock>
+	ContextSettingsFlash
+	for Context<Flash, SerialRx, SerialTx, VIRTUAL_KEY_BITFIELD_BYTES, Allocator, Errors, Clock>
+where
 	Flash: BlockFlash,
-	ChangeProfileSignal: ChangeProfileSignalTx,
-	SerialRx: ReadAsync + ReadAsyncExt,
-	SerialTx: WriteAsync + WriteAsyncExt,
-	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
-	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
-	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
+	SerialRx: ReadAsync,
+	SerialTx: WriteAsync,
 	Allocator: GlobalAlloc + 'static,
-	Bootloader: RebootToBootloader,
 	Errors: ErrorLog,
-	Clock: crate::time::Clock,
-> ContextSettingsFlash
-	for Context<
-		Flash,
-		ChangeProfileSignal,
-		SerialRx,
-		SerialTx,
-		SetExternalTagsSignal,
-		VIRTUAL_KEY_BITFIELD_BYTES,
-		SetVirtualKeysSignal,
-		Allocator,
-		Bootloader,
-		Errors,
-		Clock,
-	>
+	Clock: crate::time::Clock + 'static,
 {
 	type Flash = Flash;
 
@@ -286,32 +215,16 @@ impl<
 	}
 }
 
-impl<
+impl<Flash, SerialRx, SerialTx, const VIRTUAL_KEY_BITFIELD_BYTES: usize, Allocator, Errors, Clock>
+	ContextProfileFlash
+	for Context<Flash, SerialRx, SerialTx, VIRTUAL_KEY_BITFIELD_BYTES, Allocator, Errors, Clock>
+where
 	Flash: BlockFlash,
-	ChangeProfileSignal: ChangeProfileSignalTx,
-	SerialRx: ReadAsync + ReadAsyncExt,
-	SerialTx: WriteAsync + WriteAsyncExt,
-	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
-	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
-	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
+	SerialRx: ReadAsync,
+	SerialTx: WriteAsync,
 	Allocator: GlobalAlloc + 'static,
-	Bootloader: RebootToBootloader,
 	Errors: ErrorLog,
-	Clock: crate::time::Clock,
-> ContextProfileFlash
-	for Context<
-		Flash,
-		ChangeProfileSignal,
-		SerialRx,
-		SerialTx,
-		SetExternalTagsSignal,
-		VIRTUAL_KEY_BITFIELD_BYTES,
-		SetVirtualKeysSignal,
-		Allocator,
-		Bootloader,
-		Errors,
-		Clock,
-	>
+	Clock: crate::time::Clock + 'static,
 {
 	type Flash = Flash;
 
@@ -320,235 +233,122 @@ impl<
 	}
 }
 
-impl<
+impl<Flash, SerialRx, SerialTx, const VIRTUAL_KEY_BITFIELD_BYTES: usize, Allocator, Errors, Clock>
+	ContextChangeProfile
+	for Context<Flash, SerialRx, SerialTx, VIRTUAL_KEY_BITFIELD_BYTES, Allocator, Errors, Clock>
+where
 	Flash: BlockFlash,
-	ChangeProfileSignal: ChangeProfileSignalTx,
-	SerialRx: ReadAsync + ReadAsyncExt,
-	SerialTx: WriteAsync + WriteAsyncExt,
-	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
-	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
-	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
+	SerialRx: ReadAsync,
+	SerialTx: WriteAsync,
 	Allocator: GlobalAlloc + 'static,
-	Bootloader: RebootToBootloader,
 	Errors: ErrorLog,
-	Clock: crate::time::Clock,
-> ContextChangeProfile
-	for Context<
-		Flash,
-		ChangeProfileSignal,
-		SerialRx,
-		SerialTx,
-		SetExternalTagsSignal,
-		VIRTUAL_KEY_BITFIELD_BYTES,
-		SetVirtualKeysSignal,
-		Allocator,
-		Bootloader,
-		Errors,
-		Clock,
-	>
+	Clock: crate::time::Clock + 'static,
 {
-	type ChangeProfileSignal = ChangeProfileSignal;
+	type ChangeProfileSignal = dyn ChangeProfileSignalTx;
 	fn profile_signal(&mut self) -> &Self::ChangeProfileSignal {
 		self.change_profile_signal
 	}
 }
 
-impl<
+impl<Flash, SerialRx, SerialTx, const VIRTUAL_KEY_BITFIELD_BYTES: usize, Allocator, Errors, Clock>
+	ContextTags
+	for Context<Flash, SerialRx, SerialTx, VIRTUAL_KEY_BITFIELD_BYTES, Allocator, Errors, Clock>
+where
 	Flash: BlockFlash,
-	ChangeProfileSignal: ChangeProfileSignalTx,
-	SerialRx: ReadAsync + ReadAsyncExt,
-	SerialTx: WriteAsync + WriteAsyncExt,
-	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
-	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
-	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
+	SerialRx: ReadAsync,
+	SerialTx: WriteAsync,
 	Allocator: GlobalAlloc + 'static,
-	Bootloader: RebootToBootloader,
 	Errors: ErrorLog,
-	Clock: crate::time::Clock,
-> ContextTags
-	for Context<
-		Flash,
-		ChangeProfileSignal,
-		SerialRx,
-		SerialTx,
-		SetExternalTagsSignal,
-		VIRTUAL_KEY_BITFIELD_BYTES,
-		SetVirtualKeysSignal,
-		Allocator,
-		Bootloader,
-		Errors,
-		Clock,
-	>
+	Clock: crate::time::Clock + 'static,
 {
 	fn set_external_tags(&mut self, tags: Vec<LayerTag>) {
 		self.external_tags_signal.set_external_tags(tags);
 	}
 }
 
-impl<
+impl<Flash, SerialRx, SerialTx, const VIRTUAL_KEY_BITFIELD_BYTES: usize, Allocator, Errors, Clock>
+	ContextVirtualKeys<VIRTUAL_KEY_BITFIELD_BYTES>
+	for Context<Flash, SerialRx, SerialTx, VIRTUAL_KEY_BITFIELD_BYTES, Allocator, Errors, Clock>
+where
 	Flash: BlockFlash,
-	ChangeProfileSignal: ChangeProfileSignalTx + 'static,
-	SerialRx: ReadAsync + ReadAsyncExt,
-	SerialTx: WriteAsync + WriteAsyncExt,
-	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
-	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
-	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
+	SerialRx: ReadAsync,
+	SerialTx: WriteAsync,
 	Allocator: GlobalAlloc + 'static,
-	Bootloader: RebootToBootloader + 'static,
 	Errors: ErrorLog,
-	Clock: crate::time::Clock,
-> ContextVirtualKeys<VIRTUAL_KEY_BITFIELD_BYTES>
-	for Context<
-		Flash,
-		ChangeProfileSignal,
-		SerialRx,
-		SerialTx,
-		SetExternalTagsSignal,
-		VIRTUAL_KEY_BITFIELD_BYTES,
-		SetVirtualKeysSignal,
-		Allocator,
-		Bootloader,
-		Errors,
-		Clock,
-	>
+	Clock: crate::time::Clock + 'static,
 {
 	fn set_virtual_keys(&mut self, state: [u8; VIRTUAL_KEY_BITFIELD_BYTES]) {
-		let state_ptr: *const [u8; VIRTUAL_KEY_BITFIELD_BYTES] = &state;
-		let state: [u8; VIRTUAL_KEY_BITFIELD_BYTES] =
-			unsafe { *state_ptr.cast::<[u8; VIRTUAL_KEY_BITFIELD_BYTES]>() };
 		self.virtual_keys_signal.set_virtual_keys(state);
 	}
 }
 
-impl<
+impl<Flash, SerialRx, SerialTx, const VIRTUAL_KEY_BITFIELD_BYTES: usize, Allocator, Errors, Clock>
+	ContextAllocator
+	for Context<Flash, SerialRx, SerialTx, VIRTUAL_KEY_BITFIELD_BYTES, Allocator, Errors, Clock>
+where
 	Flash: BlockFlash,
-	ChangeProfileSignal: ChangeProfileSignalTx,
-	SerialRx: ReadAsync + ReadAsyncExt,
-	SerialTx: WriteAsync + WriteAsyncExt,
-	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
-	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
-	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
+	SerialRx: ReadAsync,
+	SerialTx: WriteAsync,
 	Allocator: GlobalAlloc + 'static,
-	Bootloader: RebootToBootloader,
 	Errors: ErrorLog,
-	Clock: crate::time::Clock,
-> ContextAllocator
-	for Context<
-		Flash,
-		ChangeProfileSignal,
-		SerialRx,
-		SerialTx,
-		SetExternalTagsSignal,
-		VIRTUAL_KEY_BITFIELD_BYTES,
-		SetVirtualKeysSignal,
-		Allocator,
-		Bootloader,
-		Errors,
-		Clock,
-	>
+	Clock: crate::time::Clock + 'static,
 {
+	type A = Allocator;
 	fn allocator(&self) -> &TrackingAllocator<Self::A> {
 		self.allocator
 	}
-	type A = Allocator;
 }
 
-impl<
+impl<Flash, SerialRx, SerialTx, const VIRTUAL_KEY_BITFIELD_BYTES: usize, Allocator, Errors, Clock>
+	ContextBootloader
+	for Context<Flash, SerialRx, SerialTx, VIRTUAL_KEY_BITFIELD_BYTES, Allocator, Errors, Clock>
+where
 	Flash: BlockFlash,
-	ChangeProfileSignal: ChangeProfileSignalTx,
-	SerialRx: ReadAsync + ReadAsyncExt,
-	SerialTx: WriteAsync + WriteAsyncExt,
-	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
-	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
-	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
+	SerialRx: ReadAsync,
+	SerialTx: WriteAsync,
 	Allocator: GlobalAlloc + 'static,
-	Bootloader: RebootToBootloader,
 	Errors: ErrorLog,
-	Clock: crate::time::Clock,
-> ContextBootloader
-	for Context<
-		Flash,
-		ChangeProfileSignal,
-		SerialRx,
-		SerialTx,
-		SetExternalTagsSignal,
-		VIRTUAL_KEY_BITFIELD_BYTES,
-		SetVirtualKeysSignal,
-		Allocator,
-		Bootloader,
-		Errors,
-		Clock,
-	>
+	Clock: crate::time::Clock + 'static,
 {
 	fn reboot_to_bootloader(&mut self) -> ! {
 		self.bootloader.reboot_to_bootloader()
 	}
 }
 
-impl<
+impl<Flash, SerialRx, SerialTx, const VIRTUAL_KEY_BITFIELD_BYTES: usize, Allocator, Errors, Clock>
+	ContextErrorLog
+	for Context<Flash, SerialRx, SerialTx, VIRTUAL_KEY_BITFIELD_BYTES, Allocator, Errors, Clock>
+where
 	Flash: BlockFlash,
-	ChangeProfileSignal: ChangeProfileSignalTx,
-	SerialRx: ReadAsync + ReadAsyncExt,
-	SerialTx: WriteAsync + WriteAsyncExt,
-	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
-	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
-	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
+	SerialRx: ReadAsync,
+	SerialTx: WriteAsync,
 	Allocator: GlobalAlloc + 'static,
-	Bootloader: RebootToBootloader,
 	Errors: ErrorLog,
-	Clock: crate::time::Clock,
-> ContextErrorLog
-	for Context<
-		Flash,
-		ChangeProfileSignal,
-		SerialRx,
-		SerialTx,
-		SetExternalTagsSignal,
-		VIRTUAL_KEY_BITFIELD_BYTES,
-		SetVirtualKeysSignal,
-		Allocator,
-		Bootloader,
-		Errors,
-		Clock,
-	>
+	Clock: crate::time::Clock + 'static,
 {
+	type Errors = Errors;
 	fn errors(&mut self) -> &mut Self::Errors {
 		&mut self.errors
 	}
-	type Errors = Errors;
 }
 
-impl<
+impl<Flash, SerialRx, SerialTx, const VIRTUAL_KEY_BITFIELD_BYTES: usize, Allocator, Errors, Clock>
+	ContextClock
+	for Context<Flash, SerialRx, SerialTx, VIRTUAL_KEY_BITFIELD_BYTES, Allocator, Errors, Clock>
+where
 	Flash: BlockFlash,
-	ChangeProfileSignal: ChangeProfileSignalTx,
-	SerialRx: ReadAsync + ReadAsyncExt,
-	SerialTx: WriteAsync + WriteAsyncExt,
-	SetExternalTagsSignal: ExternalTagsSignalTx + 'static,
-	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
-	SetVirtualKeysSignal: VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,
+	SerialRx: ReadAsync,
+	SerialTx: WriteAsync,
 	Allocator: GlobalAlloc + 'static,
-	Bootloader: RebootToBootloader,
 	Errors: ErrorLog,
-	Clock: crate::time::Clock,
-> ContextClock
-	for Context<
-		Flash,
-		ChangeProfileSignal,
-		SerialRx,
-		SerialTx,
-		SetExternalTagsSignal,
-		VIRTUAL_KEY_BITFIELD_BYTES,
-		SetVirtualKeysSignal,
-		Allocator,
-		Bootloader,
-		Errors,
-		Clock,
-	>
+	Clock: crate::time::Clock + 'static,
 {
 	fn clock(&self) -> &impl crate::time::Clock {
 		self.clock
 	}
 }
+
+// Signal traits for inter-task communication
 
 pub trait ChangeProfileSignalTx {
 	fn change_profile(&self, profile: KeyboardProfile);

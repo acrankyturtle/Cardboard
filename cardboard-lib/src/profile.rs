@@ -4,6 +4,7 @@ use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt::Debug;
+use defmt::Format;
 use num_enum::TryFromPrimitive;
 use uuid::Uuid;
 
@@ -371,7 +372,7 @@ impl Readable for MacroId {
 	}
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Format)]
 pub struct MacroIndex(u16);
 
 impl MacroIndex {

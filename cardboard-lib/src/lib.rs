@@ -6,7 +6,7 @@ extern crate alloc;
 
 use core::alloc::{GlobalAlloc, Layout};
 use core::cell::Cell;
-use cortex_m::interrupt::Mutex;
+use critical_section::Mutex;
 
 pub mod command;
 pub mod context;
@@ -34,7 +34,10 @@ pub trait TrackedAllocator {
 	fn max(&self) -> usize;
 }
 
-// Tracking allocator wrapper
+/// Tracking allocator wrapper that monitors heap usage.
+///
+/// Wraps any `GlobalAlloc` implementation and tracks current and maximum
+/// allocation statistics using interrupt-safe critical sections.
 pub struct TrackingAllocator<A: GlobalAlloc> {
 	pub inner: A,
 	current: Mutex<Cell<usize>>, // Current allocated bytes
@@ -50,19 +53,19 @@ impl<A: GlobalAlloc> TrackingAllocator<A> {
 		}
 	}
 
-	// Get current allocated bytes
+	/// Get current allocated bytes
 	pub fn current(&self) -> usize {
-		cortex_m::interrupt::free(|cs| self.current.borrow(cs).get())
+		critical_section::with(|cs| self.current.borrow(cs).get())
 	}
 
-	// Get maximum allocated bytes
+	/// Get maximum allocated bytes
 	pub fn max(&self) -> usize {
-		cortex_m::interrupt::free(|cs| self.max.borrow(cs).get())
+		critical_section::with(|cs| self.max.borrow(cs).get())
 	}
 
-	// Reset min and max to current value
+	/// Reset min and max to current value
 	pub fn reset_stats(&self) {
-		cortex_m::interrupt::free(|cs| {
+		critical_section::with(|cs| {
 			let current = self.current.borrow(cs).get();
 			self.max.borrow(cs).set(current);
 		});
@@ -74,7 +77,7 @@ unsafe impl<A: GlobalAlloc> GlobalAlloc for TrackingAllocator<A> {
 		let ptr = unsafe { self.inner.alloc(layout) };
 		if !ptr.is_null() {
 			let size = layout.size();
-			cortex_m::interrupt::free(|cs| {
+			critical_section::with(|cs| {
 				let new_current = self.current.borrow(cs).get() + size;
 				self.current.borrow(cs).set(new_current);
 				self.max
@@ -88,7 +91,7 @@ unsafe impl<A: GlobalAlloc> GlobalAlloc for TrackingAllocator<A> {
 	unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
 		if !ptr.is_null() {
 			let size = layout.size();
-			cortex_m::interrupt::free(|cs| {
+			critical_section::with(|cs| {
 				let new_current = self.current.borrow(cs).get().saturating_sub(size);
 				self.current.borrow(cs).set(new_current);
 			});
@@ -100,7 +103,7 @@ unsafe impl<A: GlobalAlloc> GlobalAlloc for TrackingAllocator<A> {
 		let old_size = layout.size();
 		let new_ptr = unsafe { self.inner.realloc(ptr, layout, new_size) };
 		if !new_ptr.is_null() && !ptr.is_null() {
-			cortex_m::interrupt::free(|cs| {
+			critical_section::with(|cs| {
 				let new_current = self.current.borrow(cs).get() - old_size + new_size;
 				self.current.borrow(cs).set(new_current);
 				self.max

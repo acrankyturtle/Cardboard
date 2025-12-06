@@ -23,7 +23,7 @@ internal class VirtualKeyDispatcher(
 {
 	private readonly object _inputLock = new();
 	private readonly VirtualKeyTrackers _trackers = new(deviceService);
-	private IReadOnlyCollection<VirtualKeyAssociation> _associations = [];
+	private volatile IReadOnlyList<VirtualKeyAssociation> _associations = [];
 	private IDisposable? _associationSubscription;
 	private IDisposable? _inputSubscription;
 

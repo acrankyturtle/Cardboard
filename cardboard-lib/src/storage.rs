@@ -92,32 +92,6 @@ pub trait BlockFlashExt: BlockFlash {
 
 impl<T: BlockFlash> BlockFlashExt for T {}
 
-// impl<'a> FlashMemory for PartitionedFlashMemory<'a> {
-// 	fn as_slice(&self) -> &'static [u8] {
-// 		let start = self.partition.start;
-// 		let end = start + self.partition.length;
-// 		&self.flash.as_slice()[start..end]
-// 	}
-
-// 	fn erase_all(&mut self) -> Result<(), &'static str> {
-// 		let start_block = self.partition.start / self.partition.erase_block_size;
-// 		let length_blocks = self.partition.length / self.partition.erase_block_size;
-// 		self.flash.erase(start_block, length_blocks)
-// 	}
-
-// 	fn write(&mut self, offset: usize, data: &[u8]) -> Result<(), &'static str> {
-// 		if offset + data.len() > self.partition.length {
-// 			return Err("Write exceeds flash partition length");
-// 		}
-// 		let start_block = (self.partition.start + offset) / self.partition.write_block_size;
-// 		self.flash.write(start_block, data)
-// 	}
-
-// 	fn length(&self) -> usize {
-// 		self.partition.length
-// 	}
-// }
-
 pub async fn load_settings_from_flash<F: BlockFlash, Settings>(
 	flash: &mut F,
 ) -> Result<Settings, &'static str>

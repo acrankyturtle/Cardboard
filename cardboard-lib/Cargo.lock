@@ -182,7 +182,7 @@ dependencies = [
  "async-trait",
  "bitflags 2.9.1",
  "bitset-core",
- "cortex-m",
+ "critical-section",
  "defmt 1.0.1",
  "defmt-test",
  "embassy-futures",

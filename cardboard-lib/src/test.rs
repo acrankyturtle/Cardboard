@@ -298,7 +298,8 @@ mod defmt_mock {
 	// Mock defmt logging backend
 	#[unsafe(no_mangle)]
 	pub unsafe extern "C" fn _defmt_write(_data: *const u8, len: usize) {
-		let slice = std::slice::from_raw_parts(_data, len);
+		// SAFETY: _data is provided by defmt and is valid for len bytes
+		let slice = unsafe { std::slice::from_raw_parts(_data, len) };
 		if let Ok(s) = std::str::from_utf8(slice) {
 			print!("{}", s); // Output to stdout
 		}

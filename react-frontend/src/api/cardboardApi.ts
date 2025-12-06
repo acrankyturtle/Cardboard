@@ -1,4 +1,4 @@
-const apiUrl = "http://localhost:7000/";
+const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:7000/";
 
 export const getAssetUrl = (key: string) => {
   return new URL(key, apiUrl).href;

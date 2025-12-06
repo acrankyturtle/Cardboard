@@ -8,9 +8,6 @@ import {
   DeviceLayers,
   DeviceMacro,
   DeviceProfile,
-  isLayerActionEvent,
-  isLayerClearEvent,
-  isLayerSetEvent,
   isTaggedDeviceLayer,
   KeyColor,
   TaggedDeviceLayer,
@@ -37,6 +34,7 @@ import {
   getMacroUsages,
   getSelectedKeyProfileLayers,
   getTaggedLayerName,
+  getTagsInProfile,
   getVirtualKeyId,
   insertLayer,
   newTaggedLayer,
@@ -120,29 +118,10 @@ const headerBarButtonClass = clsx(
 
 function TagsPanel({ className }: { className?: string }) {
   const { state, dispatch } = useEditDeviceContext();
-  const tags = useMemo(() => {
-    const tagsFromLayers = state.profile.keys.flatMap((k) =>
-      k.layers.layers.flatMap((l) => l.tags),
-    );
-
-    const tagsFromMacros = state.profile.macros.flatMap((m) =>
-      [m.startSequence, m.loopSequence, m.endSequence].flatMap((s) =>
-        s.actions
-          .map((a) => {
-            const actionEvent = a.actionEvent;
-            if (!isLayerActionEvent(actionEvent)) return null!;
-            if (isLayerSetEvent(actionEvent.layer))
-              return actionEvent.layer.set;
-            if (isLayerClearEvent(actionEvent.layer))
-              return actionEvent.layer.clear;
-            return null!;
-          })
-          .filter((a) => a),
-      ),
-    );
-
-    return [...new Set([...tagsFromLayers, ...tagsFromMacros])].sort();
-  }, [state]);
+  const tags = useMemo(
+    () => getTagsInProfile(state.profile),
+    [state.profile],
+  );
 
   const tagItems = useMemo(() => {
     return tags.map((t) => ({ label: t, value: t }));
@@ -426,7 +405,7 @@ function KeysPanel({
       : [];
 
     return [...physicalKeys, ...virtualKeys];
-  }, [device]);
+  }, [device, state, showPhysicalKeys, showVirtualKeys]);
 
   const selectedKey = useMemo(
     () =>
@@ -489,6 +468,7 @@ function BindingsPanel({ className }: { className?: string }) {
         : { label: "(unknown)", value: m, index: i };
     }) ?? [];
 
+  // TODO: implement drag-and-drop for macros
   // const { isOver, setNodeRef } = useDroppable({
   //   id: "macro",
   // });

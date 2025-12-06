@@ -10,10 +10,13 @@ import clsx from "clsx";
 import {
   ActionView,
   ConsumerControlIcon,
+  DebugIcon,
   KeyboardIcon,
   LayerIcon,
   MouseIcon,
 } from "./ActionView.tsx";
+
+const showDebugActions = import.meta.env.VITE_DEBUG_ACTIONS === "true";
 import { getButtonClassName } from "./Button.tsx";
 import {
   Menu,
@@ -114,42 +117,40 @@ export function SequenceEditor({
             sequence={value}
             setSequence={setValue}
           />
-          {value.actions.map((a, i) => {
-            return (
-              <>
-                <ActionView
-                  className="w-full overflow-hidden"
-                  action={a}
-                  setAction={
-                    editIndex === i
-                      ? (newAction) =>
-                          setValue({
-                            ...value,
-                            actions: [
-                              ...value.actions.slice(0, i),
-                              newAction,
-                              ...value.actions.slice(i + 1),
-                            ],
-                          })
-                      : undefined
-                  }
-                  onEdit={() => setEditIndex(editIndex !== i ? i : null)}
-                  onDelete={() =>
-                    setValue({
-                      ...value,
-                      actions: value.actions.filter((_, idx) => idx !== i),
-                    })
-                  }
-                />
-                <SmallInsertButton
-                  className={clsx("-my-0")}
-                  index={i + 1}
-                  sequence={value}
-                  setSequence={setValue}
-                />
-              </>
-            );
-          })}
+          {value.actions.map((a, i) => (
+            <Fragment key={i}>
+              <ActionView
+                className="w-full overflow-hidden"
+                action={a}
+                setAction={
+                  editIndex === i
+                    ? (newAction) =>
+                        setValue({
+                          ...value,
+                          actions: [
+                            ...value.actions.slice(0, i),
+                            newAction,
+                            ...value.actions.slice(i + 1),
+                          ],
+                        })
+                    : undefined
+                }
+                onEdit={() => setEditIndex(editIndex !== i ? i : null)}
+                onDelete={() =>
+                  setValue({
+                    ...value,
+                    actions: value.actions.filter((_, idx) => idx !== i),
+                  })
+                }
+              />
+              <SmallInsertButton
+                className={clsx("-my-0")}
+                index={i + 1}
+                sequence={value}
+                setSequence={setValue}
+              />
+            </Fragment>
+          ))}
         </div>
       ) : (
         <div className="flex grow flex-col items-center gap-1">
@@ -349,25 +350,27 @@ function InsertDropdown({
         sequence={sequence}
         setSequence={setSequence}
       />
-      {/*<InsertActionGroup*/}
-      {/*  header={*/}
-      {/*    <>*/}
-      {/*      <InsertActionGroupIcon>*/}
-      {/*        <DebugIcon />*/}
-      {/*      </InsertActionGroupIcon>*/}
-      {/*      <div>Debug</div>*/}
-      {/*    </>*/}
-      {/*  }*/}
-      {/*  items={[*/}
-      {/*    {*/}
-      {/*      render: <div>Log Message</div>,*/}
-      {/*      newAction: { debug: { log: "" } },*/}
-      {/*    },*/}
-      {/*  ]}*/}
-      {/*  index={index}*/}
-      {/*  sequence={sequence}*/}
-      {/*  setSequence={setSequence}*/}
-      {/*/>*/}
+      {showDebugActions && (
+        <InsertActionGroup
+          header={
+            <>
+              <InsertActionGroupIcon>
+                <DebugIcon />
+              </InsertActionGroupIcon>
+              <div>Debug</div>
+            </>
+          }
+          items={[
+            {
+              render: <div>Log Message</div>,
+              newAction: { debug: { log: "" } },
+            },
+          ]}
+          index={index}
+          sequence={sequence}
+          setSequence={setSequence}
+        />
+      )}
     </MenuItems>
   );
 }

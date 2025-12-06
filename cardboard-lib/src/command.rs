@@ -75,7 +75,7 @@ impl ChangeProfileCommand {
 	) -> Result<(), (u8, &'static str)> {
 		let len = ctx.serial_rx().read_u16().await.ok_or_else(|| {
 			error!("Failed to read profile length");
-			(0x10u8, "Failed to ")
+			(0x10u8, "Failed to read profile length")
 		})? as usize;
 
 		debug!("Profile length: {}", len);
@@ -112,7 +112,7 @@ impl ChangeProfileCommand {
 			.await
 			.map_err(|e| {
 				error!("Failed to load profile from flash storage: {:?}", e);
-				(0x2C, "Failed to load profile from flash storage")
+				(0x2Cu8, "Failed to load profile from flash storage")
 			})?;
 
 		// signal profile changed

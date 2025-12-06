@@ -28,10 +28,7 @@ public class AsyncDispatchSubject<T> : ISubject<T>, IDisposable
 	public void OnNext(T value)
 	{
 		if (!_cancellation.Token.IsCancellationRequested)
-			_ = Task.Run(async () =>
-			{
-				await _writer.WriteAsync(value, _cancellation.Token);
-			});
+			_ = _writer.TryWrite(value);
 	}
 
 	public void OnError(Exception error)

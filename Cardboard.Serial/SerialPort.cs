@@ -22,9 +22,7 @@ internal class LogSemaphoreSlim(SemaphoreSlim impl, ILogger logger) : IDisposabl
 	{
 		var result = await impl.WaitAsync(timeout, cancellationToken);
 
-		if (result)
-			logger.LogInformation("Acquired semaphore.");
-		else
+		if (!result)
 			logger.LogWarning("Timeout waiting for semaphore.");
 
 		return result;
@@ -33,7 +31,6 @@ internal class LogSemaphoreSlim(SemaphoreSlim impl, ILogger logger) : IDisposabl
 	public void Release()
 	{
 		impl.Release();
-		logger.LogInformation("Released semaphore.");
 	}
 
 	public void Dispose()

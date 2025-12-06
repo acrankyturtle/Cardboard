@@ -45,7 +45,7 @@ public static class Tags
 	}
 
 	private static async Task<Ok<GetTagAssociationsResponse>> GetTagAssociations(
-		IAssociationRepository associationRepository,
+		[FromServices] IAssociationRepository associationRepository,
 		CancellationToken cancellationToken
 	) =>
 		TypedResults.Ok(
@@ -59,7 +59,7 @@ public static class Tags
 
 	private static async Task<Results<Ok<GetTagAssociationResponse>, NotFound>> GetTagAssociation(
 		[FromRoute] ApplicationAssociationId id,
-		IAssociationRepository associationRepository,
+		[FromServices] IAssociationRepository associationRepository,
 		CancellationToken cancellationToken
 	) =>
 		await associationRepository.GetAssociation(id, cancellationToken) is { } tagAssociation
@@ -68,7 +68,7 @@ public static class Tags
 
 	private static async Task<Ok<CreateTagAssociationResponse>> CreateTagAssociation(
 		[FromBody] ApplicationAssociationData data,
-		IAssociationRepository associationRepository,
+		[FromServices] IAssociationRepository associationRepository,
 		CancellationToken cancellationToken
 	)
 	{
@@ -79,7 +79,7 @@ public static class Tags
 	private static async Task<Results<NoContent, NotFound>> UpdateTagAssociation(
 		[FromRoute] ApplicationAssociationId id,
 		[FromBody] ApplicationAssociationData data,
-		IAssociationRepository associationRepository,
+		[FromServices] IAssociationRepository associationRepository,
 		CancellationToken cancellationToken
 	) =>
 		await associationRepository.UpdateAssociation(id, data, cancellationToken)
@@ -88,7 +88,7 @@ public static class Tags
 
 	private static async Task<Results<NoContent, NotFound>> DeleteTagAssociation(
 		[FromRoute] ApplicationAssociationId id,
-		IAssociationRepository associationRepository,
+		[FromServices] IAssociationRepository associationRepository,
 		CancellationToken cancellationToken
 	) =>
 		await associationRepository.DeleteAssociation(id, cancellationToken)

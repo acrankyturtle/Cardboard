@@ -20,6 +20,7 @@ use cardboard::{
 		flash::{init_flash, FLASH_SIZE},
 		usb::{init_usb, init_usb_no_mouse, usb_task, USB_SERIAL_PACKET_SIZE},
 	},
+	StaticCell,
 };
 use cardboard_lib::{
 	command::{
@@ -92,23 +93,16 @@ static VIRTUAL_KEY_SIGNAL: Signal<[u8; VIRTUAL_KEY_BITFIELD_SIZE]> = Signal::new
 type Matrix = KeyMatrix<ROWS, COLS>;
 
 type ContextFlashMemory = EmbassyFlashMemory<'static, FLASH_SIZE>;
-type ContextProfileSignal = Signal<KeyboardProfile>;
 type ContextSerialReader =
 	BufferedReader<EmbassySerialPacketReader<'static, USB_SERIAL_PACKET_SIZE>>;
 type ContextSerialWriter = EmbassySerialPacketWriter<'static, USB_SERIAL_PACKET_SIZE>;
-type ContextExternalTagsSignal = Signal<Vec<LayerTag>>;
-type ContextVirtualKeySignal = Signal<[u8; VIRTUAL_KEY_BITFIELD_SIZE]>;
 
 type CommandContext = Context<
 	ContextFlashMemory,
-	ContextProfileSignal,
 	ContextSerialReader,
 	ContextSerialWriter,
-	ContextExternalTagsSignal,
 	VIRTUAL_KEY_BITFIELD_SIZE,
-	ContextVirtualKeySignal,
 	Heap,
-	EmbassyRp2040RebootToBootloader,
 	HeaplessSpscErrorLog<32>,
 	EmbassyTickClock,
 >;
@@ -180,23 +174,19 @@ async fn main(spawner: Spawner) -> () {
 			mouse_enabled: true,
 		});
 
-	let device_info = unsafe {
-		static mut INFO: MaybeUninit<DeviceInfo> = MaybeUninit::uninit();
-		INFO.write(DeviceInfo {
-			id: device_id,
-			name: "Cardboard",
-			manufacturer: "cranky",
-			r#type: DeviceTypeId::new(Uuid::from_u128(0x0407db48_ca74_5783_9b11_489637b7c615)),
-			variant: None,
-			version: DeviceVersion::new(0x00000001),
-			commands: cmds.iter().map(|cmd| cmd.info()).collect(),
-		})
-	};
+	static DEVICE_INFO: StaticCell<DeviceInfo> = StaticCell::new();
+	let device_info = DEVICE_INFO.init(DeviceInfo {
+		id: device_id,
+		name: "Cardboard",
+		manufacturer: "cranky",
+		r#type: DeviceTypeId::new(Uuid::from_u128(0x0407db48_ca74_5783_9b11_489637b7c615)),
+		variant: None,
+		version: DeviceVersion::new(0x00000001),
+		commands: cmds.iter().map(|cmd| cmd.info()).collect(),
+	});
 
-	let clock = unsafe {
-		static mut CLOCK: MaybeUninit<EmbassyTickClock> = MaybeUninit::uninit();
-		CLOCK.write(EmbassyTickClock {})
-	};
+	static CLOCK: StaticCell<EmbassyTickClock> = StaticCell::new();
+	let clock = CLOCK.init(EmbassyTickClock {});
 
 	let tick_interval = 1.millis();
 
@@ -242,10 +232,8 @@ async fn main(spawner: Spawner) -> () {
 		signal: &HID_SIGNAL,
 	};
 
-	let bootloader = unsafe {
-		static mut BOOTLOADER: MaybeUninit<EmbassyRp2040RebootToBootloader> = MaybeUninit::uninit();
-		BOOTLOADER.write(EmbassyRp2040RebootToBootloader {})
-	};
+	static BOOTLOADER: StaticCell<EmbassyRp2040RebootToBootloader> = StaticCell::new();
+	let bootloader = BOOTLOADER.init(EmbassyRp2040RebootToBootloader {});
 
 	let serial_number = get_serial_number(&device_id);
 

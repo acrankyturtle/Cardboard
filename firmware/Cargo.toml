@@ -45,6 +45,7 @@ embedded-hal-bus = { version = "0.1", features = ["async"] }
 embedded-io-async = { version = "0.6.1", features = ["defmt-03"] }
 embedded-storage = { version = "0.3" }
 portable-atomic = { version = "1.11.0", features = ["critical-section"] }
+static_cell = "2.1"
 
 [features]
 reboot-on-panic = []

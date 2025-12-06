@@ -8,6 +8,7 @@ use crate::profile::*;
 use crate::time::Duration;
 use alloc::vec::Vec;
 use bitset_core::BitSet;
+use defmt::warn;
 use fugit::ExtU64;
 
 pub struct KeyboardState<'a> {
@@ -66,7 +67,9 @@ impl<'a> KeyboardState<'a> {
 		let num_keys = self.virtual_keys.len().min(num_bits);
 		for i in 0..num_keys {
 			let key = &mut self.virtual_keys[i];
-			let bit_index = to_bitset_index(i, num_bits);
+			let Some(bit_index) = to_bitset_index(i, num_bits) else {
+				continue;
+			};
 			let state = bits.bit_test(bit_index);
 			match key.update(state) {
 				Some(true) => {
@@ -91,9 +94,12 @@ impl<'a> KeyboardState<'a> {
 		key.current_layer()
 			.macros
 			.iter()
-			.map(|i| {
-				let macro_ = macros.get(i.get_index()).unwrap();
-				MacroState::from(macro_, key)
+			.filter_map(|i| match macros.get(i.get_index()) {
+				Some(macro_) => Some(MacroState::from(macro_, key)),
+				None => {
+					warn!("Macro index {:?} not found in profile macros.", i);
+					None
+				}
 			})
 			.collect()
 	}
@@ -424,8 +430,8 @@ enum TriggerState {
 }
 
 pub struct TagList {
-	internal: Vec<LayerTag>,
-	external: Vec<LayerTag>,
+	pub(crate) internal: Vec<LayerTag>,
+	pub(crate) external: Vec<LayerTag>,
 }
 
 impl TagList {
@@ -470,16 +476,13 @@ impl TagList {
 }
 
 // bit 0 in bitset_core = xxxxxxx1...(other bytes), whereas vk 0 is 1xxxxxxx...(other bytes)
-pub fn to_bitset_index(vk_index: usize, total_bits: usize) -> usize {
+pub(crate) fn to_bitset_index(vk_index: usize, total_bits: usize) -> Option<usize> {
 	if vk_index >= total_bits {
-		panic!(
-			"Domain index {} out of bounds for bitset with {} bits",
-			vk_index, total_bits
-		);
+		return None;
 	}
 	let byte = vk_index / 8;
 	let bit = 7 - (vk_index % 8);
-	byte * 8 + bit
+	Some(byte * 8 + bit)
 }
 
 #[cfg(test)]

@@ -114,7 +114,9 @@ export function ListBox<TItem extends ListBoxItem>({
       <ul
         ref={listRef}
         role="listbox"
-        aria-activedescendant={selected ? `item-${selected}` : undefined}
+        aria-activedescendant={
+          selected && !isMultiSelect ? `item-${selected.value}` : undefined
+        }
         tabIndex={0}
         onKeyDown={handleKeyDown}
       >

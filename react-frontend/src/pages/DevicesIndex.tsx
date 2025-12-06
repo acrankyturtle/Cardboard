@@ -222,8 +222,11 @@ function ErrorView({ errors }: { errors: readonly DeviceStatusError[] }) {
           "flex h-56 w-full flex-col gap-1 overflow-y-auto",
         )}
       >
-        {errors.map((e) => (
-          <div className="flex items-center gap-4 rounded border border-stone-900 bg-stone-700 p-2 shadow">
+        {errors.map((e, i) => (
+          <div
+            key={i}
+            className="flex items-center gap-4 rounded border border-stone-900 bg-stone-700 p-2 shadow"
+          >
             <div>{e.timestamp}</div>
             <div>{e.message}</div>
           </div>
@@ -233,7 +236,7 @@ function ErrorView({ errors }: { errors: readonly DeviceStatusError[] }) {
   );
 }
 
-function EditDeviceView({}: {}) {
+function EditDeviceView() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -331,21 +334,54 @@ function DataProvider({
 }) {
   const [device, setDevice] = useState<DeviceDetails | undefined>(undefined);
   const [profile, setProfile] = useState<DeviceProfile | undefined>(undefined);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let canceled = false;
-    getDeviceDetails(deviceId).then((d) => {
-      if (canceled) return;
-      setDevice(d);
-    });
-    getDeviceProfile(deviceId).then((p) => {
-      if (canceled) return;
-      setProfile(p);
-    });
+    setError(null);
+    setDevice(undefined);
+    setProfile(undefined);
+
+    getDeviceDetails(deviceId)
+      .then((d) => {
+        if (canceled) return;
+        setDevice(d);
+      })
+      .catch((e) => {
+        if (canceled) return;
+        setError(e instanceof Error ? e.message : "Failed to load device");
+      });
+
+    getDeviceProfile(deviceId)
+      .then((p) => {
+        if (canceled) return;
+        setProfile(p);
+      })
+      .catch((e) => {
+        if (canceled) return;
+        setError(e instanceof Error ? e.message : "Failed to load profile");
+      });
+
     return () => {
       canceled = true;
     };
   }, [deviceId]);
 
-  return device && profile ? children(device, profile) : <></>;
+  if (error) {
+    return (
+      <div className="flex size-full flex-col items-center justify-center gap-4 text-stone-400">
+        <div className="text-red-400">Error: {error}</div>
+      </div>
+    );
+  }
+
+  if (!device || !profile) {
+    return (
+      <div className="flex size-full items-center justify-center">
+        <LoadingIndicator className="size-12 text-stone-400" />
+      </div>
+    );
+  }
+
+  return <>{children(device, profile)}</>;
 }
