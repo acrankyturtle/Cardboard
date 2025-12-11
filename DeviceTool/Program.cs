@@ -27,6 +27,8 @@ var name = SelectName();
 
 var (profileName, profile) = SelectProfile();
 
+var settings = SelectSettings();
+
 using var reader = new BinaryReader(new MemoryStream([0xFF]));
 var writerBuffer = new MemoryStream();
 await using var writer = new BinaryWriter(writerBuffer);
@@ -57,8 +59,34 @@ Console.WriteLine(
 	$"Sending profile `{profileName}` ({length} bytes) to device `{device.Name}` ({device.Id}) with name `{name}`..."
 );
 
-var result = await deviceService.SendCommand(new ChangeProfileCommand(), profile, device.Id);
-Console.WriteLine($"Result: {result.Match(_ => "Success", ex => ex.Message)}");
+var profileResult = await deviceService.SendCommand(new ChangeProfileCommand(), profile, device.Id);
+profileResult.Match(
+	_ => Console.WriteLine("Profile sent successfully."),
+	ex =>
+	{
+		Console.Write("Profile failed to send: ");
+		Console.WriteLine(ex.Message);
+	}
+);
+
+if (!profileResult.IsSuccess || settings == null)
+	return;
+
+Console.WriteLine($"Sending settings to device `{device.Name}` ({device.Id})... ");
+
+var settingsResult = await deviceService.SendCommand(new UpdateSettingsCommand(), settings, device.Id);
+settingsResult.Match(
+	_ => Console.WriteLine("Settings sent successfully."),
+	ex =>
+	{
+		Console.Write("Settings failed to send: ");
+		Console.WriteLine(ex.Message);
+	}
+);
+
+var rebootResult = await deviceService.SendCommand(new RebootCommand(), new(), device.Id);
+if (!rebootResult.IsSuccess)
+	Console.WriteLine("Failed to reboot device. Settings may not take effect` until device is rebooted.");
 
 return;
 
@@ -113,6 +141,15 @@ string SelectName()
 	Console.Write("Enter device name (optional, leave blank for default): ");
 	var input = Console.ReadLine();
 	return !string.IsNullOrWhiteSpace(input) ? input : "Cardboard Device";
+}
+
+DeviceSettings? SelectSettings()
+{
+	Console.Write("Enable mouse input? (y/n) leave blank for default: ");
+	var input = Console.ReadLine();
+	return !string.IsNullOrWhiteSpace(input)
+		? new() { MouseEnabled = string.Equals(input, "y", StringComparison.OrdinalIgnoreCase) }
+		: null;
 }
 
 static bool TryReadIndex(out int index, int count)
