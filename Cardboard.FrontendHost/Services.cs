@@ -1,12 +1,8 @@
 ﻿using Cardboard.HttpApi;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 
 namespace Cardboard.FrontendHost;
 
@@ -14,25 +10,58 @@ public static partial class Services
 {
 	public static IServiceCollection AddFrontendHosting(this IServiceCollection services)
 	{
-		// services.AddSingleton<IReactHostService, ReactHostService>();
-		// services
-		// 	.AddHttpClient("frontend")
-		// 	.ConfigurePrimaryHttpMessageHandler(() =>
-		// 		new HttpClientHandler
-		// 		{
-		// 			AllowAutoRedirect = false,
-		// 			UseCookies = false,
-		// 			UseProxy = false,
-		// 		}
-		// 	);
-
 		return services;
 	}
 
-	// public static IServiceCollection ConfigureFrontendHost(
-	// 	this IServiceCollection services,
-	// 	IConfigurationSection configuration
-	// ) => services.Configure<ReactHostConfiguration>(configuration);
+	/// <summary>
+	/// Adds middleware to block requests from external origins.
+	/// Prevents malicious websites from making requests to the local API via the browser.
+	/// </summary>
+	public static IApplicationBuilder UseLocalOriginValidation(this IApplicationBuilder app)
+	{
+		app.Use(async (context, next) =>
+		{
+			var origin = context.Request.Headers.Origin.ToString();
+
+			// If there's an Origin header, validate it's from localhost
+			if (!string.IsNullOrEmpty(origin))
+			{
+				if (!IsLocalOrigin(origin))
+				{
+					context.Response.StatusCode = StatusCodes.Status403Forbidden;
+					return;
+				}
+			}
+
+			// Also check Referer for additional protection
+			var referer = context.Request.Headers.Referer.ToString();
+			if (!string.IsNullOrEmpty(referer))
+			{
+				if (!IsLocalOrigin(referer))
+				{
+					context.Response.StatusCode = StatusCodes.Status403Forbidden;
+					return;
+				}
+			}
+
+			await next();
+		});
+
+		return app;
+	}
+
+	private static bool IsLocalOrigin(string origin)
+	{
+		if (string.IsNullOrEmpty(origin))
+			return true;
+
+		// Parse and validate the origin
+		if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+			return false;
+
+		var host = uri.Host.ToLowerInvariant();
+		return host is "localhost" or "127.0.0.1";
+	}
 
 	public static IEndpointRouteBuilder MapFrontendApi(this IEndpointRouteBuilder builder)
 	{
@@ -42,55 +71,44 @@ public static partial class Services
 		api.MapTagRepositoryEndpoints();
 		api.MapSchemaEndpoints();
 
-		// builder.MapFallback("/{**path}", FallbackToReact);
-
 		return builder;
 	}
 
-	// private static async Task<Results<ContentHttpResult, ProblemHttpResult, NotFound>> FallbackToReact(
-	// 	string? path,
-	// 	[FromServices] IReactHostService reactService,
-	// 	[FromServices] IHttpClientFactory httpClientFactory,
-	// 	[FromServices] IOptions<ReactHostConfiguration> configuration
-	// )
-	// {
-	// 	// normalize path
-	// 	path = path?.TrimStart('/') ?? "";
-	//
-	// 	if (path.StartsWith("api/", StringComparison.OrdinalIgnoreCase))
-	// 		// don't proxy API requests
-	// 		return TypedResults.NotFound();
-	//
-	// 	await reactService.EnsureStartedAsync();
-	//
-	// 	using var httpClient = httpClientFactory.CreateClient();
-	// 	httpClient.Timeout = TimeSpan.FromSeconds(30);
-	//
-	// 	var port = configuration.Value.Port;
-	//
-	// 	try
-	// 	{
-	// 		var targetUrl = new UriBuilder
-	// 		{
-	// 			Scheme = "http",
-	// 			Host = "localhost",
-	// 			Port = port,
-	// 			Path = path,
-	// 		}.ToString();
-	//
-	// 		var response = await httpClient.GetAsync(targetUrl);
-	// 		var content = await response.Content.ReadAsStringAsync();
-	// 		var contentType = response.Content.Headers.ContentType?.ToString() ?? "text/html";
-	//
-	// 		return TypedResults.Content(content, contentType);
-	// 	}
-	// 	catch (HttpRequestException ex)
-	// 	{
-	// 		return TypedResults.Problem($"Failed to reach React server: {ex.Message}", statusCode: 503);
-	// 	}
-	// 	catch (Exception ex)
-	// 	{
-	// 		return TypedResults.Problem($"Failed to proxy request: {ex.Message}");
-	// 	}
-	// }
+	/// <summary>
+	/// Configures the application to serve the React SPA from wwwroot.
+	/// This should only be called in Release/Production mode.
+	/// </summary>
+	public static IApplicationBuilder UseSpaStaticFiles(this IApplicationBuilder app)
+	{
+		// SPA fallback: rewrite non-file, non-API requests to index.html before static files middleware
+		app.Use(
+			async (context, next) =>
+			{
+				var path = context.Request.Path.Value ?? "";
+
+				// Skip API routes
+				if (path.StartsWith("/api", StringComparison.OrdinalIgnoreCase))
+				{
+					await next();
+					return;
+				}
+
+				// If the path has a file extension, let static files handle it
+				if (Path.HasExtension(path))
+				{
+					await next();
+					return;
+				}
+
+				// For SPA routes (no extension, not API), rewrite to index.html
+				context.Request.Path = "/index.html";
+				await next();
+			}
+		);
+
+		// Serve static files from wwwroot
+		app.UseStaticFiles();
+
+		return app;
+	}
 }

@@ -104,6 +104,9 @@ if (builder.Environment.IsDevelopment())
 
 var app = builder.Build();
 
+// Block requests from external origins (prevents malicious websites from accessing the API)
+app.UseLocalOriginValidation();
+
 if (app.Environment.IsDevelopment())
 {
 	app.UseSwagger();
@@ -113,10 +116,13 @@ if (app.Environment.IsDevelopment())
 	});
 
 	app.UseCors("AllowReactApp");
+	app.UseStaticFiles();
 }
-
-// app.UseHttpsRedirection();
-app.UseStaticFiles();
+else
+{
+	// In Release mode, serve the React SPA from wwwroot with SPA fallback routing
+	app.UseSpaStaticFiles();
+}
 
 app.MapFrontendApi();
 
