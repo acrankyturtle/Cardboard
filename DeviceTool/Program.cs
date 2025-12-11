@@ -1,12 +1,9 @@
-﻿using System.Text.Json;
-using Cardboard.Device;
+﻿using Cardboard.Device;
 using Cardboard.Services;
 using Cardboard.Windows;
 using DeviceTool;
-using Microsoft.AspNetCore.Http.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
 
 var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddInitialization().AddDeviceServices().AddWindowsSerialPort().AddWindowsService();
@@ -29,26 +26,22 @@ var (profileName, profile) = SelectProfile();
 
 var settings = SelectSettings();
 
-using var reader = new BinaryReader(new MemoryStream([0xFF]));
-var writerBuffer = new MemoryStream();
-await using var writer = new BinaryWriter(writerBuffer);
-var fakeCommandStream = new FakeCommandStream(reader, writer);
-var cmd = new ChangeProfileCommand();
-cmd.Execute(profile, fakeCommandStream);
-writer.Flush();
-
-var length = writerBuffer.Length;
-
 if (device == null)
 {
-	var jsonOptions = host.Services.GetRequiredService<IOptions<JsonOptions>>();
-	var serializerOptions = jsonOptions.Value.SerializerOptions;
-	var json = JsonSerializer.Serialize(profile, serializerOptions);
-
 	var fileName = Path.Combine(
 		Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
 		"_profile_temp.bin"
 	);
+
+	using var reader = new BinaryReader(new MemoryStream([0xFF]));
+	var writerBuffer = new MemoryStream();
+	await using var writer = new BinaryWriter(writerBuffer);
+	var fakeCommandStream = new FakeCommandStream(reader, writer);
+	var profileCommand = new ChangeProfileCommand();
+	profileCommand.Execute(profile, fakeCommandStream);
+	writer.Flush();
+
+	var length = writerBuffer.Length;
 
 	File.WriteAllBytes(fileName, writerBuffer.GetBuffer().AsSpan(0, (int)length));
 	Console.WriteLine($"Wrote profile `{profileName}` ({length} bytes) to file `{fileName}`.");
@@ -56,7 +49,7 @@ if (device == null)
 }
 
 Console.WriteLine(
-	$"Sending profile `{profileName}` ({length} bytes) to device `{device.Name}` ({device.Id}) with name `{name}`..."
+	$"Sending profile `{profileName}` to device `{device.Name}` ({device.Id}) with name `{name}`... "
 );
 
 var profileResult = await deviceService.SendCommand(new ChangeProfileCommand(), profile, device.Id);
@@ -90,27 +83,6 @@ if (!rebootResult.IsSuccess)
 
 return;
 
-(string ProfileName, DeviceProfile Profile) SelectProfile()
-{
-	while (true)
-	{
-		Console.WriteLine("Select a profile:");
-
-		for (var i = 0; i < profiles.Count; i++)
-			Console.WriteLine($"{i + 1}: {profiles[i].Name}");
-
-		Console.WriteLine();
-		Console.Write("Enter profile number: ");
-
-		if (!TryReadIndex(out var index, profiles.Count))
-			continue;
-
-		var selected = profiles[index];
-		var idGenerator = new IdGenerator(100000, 200000);
-		return (selected.Name, selected.Builder.Build(device?.Id ?? DeviceId.Empty, name, idGenerator));
-	}
-}
-
 static async Task<DeviceInfo?> SelectDevice(IDeviceService deviceService)
 {
 	while (true)
@@ -141,6 +113,27 @@ string SelectName()
 	Console.Write("Enter device name (optional, leave blank for default): ");
 	var input = Console.ReadLine();
 	return !string.IsNullOrWhiteSpace(input) ? input : "Cardboard Device";
+}
+
+(string ProfileName, DeviceProfile Profile) SelectProfile()
+{
+	while (true)
+	{
+		Console.WriteLine("Select a profile:");
+
+		for (var i = 0; i < profiles.Count; i++)
+			Console.WriteLine($"{i + 1}: {profiles[i].Name}");
+
+		Console.WriteLine();
+		Console.Write("Enter profile number: ");
+
+		if (!TryReadIndex(out var index, profiles.Count))
+			continue;
+
+		var selected = profiles[index];
+		var idGenerator = new IdGenerator(100000, 200000);
+		return (selected.Name, selected.Builder.Build(device?.Id ?? DeviceId.Empty, name, idGenerator));
+	}
 }
 
 DeviceSettings? SelectSettings()
