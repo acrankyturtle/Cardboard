@@ -36,7 +36,7 @@ file class TrayIconService(
 
 	public Task StartAsync(CancellationToken cancellationToken)
 	{
-		_notifyIcon = windowsService.Invoke(_ =>
+		_notifyIcon = windowsService.Invoke(__ =>
 		{
 			var notifyIcon = new NotifyIcon
 			{
@@ -49,6 +49,10 @@ file class TrayIconService(
 			contextMenu.Items.Add("Open", null, (_, _) => frontendService.Open());
 			contextMenu.Items.Add("Refresh", null, (_, _) => Reinitialize());
 			contextMenu.Items.Add("Exit", null, (_, _) => lifetime.StopApplication());
+
+			// force creation of the context menu's native window handle
+			// without this, the first right-click on the tray icon may not show the menu
+			_ = contextMenu.Handle;
 
 			notifyIcon.ContextMenuStrip = contextMenu;
 
