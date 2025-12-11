@@ -288,7 +288,7 @@ file sealed class DeviceRepository(
 			return UpdateDeviceProfileResult.NotFound;
 
 		var result = await deviceService.SendCommand(
-			new ChangeProfileCommand(),
+			new UpdateProfileCommand(),
 			deviceProfile,
 			deviceId,
 			cancellationToken
@@ -299,7 +299,7 @@ file sealed class DeviceRepository(
 
 		// try to restore the previous profile
 		var restoreResults = await deviceService.SendCommand(
-			new ChangeProfileCommand(),
+			new UpdateProfileCommand(),
 			previous,
 			d => d.Id == deviceId,
 			cancellationToken

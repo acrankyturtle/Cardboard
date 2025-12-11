@@ -1,7 +1,7 @@
 use crate::command::Command;
 use crate::context::{
-	ChangeProfileSignalRx, ContextErrorLog, ContextSerialRx, ExternalTagsSignalRx,
-	RebootToBootloader, VirtualKeySignalRx,
+	ContextErrorLog, ContextSerialRx, ExternalTagsSignalRx, RebootToBootloader,
+	UpdateProfileSignalRx, VirtualKeySignalRx,
 };
 use crate::error::{Error, ErrorLog};
 use crate::hid::ReportHid;
@@ -20,7 +20,7 @@ pub async fn keypad_task<
 	Clock: crate::time::Clock,
 	Matrix: UpdateMatrix,
 	Report: ReportHid,
-	ProfileChanged: ChangeProfileSignalRx + 'static,
+	ProfileChanged: UpdateProfileSignalRx + 'static,
 	ExternalTagsChanged: ExternalTagsSignalRx + 'static,
 	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
 	VirtualKeysChanged: VirtualKeySignalRx<VIRTUAL_KEY_BITFIELD_BYTES> + 'static,

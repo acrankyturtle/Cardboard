@@ -37,7 +37,7 @@ if (device == null)
 	var writerBuffer = new MemoryStream();
 	await using var writer = new BinaryWriter(writerBuffer);
 	var fakeCommandStream = new FakeCommandStream(reader, writer);
-	var profileCommand = new ChangeProfileCommand();
+	var profileCommand = new UpdateProfileCommand();
 	profileCommand.Execute(profile, fakeCommandStream);
 	writer.Flush();
 
@@ -52,7 +52,7 @@ Console.WriteLine(
 	$"Sending profile `{profileName}` to device `{device.Name}` ({device.Id}) with name `{name}`... "
 );
 
-var profileResult = await deviceService.SendCommand(new ChangeProfileCommand(), profile, device.Id);
+var profileResult = await deviceService.SendCommand(new UpdateProfileCommand(), profile, device.Id);
 profileResult.Match(
 	_ => Console.WriteLine("Profile sent successfully."),
 	ex =>

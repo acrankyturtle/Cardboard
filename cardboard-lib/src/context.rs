@@ -32,7 +32,7 @@ pub struct Context<
 	pub flash: Flash,
 	pub settings_partition: FlashPartition<Flash>,
 	pub profile_partition: FlashPartition<Flash>,
-	pub change_profile_signal: &'static dyn ChangeProfileSignalTx,
+	pub update_profile_signal: &'static dyn UpdateProfileSignalTx,
 	pub serial_rx: SerialRx,
 	pub serial_tx: SerialTx,
 	pub external_tags_signal: &'static dyn ExternalTagsSignalTx,
@@ -60,7 +60,7 @@ where
 		flash: Flash,
 		settings_partition: FlashPartition<Flash>,
 		profile_partition: FlashPartition<Flash>,
-		change_profile_signal: &'static dyn ChangeProfileSignalTx,
+		update_profile_signal: &'static dyn UpdateProfileSignalTx,
 		serial_rx: SerialRx,
 		serial_tx: SerialTx,
 		external_tags_signal: &'static dyn ExternalTagsSignalTx,
@@ -76,7 +76,7 @@ where
 			flash,
 			settings_partition,
 			profile_partition,
-			change_profile_signal,
+			update_profile_signal,
 			serial_rx,
 			serial_tx,
 			external_tags_signal,
@@ -117,9 +117,9 @@ pub trait ContextProfileFlash {
 	fn profile_flash(&mut self) -> PartitionedFlashMemory<Self::Flash>;
 }
 
-pub trait ContextChangeProfile {
-	type ChangeProfileSignal: ChangeProfileSignalTx + ?Sized;
-	fn profile_signal(&mut self) -> &Self::ChangeProfileSignal;
+pub trait ContextUpdateProfile {
+	type UpdateProfileSignal: UpdateProfileSignalTx + ?Sized;
+	fn profile_signal(&mut self) -> &Self::UpdateProfileSignal;
 }
 
 pub trait ContextTags {
@@ -238,7 +238,7 @@ where
 }
 
 impl<Flash, SerialRx, SerialTx, const VIRTUAL_KEY_BITFIELD_BYTES: usize, Allocator, Errors, Clock>
-	ContextChangeProfile
+	ContextUpdateProfile
 	for Context<Flash, SerialRx, SerialTx, VIRTUAL_KEY_BITFIELD_BYTES, Allocator, Errors, Clock>
 where
 	Flash: BlockFlash,
@@ -248,9 +248,9 @@ where
 	Errors: ErrorLog,
 	Clock: crate::time::Clock + 'static,
 {
-	type ChangeProfileSignal = dyn ChangeProfileSignalTx;
-	fn profile_signal(&mut self) -> &Self::ChangeProfileSignal {
-		self.change_profile_signal
+	type UpdateProfileSignal = dyn UpdateProfileSignalTx;
+	fn profile_signal(&mut self) -> &Self::UpdateProfileSignal {
+		self.update_profile_signal
 	}
 }
 
@@ -358,11 +358,11 @@ where
 
 // Signal traits for inter-task communication
 
-pub trait ChangeProfileSignalTx {
-	fn change_profile(&self, profile: KeyboardProfile);
+pub trait UpdateProfileSignalTx {
+	fn update_profile(&self, profile: KeyboardProfile);
 }
 
-pub trait ChangeProfileSignalRx {
+pub trait UpdateProfileSignalRx {
 	fn try_get_changed_profile(&self) -> Option<KeyboardProfile>;
 }
 

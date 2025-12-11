@@ -22,11 +22,11 @@ use alloc::boxed::Box;
 use alloc::vec::Vec;
 use uuid::uuid;
 
-use crate::context::{
-	ChangeProfileSignalTx, ContextChangeProfile, ContextDeviceInfo, ContextProfileFlash,
-	ContextSerialRx, ContextSerialTx, ContextTags, ContextVirtualKeys,
-};
 use crate::context::{ContextAllocator, ContextReboot};
+use crate::context::{
+	ContextDeviceInfo, ContextProfileFlash, ContextSerialRx, ContextSerialTx, ContextTags,
+	ContextUpdateProfile, ContextVirtualKeys, UpdateProfileSignalTx,
+};
 use crate::device::{CommandId, DeviceInfo};
 use crate::storage::load_profile_from_flash;
 use crate::stream::{ReadAsync, ReadAsyncExt, WriteAsync, WriteAsyncExt};
@@ -65,11 +65,11 @@ impl<Context: ContextDeviceInfo + ContextSerialTx> Command<Context> for Identify
 
 const SIZEOF_PROFILE_LENGTH: usize = 2; // size of u16
 
-pub struct ChangeProfileCommand;
+pub struct UpdateProfileCommand;
 
-impl ChangeProfileCommand {
+impl UpdateProfileCommand {
 	async fn try_execute<
-		Context: ContextSerialRx + ContextSerialTx + ContextProfileFlash + ContextChangeProfile,
+		Context: ContextSerialRx + ContextSerialTx + ContextProfileFlash + ContextUpdateProfile,
 	>(
 		ctx: &mut Context,
 	) -> Result<(), (u8, &'static str)> {
@@ -116,15 +116,15 @@ impl ChangeProfileCommand {
 			})?;
 
 		// signal profile changed
-		ctx.profile_signal().change_profile(profile);
+		ctx.profile_signal().update_profile(profile);
 
 		Ok(())
 	}
 }
 
 #[async_trait(?Send)]
-impl<Context: ContextSerialRx + ContextSerialTx + ContextProfileFlash + ContextChangeProfile>
-	Command<Context> for ChangeProfileCommand
+impl<Context: ContextSerialRx + ContextSerialTx + ContextProfileFlash + ContextUpdateProfile>
+	Command<Context> for UpdateProfileCommand
 {
 	fn info(&self) -> CommandInfo {
 		CommandInfo {

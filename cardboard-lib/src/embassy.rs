@@ -20,18 +20,18 @@ use crate::serial::{SerialDrain, SerialPacketReader, SerialPacketSender};
 use crate::storage::{BlockFlash, FlashPartition, PartitionedFlashMemory};
 use crate::time::{Clock, Duration};
 use crate::{
-	context::{ChangeProfileSignalRx, ChangeProfileSignalTx, ExternalTagsSignalTx},
+	context::{ExternalTagsSignalTx, UpdateProfileSignalRx, UpdateProfileSignalTx},
 	input::{ColPin, RowPin},
 	profile::{KeyboardProfile, LayerTag},
 };
 
-impl<M: RawMutex> ChangeProfileSignalTx for Signal<M, KeyboardProfile> {
-	fn change_profile(&self, profile: KeyboardProfile) {
+impl<M: RawMutex> UpdateProfileSignalTx for Signal<M, KeyboardProfile> {
+	fn update_profile(&self, profile: KeyboardProfile) {
 		self.signal(profile);
 	}
 }
 
-impl<M: RawMutex> ChangeProfileSignalRx for Signal<M, KeyboardProfile> {
+impl<M: RawMutex> UpdateProfileSignalRx for Signal<M, KeyboardProfile> {
 	fn try_get_changed_profile(&self) -> Option<KeyboardProfile> {
 		self.try_take()
 	}

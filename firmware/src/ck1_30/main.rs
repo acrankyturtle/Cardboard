@@ -24,7 +24,7 @@ use cardboard::{
 };
 use cardboard_lib::{
 	command::{
-		ChangeProfileCommand, Command, GetProfileCommand, GetSettingsCommand, GetStatusCommand,
+		UpdateProfileCommand, Command, GetProfileCommand, GetSettingsCommand, GetStatusCommand,
 		IdentifyCommand, RebootCommand, SetExternalTagsCommand, SetVirtualKeysCommand,
 		UpdateSettingsCommand,
 	},
@@ -117,7 +117,7 @@ async fn main(spawner: Spawner) -> () {
 	let cmds: Vec<Box<dyn Command<CommandContext>>> = vec![
 		// identify MUST be first
 		/* 0x00 */ Box::new(IdentifyCommand {}),
-		/* 0x01 */ Box::new(ChangeProfileCommand {}),
+		/* 0x01 */ Box::new(UpdateProfileCommand {}),
 		/* 0x02 */ Box::new(GetProfileCommand {}),
 		/* 0x03 */ Box::new(SetExternalTagsCommand {}),
 		/* 0x04 */ Box::new(RebootCommand {}),

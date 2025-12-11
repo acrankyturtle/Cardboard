@@ -104,7 +104,7 @@ internal class DeviceUpdate(IDeviceService deviceService) : IDeviceUpdater
 			if (deviceProfile is not null)
 			{
 				var restoreProfileResult = await deviceService.SendCommand(
-					new ChangeProfileCommand(),
+					new UpdateProfileCommand(),
 					deviceProfile,
 					deviceId,
 					cancellationToken

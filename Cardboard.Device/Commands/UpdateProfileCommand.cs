@@ -2,7 +2,7 @@ using Cranky;
 
 namespace Cardboard.Device;
 
-public sealed class ChangeProfileCommand : ICommand<DeviceProfile, Unit>
+public sealed class UpdateProfileCommand : ICommand<DeviceProfile, Unit>
 {
 	private static readonly CommandId _id = CommandId.Parse("45963fd8-73e2-50a0-ba69-69c3333dd8af");
 	public CommandId Id => _id;
