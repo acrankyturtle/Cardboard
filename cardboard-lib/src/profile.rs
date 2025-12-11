@@ -282,7 +282,7 @@ impl Readable for Action {
 	}
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum ActionEvent {
 	None,
 	Keyboard(KeyboardEvent),
@@ -417,8 +417,8 @@ impl Readable for Channel {
 	}
 }
 
-#[derive(Debug, PartialEq, Clone)]
-
+#[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(test, derive(Clone))]
 pub struct LayerTag(String);
 
 impl LayerTag {
@@ -432,15 +432,10 @@ impl Readable for LayerTag {
 	where
 		Self: Sized,
 	{
-		let str = match reader.read_string_u8().await {
-			Some(s) => s,
-			None => return Err("Failed to read LayerTag"),
-		};
-		// let str = reader
-		// 	.read_string_u8()
-		// 	.await
-		// 	.ok_or("Failed to read LayerTag")?;
-		Ok(LayerTag::new(str))
+		match reader.read_string_u8().await {
+			Some(s) => Ok(LayerTag::new(s)),
+			None => Err("Failed to read LayerTag"),
+		}
 	}
 }
 
@@ -737,7 +732,7 @@ impl Readable for ConsumerControlEvent {
 	}
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum LayerEvent {
 	Clear(LayerTag),
 	Set(LayerTag),
