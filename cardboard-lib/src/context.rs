@@ -38,6 +38,7 @@ pub struct Context<
 	pub external_tags_signal: &'static dyn ExternalTagsSignalTx,
 	pub virtual_keys_signal: &'static dyn VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES>,
 	pub allocator: &'static TrackingAllocator<Allocator>,
+	pub reboot: &'static mut dyn Reboot,
 	pub bootloader: &'static dyn RebootToBootloader,
 	pub errors: Errors,
 	pub clock: &'static Clock,
@@ -65,6 +66,7 @@ where
 		external_tags_signal: &'static dyn ExternalTagsSignalTx,
 		virtual_keys_signal: &'static dyn VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES>,
 		allocator: &'static TrackingAllocator<Allocator>,
+		reboot: &'static mut dyn Reboot,
 		bootloader: &'static dyn RebootToBootloader,
 		errors: Errors,
 		clock: &'static Clock,
@@ -80,6 +82,7 @@ where
 			external_tags_signal,
 			virtual_keys_signal,
 			allocator,
+			reboot,
 			bootloader,
 			errors,
 			clock,
@@ -132,7 +135,8 @@ pub trait ContextAllocator {
 	type A: GlobalAlloc;
 }
 
-pub trait ContextBootloader {
+pub trait ContextReboot {
+	fn reboot(&mut self) -> !;
 	fn reboot_to_bootloader(&mut self) -> !;
 }
 
@@ -300,7 +304,7 @@ where
 }
 
 impl<Flash, SerialRx, SerialTx, const VIRTUAL_KEY_BITFIELD_BYTES: usize, Allocator, Errors, Clock>
-	ContextBootloader
+	ContextReboot
 	for Context<Flash, SerialRx, SerialTx, VIRTUAL_KEY_BITFIELD_BYTES, Allocator, Errors, Clock>
 where
 	Flash: BlockFlash,
@@ -310,6 +314,10 @@ where
 	Errors: ErrorLog,
 	Clock: crate::time::Clock + 'static,
 {
+	fn reboot(&mut self) -> ! {
+		self.reboot.reboot()
+	}
+
 	fn reboot_to_bootloader(&mut self) -> ! {
 		self.bootloader.reboot_to_bootloader()
 	}
@@ -372,6 +380,10 @@ pub trait VirtualKeySignalTx<const SIZE: usize> {
 
 pub trait VirtualKeySignalRx<const SIZE: usize> {
 	fn try_get_virtual_keys(&self) -> Option<[u8; SIZE]>;
+}
+
+pub trait Reboot {
+	fn reboot(&mut self) -> !;
 }
 
 pub trait RebootToBootloader {

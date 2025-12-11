@@ -16,7 +16,7 @@ use alloc::{boxed::Box, vec::Vec};
 use cardboard::{
 	get_serial_number,
 	rp2040::{
-		bootloader::EmbassyRp2040RebootToBootloader,
+		bootloader::{EmbassyRp2040Reboot, EmbassyRp2040RebootToBootloader},
 		flash::{init_flash, FLASH_SIZE},
 		usb::{init_usb, init_usb_no_mouse, usb_task, USB_SERIAL_PACKET_SIZE},
 	},
@@ -24,9 +24,9 @@ use cardboard::{
 };
 use cardboard_lib::{
 	command::{
-		ChangeProfileCommand, Command, EnterBootloaderCommand, GetProfileCommand,
-		GetSettingsCommand, GetStatusCommand, IdentifyCommand, SetExternalTagsCommand,
-		SetVirtualKeysCommand, UpdateSettingsCommand,
+		ChangeProfileCommand, Command, GetProfileCommand, GetSettingsCommand, GetStatusCommand,
+		IdentifyCommand, RebootCommand, SetExternalTagsCommand, SetVirtualKeysCommand,
+		UpdateSettingsCommand,
 	},
 	context::Context,
 	device::{DeviceInfo, DeviceTypeId, DeviceVersion},
@@ -50,6 +50,7 @@ use embassy_rp::{
 	gpio::{Input, Level, Output, Pin, Pull},
 	peripherals::USB,
 	usb::Driver,
+	watchdog::Watchdog,
 };
 use embassy_usb::class::hid::HidWriter;
 use fugit::ExtU64;
@@ -119,7 +120,7 @@ async fn main(spawner: Spawner) -> () {
 		/* 0x01 */ Box::new(ChangeProfileCommand {}),
 		/* 0x02 */ Box::new(GetProfileCommand {}),
 		/* 0x03 */ Box::new(SetExternalTagsCommand {}),
-		/* 0x04 */ Box::new(EnterBootloaderCommand {}),
+		/* 0x04 */ Box::new(RebootCommand {}),
 		/* 0x05 */ Box::new(GetStatusCommand {}),
 		/* 0x06 */ Box::new(SetVirtualKeysCommand::<VIRTUAL_KEY_BITFIELD_SIZE> {}),
 		/* 0x07 */ Box::new(UpdateSettingsCommand {}),
@@ -232,6 +233,11 @@ async fn main(spawner: Spawner) -> () {
 		signal: &HID_SIGNAL,
 	};
 
+	let watchdog = Watchdog::new(p.WATCHDOG);
+
+	static REBOOT: StaticCell<EmbassyRp2040Reboot> = StaticCell::new();
+	let reboot = REBOOT.init(EmbassyRp2040Reboot { watchdog });
+
 	static BOOTLOADER: StaticCell<EmbassyRp2040RebootToBootloader> = StaticCell::new();
 	let bootloader = BOOTLOADER.init(EmbassyRp2040RebootToBootloader {});
 
@@ -289,6 +295,7 @@ async fn main(spawner: Spawner) -> () {
 		&EXTERNAL_TAGS_CHANGED_SIGNAL,
 		&VIRTUAL_KEY_SIGNAL,
 		&ALLOCATOR,
+		reboot,
 		bootloader,
 		error_log,
 		clock,

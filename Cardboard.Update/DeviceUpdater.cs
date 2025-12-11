@@ -74,8 +74,8 @@ internal class DeviceUpdate(IDeviceService deviceService) : IDeviceUpdater
 
 			// put device in bootloader mode
 			var bootloaderResult = await deviceService.SendCommand(
-				new EnterBootloaderCommand(),
-				new(),
+				new RebootCommand(),
+				new() { BootloaderMode = true },
 				deviceId,
 				cancellationToken
 			);

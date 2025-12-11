@@ -320,8 +320,8 @@ file sealed class DeviceRepository(
 	{
 		var result = (
 			await deviceService.SendCommand(
-				new EnterBootloaderCommand(),
-				new(),
+				new RebootCommand(),
+				new() { BootloaderMode = true },
 				d => d.Id == deviceId,
 				cancellationToken
 			)

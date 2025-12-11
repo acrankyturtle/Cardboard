@@ -26,7 +26,7 @@ use crate::context::{
 	ChangeProfileSignalTx, ContextChangeProfile, ContextDeviceInfo, ContextProfileFlash,
 	ContextSerialRx, ContextSerialTx, ContextTags, ContextVirtualKeys,
 };
-use crate::context::{ContextAllocator, ContextBootloader};
+use crate::context::{ContextAllocator, ContextReboot};
 use crate::device::{CommandId, DeviceInfo};
 use crate::storage::load_profile_from_flash;
 use crate::stream::{ReadAsync, ReadAsyncExt, WriteAsync, WriteAsyncExt};
@@ -215,10 +215,12 @@ impl<Context: ContextSerialRx + ContextSerialTx + ContextTags> Command<Context>
 	}
 }
 
-pub struct EnterBootloaderCommand;
+pub struct RebootCommand;
 
 #[async_trait(?Send)]
-impl<Context: ContextBootloader> Command<Context> for EnterBootloaderCommand {
+impl<Context: ContextReboot + ContextSerialRx + ContextSerialTx> Command<Context>
+	for RebootCommand
+{
 	fn info(&self) -> CommandInfo {
 		CommandInfo {
 			id: CommandId(uuid!("6dce0823-d199-5abb-a56f-a85cdba61842")),
@@ -227,7 +229,20 @@ impl<Context: ContextBootloader> Command<Context> for EnterBootloaderCommand {
 	}
 
 	async fn execute(&self, ctx: &mut Context) -> Result<(), &'static str> {
-		ctx.reboot_to_bootloader();
+		const MODE_REBOOT: u8 = 0x10;
+		const MODE_REBOOT_TO_BOOTLOADER: u8 = 0x20;
+
+		let mode = ctx
+			.serial_rx()
+			.read_u8()
+			.await
+			.ok_or("Failed to read reboot mode")?;
+
+		match mode {
+			MODE_REBOOT => ctx.reboot(),
+			MODE_REBOOT_TO_BOOTLOADER => ctx.reboot_to_bootloader(),
+			_ => Err("Invalid reboot mode"),
+		}
 	}
 }
 
