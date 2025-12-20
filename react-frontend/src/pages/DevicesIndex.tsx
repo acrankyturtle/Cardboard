@@ -167,6 +167,11 @@ function DeviceInfoDialog({ deviceId }: { deviceId: string | null }) {
                   {profile.virtualKeys.length}/{device.virtualKeyCount}
                 </StatValue>
                 <DialogDivider className="col-span-2 my-4" />
+                <StatName>Mouse</StatName>
+                <StatValue>
+                  {device.settings.isMouseEnabled ? "Enabled" : "Disabled"}
+                </StatValue>
+                <DialogDivider className="col-span-2 my-4" />
                 <StatName>Tick</StatName>
                 <StatValue>{device.status.tick} us</StatValue>
                 <StatName>Allocator</StatName>

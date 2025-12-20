@@ -128,6 +128,7 @@ export interface DeviceDetails {
   iconUrl?: string;
   version: number;
   latestVersion?: number;
+  settings: DeviceSettingsReport;
   status: DeviceStatusReport;
   commands: readonly CommandInfo[];
   keyMap: readonly KeyInfo[];
@@ -153,6 +154,11 @@ export enum KeyColor {
   Accent2 = "Accent2",
   Virtual = "Virtual",
 }
+
+export interface DeviceSettingsReport {
+  isMouseEnabled: boolean;
+}
+
 export interface DeviceStatusReport {
   tick: number;
   allocated: number;

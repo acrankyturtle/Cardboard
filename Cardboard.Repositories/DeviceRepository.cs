@@ -82,6 +82,8 @@ public sealed class DeviceDetails
 	public required uint Version { get; init; }
 	public required uint? LatestVersion { get; init; }
 
+	public required DeviceSettingsReport Settings { get; init; }
+
 	public required DeviceStatusReport Status { get; init; }
 
 	public required IReadOnlyCollection<CommandInfo> Commands { get; init; }
@@ -92,6 +94,7 @@ public sealed class DeviceDetails
 
 	public static DeviceDetails From(
 		DeviceInfo info,
+		DeviceSettings settings,
 		DeviceStatus status,
 		DeviceTypeInfo typeInfo,
 		uint? latestVersion
@@ -106,11 +109,17 @@ public sealed class DeviceDetails
 			IconUrl = typeInfo.IconUrl,
 			Version = info.Version,
 			LatestVersion = latestVersion,
+			Settings = new() { IsMouseEnabled = settings.MouseEnabled },
 			Status = DeviceStatusReport.From(status),
 			Commands = info.Commands,
 			KeyMap = typeInfo.KeyMap,
 			VirtualKeyCount = VirtualKeyHelper.GetVirtualKeyCount(info),
 		};
+}
+
+public sealed class DeviceSettingsReport
+{
+	public required bool IsMouseEnabled { get; init; }
 }
 
 public sealed class DeviceStatusReport
@@ -234,6 +243,18 @@ file sealed class DeviceRepository(
 			cancellationToken
 		);
 
+		var deviceSettings = (
+			await deviceService.SendCommand(new GetSettingsCommand(), new(), deviceId, cancellationToken)
+		).TryGetSuccess(out var settings)
+			? settings
+			: null;
+
+		if (deviceSettings is null)
+		{
+			_logger.LogError("Could not get settings for {DeviceId}", deviceId);
+			return null;
+		}
+
 		var deviceStatus = (
 			await deviceService.SendCommand(new GetStatusCommand(), new(), deviceId, cancellationToken)
 		).Match<DeviceStatus?>(
@@ -258,7 +279,7 @@ file sealed class DeviceRepository(
 
 		var deviceTypeInfo = GetDeviceTypeInfo(deviceInfo.Type);
 		var latestVersion = await latestVersionTask;
-		return DeviceDetails.From(deviceInfo, deviceStatus, deviceTypeInfo, latestVersion);
+		return DeviceDetails.From(deviceInfo, deviceSettings, deviceStatus, deviceTypeInfo, latestVersion);
 	}
 
 	public async Task<Profile?> GetDeviceProfile(
