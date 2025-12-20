@@ -257,19 +257,9 @@ file sealed class DeviceRepository(
 
 		var deviceStatus = (
 			await deviceService.SendCommand(new GetStatusCommand(), new(), deviceId, cancellationToken)
-		).Match<DeviceStatus?>(
-			x => x,
-			e =>
-			{
-				_logger.LogError(
-					e,
-					"Failed to get status for device {DeviceId}: {Message}",
-					deviceId,
-					e.Message
-				);
-				return null;
-			}
-		);
+		).TryGetSuccess(out var status)
+			? status
+			: null;
 
 		if (deviceStatus is null)
 		{

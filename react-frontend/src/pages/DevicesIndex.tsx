@@ -125,8 +125,12 @@ function DeviceInfoDialog({ deviceId }: { deviceId: string | null }) {
                 <StatValue>{device.name}</StatValue>
                 <StatName>Type</StatName>
                 <StatValue>{device.type}</StatValue>
-                <StatName>Variant</StatName>
-                <StatValue>{device.variant}</StatValue>
+                {device.variant !== undefined && (
+                  <>
+                    <StatName>Variant</StatName>
+                    <StatValue>{device.variant}</StatValue>
+                  </>
+                )}
                 <StatName>Model</StatName>
                 <StatValue>{device.model}</StatValue>
                 <StatName>Firmware Version</StatName>
@@ -156,7 +160,6 @@ function DeviceInfoDialog({ deviceId }: { deviceId: string | null }) {
                     )}
                   </div>
                 </StatValue>
-
                 <DialogDivider className="col-span-2 my-4" />
                 <StatName>Keys</StatName>
                 <StatValue>{profile.keys.length}</StatValue>
