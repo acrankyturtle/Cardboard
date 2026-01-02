@@ -1,32 +1,9 @@
-import {
-  Action,
-  ActionEvent,
-  ConsumerControlEvent,
-  KeyboardKey,
-  MouseButton,
-  Sequence,
-} from "../api/devices.ts";
+import { Sequence } from "../api/devices.ts";
 import clsx from "clsx";
-import {
-  ActionView,
-  ConsumerControlIcon,
-  DebugIcon,
-  KeyboardIcon,
-  LayerIcon,
-  MouseIcon,
-} from "./ActionView.tsx";
-
-const showDebugActions = import.meta.env.VITE_DEBUG_ACTIONS === "true";
+import { ActionView } from "./ActionView.tsx";
+import { ActionTypeMenu } from "./ActionTypeMenu.tsx";
 import { getButtonClassName } from "./Button.tsx";
-import {
-  Menu,
-  MenuButton,
-  MenuHeading,
-  MenuItem,
-  MenuItems,
-  MenuSection,
-} from "@headlessui/react";
-import { Fragment, ReactNode, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 
 export function SequenceEditor({
   className,
@@ -43,17 +20,30 @@ export function SequenceEditor({
 
   const [editIndex, setEditIndex] = useState<number | null>(null);
 
+  // handle clicks outside the ActionView being edited to exit edit mode
+  useEffect(() => {
+    if (editIndex === null) return;
+
+    const handleMouseDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      // don't exit if clicking inside the ActionView being edited
+      if (target.closest("[data-editing='true']")) return;
+      // don't exit if clicking inside an action type menu
+      if (target.closest("[data-action-type-menu]")) return;
+      setEditIndex(null);
+    };
+
+    document.addEventListener("mousedown", handleMouseDown, true);
+    return () =>
+      document.removeEventListener("mousedown", handleMouseDown, true);
+  }, [editIndex]);
+
   return (
     <div
       className={clsx(
         "flex flex-col overflow-x-clip overflow-y-auto rounded-md border border-stone-900 bg-stone-700 shadow-md shadow-black/25",
         className,
       )}
-      onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget)) {
-          setEditIndex(null);
-        }
-      }}
     >
       <div
         className={clsx(
@@ -210,257 +200,34 @@ function InsertButton({
   setSequence: (s: Sequence) => void;
 }) {
   return (
-    <Menu>
-      <MenuButton as={Fragment}>
-        {({ active }) => (
-          <div
-            className={clsx(
-              getButtonClassName({ variant: "ghost", isActive: active }),
-              className,
-            )}
-          >
-            <div className={iconClassName}>
-              <AddIcon />
-            </div>
+    <ActionTypeMenu
+      onSelect={(actionEvent) => {
+        const newSequence = {
+          ...sequence,
+          actions: [
+            ...sequence.actions.slice(0, index),
+            { predelayMs: 0, actionEvent },
+            ...sequence.actions.slice(index),
+          ],
+        };
+        setSequence(newSequence);
+      }}
+    >
+      {({ active }) => (
+        <div
+          className={clsx(
+            getButtonClassName({ variant: "ghost", isActive: active }),
+            className,
+          )}
+        >
+          <div className={iconClassName}>
+            <AddIcon />
           </div>
-        )}
-      </MenuButton>
-      <InsertDropdown
-        index={index}
-        sequence={sequence}
-        setSequence={setSequence}
-      />
-    </Menu>
-  );
-}
-
-function InsertDropdown({
-  className,
-  index,
-  sequence,
-  setSequence,
-}: {
-  className?: string;
-  index: number;
-  sequence: Sequence;
-  setSequence: (s: Sequence) => void;
-}) {
-  return (
-    <MenuItems
-      anchor={{ to: "bottom end", gap: 4 }}
-      as="div"
-      className={clsx(
-        "min-w-36 rounded border border-stone-950 bg-stone-800 text-stone-50 shadow-md shadow-black/25 select-none",
-        className,
+        </div>
       )}
-    >
-      <InsertActionGroup
-        header={
-          <>
-            <InsertActionGroupIcon>
-              <KeyboardIcon />
-            </InsertActionGroupIcon>
-            <div>Keyboard</div>
-          </>
-        }
-        items={[
-          {
-            render: <div>Key Down</div>,
-            newAction: { keyboard: { keyDown: KeyboardKey.A } },
-          },
-          {
-            render: <div>Key Up</div>,
-            newAction: { keyboard: { keyUp: KeyboardKey.A } },
-          },
-        ]}
-        index={index}
-        sequence={sequence}
-        setSequence={setSequence}
-      />
-      <InsertActionGroup
-        header={
-          <>
-            <InsertActionGroupIcon>
-              <MouseIcon />
-            </InsertActionGroupIcon>
-            <div>Mouse</div>
-          </>
-        }
-        items={[
-          {
-            render: <div>Button Down</div>,
-            newAction: { mouse: { buttonDown: MouseButton.Left } },
-          },
-          {
-            render: <div>Button Up</div>,
-            newAction: { mouse: { buttonUp: MouseButton.Left } },
-          },
-          {
-            render: <div>Scroll</div>,
-            newAction: { mouse: { scroll: { x: 0, y: 0 } } },
-          },
-          {
-            render: <div>Move</div>,
-            newAction: { mouse: { move: { x: 0, y: 0 } } },
-          },
-        ]}
-        index={index}
-        sequence={sequence}
-        setSequence={setSequence}
-      />
-      <InsertActionGroup
-        header={
-          <>
-            <InsertActionGroupIcon>
-              <ConsumerControlIcon />
-            </InsertActionGroupIcon>
-            <div>Consumer Control</div>
-          </>
-        }
-        items={[
-          {
-            render: <div>Press</div>,
-            newAction: { consumerControl: ConsumerControlEvent.PLAY_PAUSE },
-          },
-        ]}
-        index={index}
-        sequence={sequence}
-        setSequence={setSequence}
-      />
-      <InsertActionGroup
-        header={
-          <>
-            <InsertActionGroupIcon>
-              <LayerIcon />
-            </InsertActionGroupIcon>
-            <div>Layer</div>
-          </>
-        }
-        items={[
-          {
-            render: <div>Set Layer</div>,
-            newAction: { layer: { set: "" } },
-          },
-          {
-            render: <div>Clear Layer</div>,
-            newAction: { layer: { clear: "" } },
-          },
-        ]}
-        index={index}
-        sequence={sequence}
-        setSequence={setSequence}
-      />
-      {showDebugActions && (
-        <InsertActionGroup
-          header={
-            <>
-              <InsertActionGroupIcon>
-                <DebugIcon />
-              </InsertActionGroupIcon>
-              <div>Debug</div>
-            </>
-          }
-          items={[
-            {
-              render: <div>Log Message</div>,
-              newAction: { debug: { log: "" } },
-            },
-          ]}
-          index={index}
-          sequence={sequence}
-          setSequence={setSequence}
-        />
-      )}
-    </MenuItems>
+    </ActionTypeMenu>
   );
 }
-
-function InsertActionGroupIcon({
-  className,
-  children,
-}: {
-  className?: string;
-  children?: ReactNode;
-}) {
-  return <div className={clsx("size-5", className)}>{children}</div>;
-}
-
-function InsertActionGroup<T extends ActionEvent>({
-  header,
-  items,
-  index,
-  sequence,
-  setSequence,
-}: {
-  header: ReactNode;
-  items: readonly { render: ReactNode; newAction: T }[];
-  index: number;
-  sequence: Sequence;
-  setSequence: (s: Sequence) => void;
-}) {
-  return (
-    <MenuSection>
-      <MenuHeading
-        as="div"
-        className="flex items-center gap-2 bg-stone-900 p-2 text-xs"
-      >
-        {header}
-      </MenuHeading>
-      <div className="flex gap-1 p-0.5">
-        {items.map((item, i) => (
-          <InsertDropdownItem
-            key={i}
-            onClick={() => {
-              insertItem(
-                { predelayMs: 0, actionEvent: item.newAction },
-                index,
-                sequence,
-                setSequence,
-              );
-            }}
-          >
-            {item.render}
-          </InsertDropdownItem>
-        ))}
-      </div>
-    </MenuSection>
-  );
-}
-
-function InsertDropdownItem({
-  children,
-  onClick,
-}: {
-  children?: ReactNode;
-  onClick?: () => void;
-}) {
-  return (
-    <MenuItem
-      as="div"
-      className={getButtonClassName({ variant: "navbar" })}
-      onClick={onClick}
-    >
-      {children}
-    </MenuItem>
-  );
-}
-
-const insertItem = (
-  action: Action,
-  index: number,
-  sequence: Sequence,
-  setSequence: (s: Sequence) => void,
-) => {
-  const newSequence = {
-    ...sequence,
-    actions: [
-      ...sequence.actions.slice(0, index),
-      action,
-      ...sequence.actions.slice(index),
-    ],
-  };
-  setSequence(newSequence);
-};
 
 function AddIcon() {
   return (

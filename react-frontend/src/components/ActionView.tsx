@@ -26,7 +26,7 @@ import {
 } from "../api/devices.ts";
 import { ReactNode, useMemo } from "react";
 import clsx from "clsx";
-import { Button } from "./Button.tsx";
+import { Button, getButtonClassName } from "./Button.tsx";
 import { Input } from "@headlessui/react";
 import { InputClassName } from "./Input.tsx";
 import {
@@ -40,6 +40,7 @@ import {
   getTagsInProfile,
   useMaybeEditDeviceContext,
 } from "../lib/editDeviceContext.tsx";
+import { ActionTypeMenu } from "./ActionTypeMenu.tsx";
 
 export function ActionView({
   className,
@@ -63,6 +64,20 @@ export function ActionView({
         },
         className,
       )}
+      data-editing={setAction ? "true" : undefined}
+      tabIndex={setAction ? 0 : undefined}
+      onMouseDown={(e) => {
+        // focus the container when clicking non-interactive areas to prevent blur from exiting edit mode
+        if (setAction) {
+          const target = e.target as HTMLElement;
+          const isInteractive = target.closest(
+            "button, input, [role='button']",
+          );
+          if (!isInteractive) {
+            e.currentTarget.focus();
+          }
+        }
+      }}
     >
       {(action.predelayMs > 0 || setAction) && (
         <>
@@ -112,7 +127,7 @@ export function ActionView({
         <div className="flex grow items-center gap-1 overflow-hidden p-[1px]">
           <ActionEventView
             event={action.actionEvent}
-            setEvent={
+            setAction={
               setAction
                 ? (actionEvent) => {
                     setAction({ ...action, actionEvent });
@@ -159,42 +174,24 @@ export function ActionView({
 
 function ActionEventView({
   event,
-  setEvent,
+  setAction,
 }: {
   event: ActionEvent;
-  setEvent?: (event: ActionEvent) => void;
+  setAction?: (event: ActionEvent) => void;
 }) {
   return isKeyboardActionEvent(event) ? (
-    <KeyboardActionEventView
-      event={event.keyboard}
-      setEvent={
-        setEvent ? (keyboard) => setEvent({ ...event, keyboard }) : undefined
-      }
-    />
+    <KeyboardActionEventView event={event.keyboard} setAction={setAction} />
   ) : isMouseActionEvent(event) ? (
-    <MouseActionEventView
-      event={event.mouse}
-      setEvent={setEvent ? (mouse) => setEvent({ ...event, mouse }) : undefined}
-    />
+    <MouseActionEventView event={event.mouse} setAction={setAction} />
   ) : isConsumerControlActionEvent(event) ? (
     <ConsumerControlActionEventView
       event={event.consumerControl}
-      setEvent={
-        setEvent
-          ? (consumerControl) => setEvent({ ...event, consumerControl })
-          : undefined
-      }
+      setAction={setAction}
     />
   ) : isLayerActionEvent(event) ? (
-    <LayerActionEventView
-      event={event.layer}
-      setEvent={setEvent ? (layer) => setEvent({ ...event, layer }) : undefined}
-    />
+    <LayerActionEventView event={event.layer} setAction={setAction} />
   ) : isDebugActionEvent(event) ? (
-    <DebugActionEventView
-      event={event.debug}
-      setEvent={setEvent ? (debug) => setEvent({ ...event, debug }) : undefined}
-    />
+    <DebugActionEventView event={event.debug} setAction={setAction} />
   ) : (
     <UnknownActionEventView event={event} />
   );
@@ -203,11 +200,13 @@ function ActionEventView({
 function ActionEventIcon({
   className,
   children,
+  setAction,
 }: {
   className?: string;
   children?: ReactNode;
+  setAction?: (event: ActionEvent) => void;
 }) {
-  return (
+  const iconContent = (
     <div
       className={clsx(
         "flex size-8 shrink-0 items-center justify-center",
@@ -217,6 +216,29 @@ function ActionEventIcon({
       {children}
     </div>
   );
+
+  if (setAction) {
+    return (
+      <ActionTypeMenu onSelect={setAction}>
+        {({ active }) => (
+          <button
+            type="button"
+            className={clsx(
+              getButtonClassName({
+                padding: "none",
+                isActive: active,
+              }),
+              "size-8 cursor-pointer",
+            )}
+          >
+            {iconContent}
+          </button>
+        )}
+      </ActionTypeMenu>
+    );
+  }
+
+  return iconContent;
 }
 
 function UnknownActionEventView({}: { event: ActionEvent }) {
@@ -243,14 +265,17 @@ function UnknownActionEventView({}: { event: ActionEvent }) {
 
 function KeyboardActionEventView({
   event,
-  setEvent,
+  setAction,
 }: {
   event: KeyboardActionEvent;
-  setEvent?: (event: KeyboardActionEvent) => void;
+  setAction?: (event: ActionEvent) => void;
 }) {
+  const setEvent = setAction
+    ? (keyboard: KeyboardActionEvent) => setAction({ keyboard })
+    : undefined;
   return (
     <>
-      <ActionEventIcon>
+      <ActionEventIcon setAction={setAction}>
         <KeyboardIcon />
       </ActionEventIcon>
       {isKeyDownEvent(event) ? (
@@ -341,15 +366,17 @@ function KeyboardKeyUpActionEventView({
 
 function MouseActionEventView({
   event,
-  setEvent,
+  setAction,
 }: {
-  className?: string;
   event: MouseActionEvent;
-  setEvent?: (event: MouseActionEvent) => void;
+  setAction?: (event: ActionEvent) => void;
 }) {
+  const setEvent = setAction
+    ? (mouse: MouseActionEvent) => setAction({ mouse })
+    : undefined;
   return (
     <>
-      <ActionEventIcon>
+      <ActionEventIcon setAction={setAction}>
         <MouseIcon />
       </ActionEventIcon>
       {isMouseDownEvent(event) ? (
@@ -537,19 +564,21 @@ function MouseMoveActionEventView({
 
 function ConsumerControlActionEventView({
   event,
-  setEvent,
+  setAction,
 }: {
   event: ConsumerControlEvent;
-  setEvent?: (event: ConsumerControlEvent) => void;
+  setAction?: (event: ActionEvent) => void;
 }) {
   return (
     <>
-      <ActionEventIcon>
+      <ActionEventIcon setAction={setAction}>
         <ConsumerControlIcon />
       </ActionEventIcon>
       <ConsumerControlKeySelector
         value={event}
-        onChange={setEvent ? (e) => setEvent(e) : undefined}
+        onChange={
+          setAction ? (e) => setAction({ consumerControl: e }) : undefined
+        }
       />
     </>
   );
@@ -557,11 +586,14 @@ function ConsumerControlActionEventView({
 
 function LayerActionEventView({
   event,
-  setEvent,
+  setAction,
 }: {
   event: LayerActionEvent;
-  setEvent?: (event: LayerActionEvent) => void;
+  setAction?: (event: ActionEvent) => void;
 }) {
+  const setEvent = setAction
+    ? (layer: LayerActionEvent) => setAction({ layer })
+    : undefined;
   const context = useMaybeEditDeviceContext();
   const items = useMemo(
     () =>
@@ -576,7 +608,9 @@ function LayerActionEventView({
 
   return (
     <>
-      <div>Layer</div>
+      <ActionEventIcon setAction={setAction}>
+        <LayerIcon className="size-7" />
+      </ActionEventIcon>
       {isLayerClearEvent(event) ? (
         <>
           <KeyUpDownToggle
@@ -634,13 +668,14 @@ function LayerActionEventView({
 
 function DebugActionEventView({
   event,
+  setAction,
 }: {
   event: DebugActionEvent;
-  setEvent?: (event: DebugActionEvent) => void;
+  setAction?: (event: ActionEvent) => void;
 }) {
   return (
     <>
-      <ActionEventIcon>
+      <ActionEventIcon setAction={setAction}>
         <DebugIcon />
       </ActionEventIcon>
       <div className="line-clamp-1 text-xs">{event.log}</div>
@@ -710,9 +745,10 @@ export function ConsumerControlIcon() {
   );
 }
 
-export function LayerIcon() {
+export function LayerIcon({ className }: { className?: string }) {
   return (
     <svg
+      className={className}
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
       fill="none"
