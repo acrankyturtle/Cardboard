@@ -259,7 +259,7 @@ function EditDeviceView() {
   return (
     <>
       <DevicesHeader>
-        <div className="flex grow items-center gap-3">
+        <div className="flex grow items-end gap-3">
           <div>Edit</div>
           <div className="text-lg font-normal">{state.device.name}</div>
           <div className="text-lg font-normal">{state.device.id}</div>
@@ -328,10 +328,7 @@ function DevicesHeader({
 }) {
   return (
     <Header
-      className={clsx(
-        "sticky top-0 flex min-h-18 gap-2 justify-self-start",
-        className,
-      )}
+      className={clsx("sticky top-0 flex gap-2 justify-self-start", className)}
     >
       {children}
     </Header>

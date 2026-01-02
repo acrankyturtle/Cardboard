@@ -11,7 +11,6 @@ import {
 } from "../api/devices.ts";
 import { LoadingIndicator } from "./LoadingIndicator.tsx";
 import { Dialog, DialogBody, DialogDivider, DialogHeader } from "./Dialog.tsx";
-import { getAssetUrl } from "../api/cardboardApi.ts";
 import { Checkbox } from "@headlessui/react";
 
 export function EditDeviceSettings({
@@ -69,15 +68,8 @@ export function EditDeviceSettings({
 
   return (
     <div className={clsx("flex size-full flex-col", className)}>
-      <Header className="sticky top-0 flex min-h-18 gap-2 justify-self-start">
-        <div className="flex grow items-center gap-3">
-          {device.iconUrl && (
-            <img
-              className="size-8 rounded-md"
-              src={getAssetUrl(device.iconUrl)}
-              alt="Icon"
-            />
-          )}
+      <Header className="sticky top-0 flex gap-2 justify-self-start">
+        <div className="flex grow items-end gap-3">
           <div>Settings</div>
           <div className="text-lg font-normal">{device.name}</div>
           <div className="text-lg font-normal text-stone-400">{device.id}</div>
