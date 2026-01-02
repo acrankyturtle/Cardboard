@@ -44,7 +44,11 @@
 		<Exec Command="npm run build" WorkingDirectory="$(ReactProjectPath)" ConsoleToMsBuild="true" />
 	</Target>
 
-	<Target Name="CopyReactToWwwroot" AfterTargets="BuildReactFrontend" Condition="'$(Configuration)' == 'Release'">
+	<Target
+		Name="CopyReactToWwwroot"
+		AfterTargets="BuildReactFrontend"
+		Condition="'$(Configuration)' == 'Release'"
+	>
 		<Message Text="Copying React build output to wwwroot..." Importance="High" />
 
 		<!-- Get all files from React dist folder -->
@@ -53,8 +57,10 @@
 		</ItemGroup>
 
 		<!-- Copy to wwwroot -->
-		<Copy SourceFiles="@(ReactDistFiles)"
-		      DestinationFiles="@(ReactDistFiles->'$(MSBuildProjectDirectory)\wwwroot\%(RecursiveDir)%(Filename)%(Extension)')"
-		      SkipUnchangedFiles="true" />
+		<Copy
+			SourceFiles="@(ReactDistFiles)"
+			DestinationFiles="@(ReactDistFiles->'$(MSBuildProjectDirectory)\wwwroot\%(RecursiveDir)%(Filename)%(Extension)')"
+			SkipUnchangedFiles="true"
+		/>
 	</Target>
 </Project>

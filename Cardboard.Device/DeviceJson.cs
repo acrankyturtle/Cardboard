@@ -9,10 +9,7 @@ public static class DeviceJson
 
 	private static JsonSerializerOptions CreateSerializerOptions()
 	{
-		var serializer = new JsonSerializerOptions
-		{
-			PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-		};
+		var serializer = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
 		serializer.Converters.Add(new JsonStringEnumConverter());
 
 		return serializer;

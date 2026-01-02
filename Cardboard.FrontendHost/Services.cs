@@ -19,33 +19,35 @@ public static partial class Services
 	/// </summary>
 	public static IApplicationBuilder UseLocalOriginValidation(this IApplicationBuilder app)
 	{
-		app.Use(async (context, next) =>
-		{
-			var origin = context.Request.Headers.Origin.ToString();
-
-			// If there's an Origin header, validate it's from localhost
-			if (!string.IsNullOrEmpty(origin))
+		app.Use(
+			async (context, next) =>
 			{
-				if (!IsLocalOrigin(origin))
-				{
-					context.Response.StatusCode = StatusCodes.Status403Forbidden;
-					return;
-				}
-			}
+				var origin = context.Request.Headers.Origin.ToString();
 
-			// Also check Referer for additional protection
-			var referer = context.Request.Headers.Referer.ToString();
-			if (!string.IsNullOrEmpty(referer))
-			{
-				if (!IsLocalOrigin(referer))
+				// If there's an Origin header, validate it's from localhost
+				if (!string.IsNullOrEmpty(origin))
 				{
-					context.Response.StatusCode = StatusCodes.Status403Forbidden;
-					return;
+					if (!IsLocalOrigin(origin))
+					{
+						context.Response.StatusCode = StatusCodes.Status403Forbidden;
+						return;
+					}
 				}
-			}
 
-			await next();
-		});
+				// Also check Referer for additional protection
+				var referer = context.Request.Headers.Referer.ToString();
+				if (!string.IsNullOrEmpty(referer))
+				{
+					if (!IsLocalOrigin(referer))
+					{
+						context.Response.StatusCode = StatusCodes.Status403Forbidden;
+						return;
+					}
+				}
+
+				await next();
+			}
+		);
 
 		return app;
 	}
