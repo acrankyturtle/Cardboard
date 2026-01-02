@@ -4,6 +4,7 @@ import { SWRConfig } from "swr";
 import { fetcher } from "./api/cardboardApi.ts";
 import { Outlet, Route, Routes, useSearchParams } from "react-router";
 import { DevicesIndex } from "./pages/DevicesIndex.tsx";
+import { LogsIndex } from "./pages/LogsIndex.tsx";
 
 // note: all icons from https://tablericons.com/
 
@@ -32,6 +33,7 @@ function App() {
                 />
               }
             />
+            <Route path="/logs" element={<LogsIndex />} />
             <Route path="*" element={<NoMatch />} />
           </Route>
         </Routes>

@@ -17,6 +17,9 @@ using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// add memory logger provider to capture logs for the API
+builder.Logging.Services.AddSingleton<ILoggerProvider, MemoryLoggerProvider>();
+
 builder.WebHost.ConfigureKestrel(options =>
 {
 	// TODO: configure connection limits?
