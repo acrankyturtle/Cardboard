@@ -112,6 +112,40 @@ export const updateDeviceFirmware = async (
   return "success";
 };
 
+export const getDeviceSettings = async (
+  deviceId: string,
+): Promise<DeviceSettings> => {
+  const response = await fetch(getApiUrl(`devices/${deviceId}/settings`));
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch device settings: ${response.statusText}`);
+  }
+
+  const data: { deviceSettings: DeviceSettings } = await response.json();
+  return data.deviceSettings;
+};
+
+export const updateDeviceSettings = async (
+  deviceId: string,
+  settings: DeviceSettings,
+): Promise<"success" | { error: string }> => {
+  const response = await fetch(getApiUrl(`devices/${deviceId}/settings`), {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(settings),
+  });
+
+  if (!response.ok) {
+    return {
+      error: `Failed to update device settings: ${response.statusText}`,
+    };
+  }
+
+  return "success";
+};
+
 export interface DeviceSummary {
   id: string;
   name: string;
@@ -157,6 +191,10 @@ export enum KeyColor {
 
 export interface DeviceSettingsReport {
   isMouseEnabled: boolean;
+}
+
+export interface DeviceSettings {
+  mouseEnabled: boolean;
 }
 
 export interface DeviceStatusReport {

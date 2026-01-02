@@ -1,6 +1,7 @@
 import { DeviceList } from "../components/DeviceList.tsx";
 import Header from "../components/Header.tsx";
 import { EditDeviceProfile } from "../components/EditDeviceProfile.tsx";
+import { EditDeviceSettings } from "../components/EditDeviceSettings.tsx";
 import {
   DeviceDetails,
   DeviceProfile,
@@ -51,6 +52,10 @@ export function DevicesIndex({
                 <EditDeviceView />
               </EditDeviceContextProvider>
             )}
+          </DataProvider>
+        ) : deviceId && action === "settings" ? (
+          <DataProvider deviceId={deviceId}>
+            {(device) => <EditDeviceSettings device={device} />}
           </DataProvider>
         ) : (
           <>
