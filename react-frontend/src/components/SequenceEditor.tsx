@@ -3,20 +3,52 @@ import clsx from "clsx";
 import { ActionView } from "./ActionView.tsx";
 import { ActionTypeMenu } from "./ActionTypeMenu.tsx";
 import { getButtonClassName } from "./Button.tsx";
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import {
+  convertSequenceDownToUp,
+  convertSequenceUpToDown,
+  canConvertToEndSequence,
+  canConvertToStartSequence,
+} from "../lib/actionEventUtils.ts";
+import { ActionEvent } from "../api/devices.ts";
 
 export function SequenceEditor({
   className,
   type,
   value,
   setValue,
+  onCopyToOther,
+  transformActionEvent,
 }: {
   className?: string;
   type: "start" | "loop" | "end";
   value: Sequence;
   setValue: (v: Sequence) => void;
+  /** Callback to copy converted actions to the other sequence (start->end or end->start) */
+  onCopyToOther?: (sequence: Sequence) => void;
+  /** Transform an action event before inserting (e.g., to default up events to match down events) */
+  transformActionEvent?: (event: ActionEvent) => ActionEvent;
 }) {
   const { name, className: sequenceClassName } = getSequenceAppearance(type);
+  
+  const canCopy = useMemo(() => {
+    if (type === "start") {
+      return canConvertToEndSequence(value);
+    }
+    if (type === "end") {
+      return canConvertToStartSequence(value);
+    }
+    return false;
+  }, [type, value]);
+
+  const handleCopy = () => {
+    if (!onCopyToOther) return;
+    if (type === "start") {
+      onCopyToOther(convertSequenceDownToUp(value));
+    } else if (type === "end") {
+      onCopyToOther(convertSequenceUpToDown(value));
+    }
+  };
 
   const [editIndex, setEditIndex] = useState<number | null>(null);
 
@@ -52,12 +84,13 @@ export function SequenceEditor({
         )}
       >
         <div className="grow">{name}</div>
-        {type === "start" && (
+        {type === "start" && canCopy && onCopyToOther && (
           <button
             className={clsx(
               getButtonClassName({ variant: "ghost", padding: "none" }),
               "size-6 p-0.5",
             )}
+            onClick={handleCopy}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -75,12 +108,13 @@ export function SequenceEditor({
             </svg>
           </button>
         )}
-        {type === "end" && (
+        {type === "end" && canCopy && onCopyToOther && (
           <button
             className={clsx(
               getButtonClassName({ variant: "ghost", padding: "none" }),
               "size-6 p-0.5",
             )}
+            onClick={handleCopy}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -107,6 +141,7 @@ export function SequenceEditor({
             sequence={value}
             setSequence={setValue}
             onInsert={setEditIndex}
+            transformActionEvent={transformActionEvent}
           />
           {value.actions.map((a, i) => (
             <Fragment key={i}>
@@ -140,6 +175,7 @@ export function SequenceEditor({
                 sequence={value}
                 setSequence={setValue}
                 onInsert={setEditIndex}
+                transformActionEvent={transformActionEvent}
               />
             </Fragment>
           ))}
@@ -156,6 +192,7 @@ export function SequenceEditor({
             sequence={value}
             setSequence={setValue}
             onInsert={setEditIndex}
+            transformActionEvent={transformActionEvent}
           />
         </div>
       )}
@@ -169,12 +206,14 @@ function SmallInsertButton({
   setSequence,
   index,
   onInsert,
+  transformActionEvent,
 }: {
   className?: string;
   sequence: Sequence;
   setSequence: (s: Sequence) => void;
   index: number;
   onInsert?: (index: number) => void;
+  transformActionEvent?: (event: ActionEvent) => ActionEvent;
 }) {
   return (
     <InsertButton
@@ -188,6 +227,7 @@ function SmallInsertButton({
       sequence={sequence}
       setSequence={setSequence}
       onInsert={onInsert}
+      transformActionEvent={transformActionEvent}
     />
   );
 }
@@ -199,6 +239,7 @@ function InsertButton({
   sequence,
   setSequence,
   onInsert,
+  transformActionEvent,
 }: {
   className?: string;
   iconClassName?: string;
@@ -206,15 +247,19 @@ function InsertButton({
   sequence: Sequence;
   setSequence: (s: Sequence) => void;
   onInsert?: (index: number) => void;
+  transformActionEvent?: (event: ActionEvent) => ActionEvent;
 }) {
   return (
     <ActionTypeMenu
       onSelect={(actionEvent) => {
+        const transformedEvent = transformActionEvent
+          ? transformActionEvent(actionEvent)
+          : actionEvent;
         const newSequence = {
           ...sequence,
           actions: [
             ...sequence.actions.slice(0, index),
-            { predelayMs: 0, actionEvent },
+            { predelayMs: 0, actionEvent: transformedEvent },
             ...sequence.actions.slice(index),
           ],
         };

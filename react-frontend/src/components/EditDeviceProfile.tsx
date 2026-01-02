@@ -60,6 +60,10 @@ import {
 import { InputClassName } from "./Input.tsx";
 import { SequenceEditor } from "./SequenceEditor.tsx";
 import { EditTaggedLayerDialog } from "./EditTaggedLayerDialog.tsx";
+import {
+  createEndSequenceActionEvent,
+  createStartSequenceActionEvent,
+} from "../lib/actionEventUtils.ts";
 
 export function EditDeviceProfile({ className }: { className?: string }) {
   return (
@@ -118,10 +122,7 @@ const headerBarButtonClass = clsx(
 
 function TagsPanel({ className }: { className?: string }) {
   const { state, dispatch } = useEditDeviceContext();
-  const tags = useMemo(
-    () => getTagsInProfile(state.profile),
-    [state.profile],
-  );
+  const tags = useMemo(() => getTagsInProfile(state.profile), [state.profile]);
 
   const tagItems = useMemo(() => {
     return tags.map((t) => ({ label: t, value: t }));
@@ -1084,6 +1085,17 @@ function EditMacroDialog() {
                   if (!macro) return;
                   setMacro({ ...macro, startSequence: s });
                 }}
+                transformActionEvent={(event) =>
+                  createStartSequenceActionEvent(
+                    event,
+                    macro?.endSequence,
+                    macro?.startSequence,
+                  )
+                }
+                onCopyToOther={(s) => {
+                  if (!macro) return;
+                  setMacro({ ...macro, endSequence: s });
+                }}
               />
               <SequenceEditor
                 type="loop"
@@ -1099,6 +1111,17 @@ function EditMacroDialog() {
                 setValue={(s) => {
                   if (!macro) return;
                   setMacro({ ...macro, endSequence: s });
+                }}
+                transformActionEvent={(event) =>
+                  createEndSequenceActionEvent(
+                    event,
+                    macro?.startSequence,
+                    macro?.endSequence,
+                  )
+                }
+                onCopyToOther={(s) => {
+                  if (!macro) return;
+                  setMacro({ ...macro, startSequence: s });
                 }}
               />
             </TabPanel>
