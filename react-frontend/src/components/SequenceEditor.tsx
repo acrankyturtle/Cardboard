@@ -106,6 +106,7 @@ export function SequenceEditor({
             index={0}
             sequence={value}
             setSequence={setValue}
+            onInsert={setEditIndex}
           />
           {value.actions.map((a, i) => (
             <Fragment key={i}>
@@ -138,6 +139,7 @@ export function SequenceEditor({
                 index={i + 1}
                 sequence={value}
                 setSequence={setValue}
+                onInsert={setEditIndex}
               />
             </Fragment>
           ))}
@@ -153,6 +155,7 @@ export function SequenceEditor({
             index={0}
             sequence={value}
             setSequence={setValue}
+            onInsert={setEditIndex}
           />
         </div>
       )}
@@ -165,11 +168,13 @@ function SmallInsertButton({
   sequence,
   setSequence,
   index,
+  onInsert,
 }: {
   className?: string;
   sequence: Sequence;
   setSequence: (s: Sequence) => void;
   index: number;
+  onInsert?: (index: number) => void;
 }) {
   return (
     <InsertButton
@@ -182,6 +187,7 @@ function SmallInsertButton({
       index={index}
       sequence={sequence}
       setSequence={setSequence}
+      onInsert={onInsert}
     />
   );
 }
@@ -192,12 +198,14 @@ function InsertButton({
   index,
   sequence,
   setSequence,
+  onInsert,
 }: {
   className?: string;
   iconClassName?: string;
   index: number;
   sequence: Sequence;
   setSequence: (s: Sequence) => void;
+  onInsert?: (index: number) => void;
 }) {
   return (
     <ActionTypeMenu
@@ -211,6 +219,7 @@ function InsertButton({
           ],
         };
         setSequence(newSequence);
+        onInsert?.(index);
       }}
     >
       {({ active }) => (
