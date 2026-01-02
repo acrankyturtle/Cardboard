@@ -52,7 +52,7 @@ function DeviceCard({
               className="size-8 rounded-md"
               src={getAssetUrl(device.iconUrl)}
               alt="Icon"
-            />{" "}
+            />
           </div>
         )}
         <div>
