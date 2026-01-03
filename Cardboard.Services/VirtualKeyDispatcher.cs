@@ -102,12 +102,10 @@ internal class VirtualKeyDispatcher(
 	private static bool IsMatch(InputDeviceInfo inputDevice, InputKey key, VirtualKeyDeviceMatch match)
 	{
 		return match.InputKey == key
-			&& (
-				IsStringMatch(inputDevice.Vid, match.Vid)
-				|| IsStringMatch(inputDevice.Pid, match.Pid)
-				|| IsStringMatch(inputDevice.Serial, match.Serial)
-				|| IsStringMatch(inputDevice.Description, match.Description)
-			);
+			&& IsStringMatch(inputDevice.Vid, match.Vid)
+			&& IsStringMatch(inputDevice.Pid, match.Pid)
+			&& IsStringMatch(inputDevice.Serial, match.Serial)
+			&& IsStringMatch(inputDevice.Description, match.Description);
 
 		static bool IsStringMatch(string value, string? match)
 		{

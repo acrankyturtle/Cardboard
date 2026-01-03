@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using Cardboard.Events;
 using Cardboard.Repositories;
 using Cardboard.Utilities;
@@ -11,7 +12,7 @@ namespace Cardboard.Windows;
 
 // NOTE: this is mostly ported from the original keypad project. it probably needs rewritten
 
-internal class InputEventService : IInputEventService, IDisposable
+internal partial class InputEventService : IInputEventService, IInputDeviceListService, IDisposable
 {
 	private readonly Dictionary<IntPtr, InputDeviceInfo> _deviceCache = new(); // todo: there is probably an event we should listen for to clear this cache
 
@@ -277,15 +278,10 @@ internal class InputEventService : IInputEventService, IDisposable
 			if (deviceName == null)
 				return null;
 
-			var deviceDescription = Win32.GetDeviceDescription(deviceName);
+			var deviceInfo = TryParseDeviceInfo(deviceName);
 
-			var deviceInfo = new InputDeviceInfo
-			{
-				Vid = "VID",
-				Pid = "PID",
-				Serial = "SERIAL",
-				Description = deviceDescription,
-			};
+			if (deviceInfo is null)
+				return null;
 
 			_deviceCache.Add(handle, deviceInfo);
 			return deviceInfo;
@@ -312,4 +308,44 @@ internal class InputEventService : IInputEventService, IDisposable
 				TaskContinuationOptions.OnlyOnFaulted
 			);
 	}
+
+	private static InputDeviceInfo? TryParseDeviceInfo(string deviceName)
+	{
+		// Device name format: \\?\HID#VID_046D&PID_C52B&MI_01#SERIAL#{GUID}
+		var vidMatch = VidRegex().Match(deviceName);
+		var pidMatch = PidRegex().Match(deviceName);
+		var maybeSerial = TryGetSerial(deviceName);
+
+		if (!vidMatch.Success || !pidMatch.Success || maybeSerial is null)
+			return null;
+
+		var vid = vidMatch.Groups[1].Value;
+		var pid = pidMatch.Groups[1].Value;
+		var serial = maybeSerial;
+		var description = Win32.GetDeviceDescription(deviceName);
+
+		return new()
+		{
+			Vid = vid,
+			Pid = pid,
+			Serial = serial,
+			Description = description,
+		};
+	}
+
+	private static string? TryGetSerial(string deviceName)
+	{
+		var parts = deviceName.Split('#');
+		if (parts.Length < 3)
+			return null;
+
+		var potentialSerial = parts[2];
+		return !potentialSerial.StartsWith('{') ? potentialSerial : null;
+	}
+
+	[GeneratedRegex("VID_([0-9A-Fa-f]{4})", RegexOptions.IgnoreCase)]
+	private static partial Regex VidRegex();
+
+	[GeneratedRegex("PID_([0-9A-Fa-f]{4})", RegexOptions.IgnoreCase)]
+	private static partial Regex PidRegex();
 }
