@@ -309,6 +309,49 @@ internal partial class InputEventService : IInputEventService, IInputDeviceListS
 			);
 	}
 
+	public Task<IReadOnlyList<InputDeviceInfo>> GetInputDevices(CancellationToken cancellationToken = default)
+	{
+		var devices = new List<InputDeviceInfo>();
+		var deviceCount = 0;
+
+		var result = Win32.GetRawInputDeviceList(
+			IntPtr.Zero,
+			ref deviceCount,
+			Marshal.SizeOf<RawInputDeviceList>()
+		);
+		if (result == -1 || deviceCount == 0)
+			return Task.FromResult<IReadOnlyList<InputDeviceInfo>>(devices);
+
+		var deviceListPtr = Marshal.AllocHGlobal(deviceCount * Marshal.SizeOf<RawInputDeviceList>());
+		try
+		{
+			result = Win32.GetRawInputDeviceList(
+				deviceListPtr,
+				ref deviceCount,
+				Marshal.SizeOf<RawInputDeviceList>()
+			);
+			if (result == -1)
+				return Task.FromResult<IReadOnlyList<InputDeviceInfo>>(devices);
+
+			for (var i = 0; i < deviceCount; i++)
+			{
+				var deviceList = Marshal.PtrToStructure<RawInputDeviceList>(
+					deviceListPtr + i * Marshal.SizeOf<RawInputDeviceList>()
+				);
+
+				var deviceInfo = GetDeviceInfo(deviceList.hDevice);
+				if (deviceInfo != null)
+					devices.Add(deviceInfo);
+			}
+		}
+		finally
+		{
+			Marshal.FreeHGlobal(deviceListPtr);
+		}
+
+		return Task.FromResult<IReadOnlyList<InputDeviceInfo>>(devices);
+	}
+
 	private static InputDeviceInfo? TryParseDeviceInfo(string deviceName)
 	{
 		// Device name format: \\?\HID#VID_046D&PID_C52B&MI_01#SERIAL#{GUID}

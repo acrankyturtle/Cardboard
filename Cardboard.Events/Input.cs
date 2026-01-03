@@ -7,6 +7,11 @@ public interface IInputEventService
 	IObservable<InputEvent> OnInput { get; }
 }
 
+public interface IInputDeviceListService
+{
+	Task<IReadOnlyList<InputDeviceInfo>> GetInputDevices(CancellationToken cancellationToken = default);
+}
+
 public readonly record struct InputEvent(InputDeviceInfo Device, InputKey Key, InputKeyState State);
 
 public record InputDeviceInfo

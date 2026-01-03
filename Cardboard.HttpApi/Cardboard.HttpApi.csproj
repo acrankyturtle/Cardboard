@@ -11,6 +11,7 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\Cardboard.Device\Cardboard.Device.csproj" />
+		<ProjectReference Include="..\Cardboard.Events\Cardboard.Events.csproj" />
 		<ProjectReference Include="..\Cardboard.Repositories\Cardboard.Repositories.csproj" />
 		<ProjectReference Include="..\Cardboard.Update\Cardboard.Update.csproj" />
 	</ItemGroup>

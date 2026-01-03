@@ -73,6 +73,7 @@ public static partial class Services
 		api.MapTagRepositoryEndpoints();
 		api.MapSchemaEndpoints();
 		api.MapLogEndpoints();
+		api.MapInputDeviceEndpoints();
 
 		return builder;
 	}

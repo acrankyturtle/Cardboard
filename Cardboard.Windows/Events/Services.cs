@@ -8,5 +8,7 @@ public static partial class Services
 	public static IServiceCollection AddCardboardWindowsEvents(this IServiceCollection services) =>
 		services
 			.AddSingleton<IApplicationEventService, ApplicationEventService>()
-			.AddSingleton<IInputEventService, InputEventService>();
+			.AddSingleton<InputEventService>()
+			.AddSingleton<IInputEventService>(sp => sp.GetRequiredService<InputEventService>())
+			.AddSingleton<IInputDeviceListService>(sp => sp.GetRequiredService<InputEventService>());
 }
