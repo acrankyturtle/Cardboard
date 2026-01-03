@@ -2,21 +2,23 @@ import { getButtonClassName } from "./components/Button.tsx";
 import clsx from "clsx";
 import { ReactElement, ReactNode } from "react";
 import { NavLink, To } from "react-router";
+import logo from "./assets/key.png";
 
 export function NavBar({ className }: { className?: string }) {
   return (
     <nav className={clsx("bg-stone-800", className)}>
-      <div className="flex h-full w-16 flex-col items-center py-4">
-        <div>
+      <div className="flex h-full w-16 flex-col items-center">
+        <div className="flex min-h-18 flex-col justify-center">
           <Logo />
         </div>
-        <div className="mt-10 flex h-full flex-col items-center space-y-4">
+        <div className="flex h-full flex-col items-center space-y-2 py-3">
           {/*<NavBarButton className="flex items-center" to="/">*/}
           {/*  {(selected) => <DashboardIcon selected={selected} />}*/}
           {/*</NavBarButton>*/}
           <NavBarButton to="/devices">
             {(selected) => <DeviceIcon selected={selected} />}
           </NavBarButton>
+          <div className="grow" />
           <NavBarButton to="/logs">
             {(selected) => <LogIcon selected={selected} />}
           </NavBarButton>
@@ -64,9 +66,9 @@ function Logo() {
   return (
     <div className="shrink-0">
       <img
-        className="size-8"
-        src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=indigo&shade=500"
-        alt="Your Company"
+        className="size-8 drop-shadow-lg drop-shadow-black/25"
+        src={logo}
+        alt="Cardboard"
       />
     </div>
   );
@@ -220,21 +222,19 @@ function LogIconOutline() {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
+      strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
-      width="24"
-      height="24"
-      strokeWidth="2"
     >
-      <path d="M4 12h.01"></path>
-      <path d="M4 6h.01"></path>
-      <path d="M4 18h.01"></path>
-      <path d="M8 18h2"></path>
-      <path d="M8 12h2"></path>
-      <path d="M8 6h2"></path>
-      <path d="M14 6h6"></path>
-      <path d="M14 12h6"></path>
-      <path d="M14 18h6"></path>
+      <path d="M4 12h.01" />
+      <path d="M4 6h.01" />
+      <path d="M4 18h.01" />
+      <path d="M8 18h2" />
+      <path d="M8 12h2" />
+      <path d="M8 6h2" />
+      <path d="M14 6h6" />
+      <path d="M14 12h6" />
+      <path d="M14 18h6" />
     </svg>
   );
 }
@@ -244,16 +244,21 @@ function LogIconFilled() {
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
-      fill="currentColor"
-      width="24"
-      height="24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
     >
-      <path d="M4 6a1 1 0 0 1 1 -1h1a1 1 0 0 1 0 2h-1a1 1 0 0 1 -1 -1z"></path>
-      <path d="M4 12a1 1 0 0 1 1 -1h1a1 1 0 0 1 0 2h-1a1 1 0 0 1 -1 -1z"></path>
-      <path d="M4 18a1 1 0 0 1 1 -1h1a1 1 0 0 1 0 2h-1a1 1 0 0 1 -1 -1z"></path>
-      <path d="M10 6a1 1 0 0 1 1 -1h9a1 1 0 0 1 0 2h-9a1 1 0 0 1 -1 -1z"></path>
-      <path d="M10 12a1 1 0 0 1 1 -1h9a1 1 0 0 1 0 2h-9a1 1 0 0 1 -1 -1z"></path>
-      <path d="M10 18a1 1 0 0 1 1 -1h9a1 1 0 0 1 0 2h-9a1 1 0 0 1 -1 -1z"></path>
+      <path d="M4 12h.01" />
+      <path d="M4 6h.01" />
+      <path d="M4 18h.01" />
+      <path d="M8 18h2" />
+      <path d="M8 12h2" />
+      <path d="M8 6h2" />
+      <path d="M14 6h6" />
+      <path d="M14 12h6" />
+      <path d="M14 18h6" />
     </svg>
   );
 }
