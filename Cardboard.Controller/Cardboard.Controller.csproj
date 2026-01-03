@@ -4,8 +4,8 @@
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<UserSecretsId>dotnet-Cardboard.Controller-713aafc6-76e6-4750-9881-194a8894336d</UserSecretsId>
+		<ApplicationIcon>key.ico</ApplicationIcon>
 	</PropertyGroup>
-
 	<!-- Include wwwroot content in build output -->
 	<ItemGroup>
 		<Content Include="wwwroot\**\*" CopyToOutputDirectory="PreserveNewest" />
@@ -26,40 +26,33 @@
 		<ProjectReference Include="..\Cardboard.Update.Api\Cardboard.Update.Api.csproj" />
 		<ProjectReference Include="..\Cardboard.Windows\Cardboard.Windows.csproj" />
 	</ItemGroup>
-
 	<!-- React Frontend Build (Release only) -->
 	<PropertyGroup>
 		<ReactProjectPath>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\..\react-frontend'))</ReactProjectPath>
 		<ReactBuildOutput>$(ReactProjectPath)\dist</ReactBuildOutput>
 	</PropertyGroup>
-
 	<Target Name="BuildReactFrontend" BeforeTargets="Build" Condition="'$(Configuration)' == 'Release'">
 		<Message Text="Building React frontend..." Importance="High" />
 		<Message Text="React project path: $(ReactProjectPath)" Importance="High" />
-
 		<!-- Run npm install -->
 		<Exec Command="npm install" WorkingDirectory="$(ReactProjectPath)" ConsoleToMsBuild="true" />
-
 		<!-- Run npm build -->
 		<Exec Command="npm run build" WorkingDirectory="$(ReactProjectPath)" ConsoleToMsBuild="true" />
 	</Target>
-
 	<Target
 		Name="CopyReactToWwwroot"
 		AfterTargets="BuildReactFrontend"
 		Condition="'$(Configuration)' == 'Release'"
 	>
 		<Message Text="Copying React build output to wwwroot..." Importance="High" />
-
 		<!-- Get all files from React dist folder -->
 		<ItemGroup>
 			<ReactDistFiles Include="$(ReactBuildOutput)\**\*" />
 		</ItemGroup>
-
 		<!-- Copy to wwwroot -->
 		<Copy
 			SourceFiles="@(ReactDistFiles)"
-			DestinationFiles="@(ReactDistFiles->'$(MSBuildProjectDirectory)\wwwroot\%(RecursiveDir)%(Filename)%(Extension)')"
+			DestinationFiles="@(ReactDistFiles-&gt;'$(MSBuildProjectDirectory)\wwwroot\%(RecursiveDir)%(Filename)%(Extension)')"
 			SkipUnchangedFiles="true"
 		/>
 	</Target>
