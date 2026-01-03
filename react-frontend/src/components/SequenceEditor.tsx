@@ -11,6 +11,7 @@ import {
   canConvertToStartSequence,
 } from "../lib/actionEventUtils.ts";
 import { ActionEvent } from "../api/devices.ts";
+import { AddIcon } from "../assets/sharedIcons.tsx";
 
 export function SequenceEditor({
   className,
@@ -30,7 +31,7 @@ export function SequenceEditor({
   transformActionEvent?: (event: ActionEvent) => ActionEvent;
 }) {
   const { name, className: sequenceClassName } = getSequenceAppearance(type);
-  
+
   const canCopy = useMemo(() => {
     if (type === "start") {
       return canConvertToEndSequence(value);
@@ -280,23 +281,6 @@ function InsertButton({
         </div>
       )}
     </ActionTypeMenu>
-  );
-}
-
-function AddIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 5l0 14" />
-      <path d="M5 12l14 0" />
-    </svg>
   );
 }
 

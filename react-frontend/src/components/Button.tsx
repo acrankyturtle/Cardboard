@@ -7,6 +7,7 @@ interface ButtonStyleOptions {
   variant?:
     | "normal"
     | "submit"
+    | "danger"
     | "ghost"
     | "panelGhost"
     | "navbar"
@@ -58,17 +59,19 @@ export const getButtonClassName = ({
       ? NormalVariant(isActive)
       : variant === "submit"
         ? SubmitVariant(isActive)
-        : variant === "ghost"
-          ? GhostVariant(isActive)
-          : variant === "panelGhost"
-            ? PanelGhostVariant(isActive)
-            : variant === "navbar"
-              ? NavBarVariant(isActive)
-              : variant === "toolbar"
-                ? ToolbarVariant(isActive)
-                : variant === "no-color"
-                  ? NoColorVariant
-                  : undefined,
+        : variant === "danger"
+          ? DangerVariant(isActive)
+          : variant === "ghost"
+            ? GhostVariant(isActive)
+            : variant === "panelGhost"
+              ? PanelGhostVariant(isActive)
+              : variant === "navbar"
+                ? NavBarVariant(isActive)
+                : variant === "toolbar"
+                  ? ToolbarVariant(isActive)
+                  : variant === "no-color"
+                    ? NoColorVariant
+                    : undefined,
   );
 };
 
@@ -97,6 +100,15 @@ const SubmitVariant = (isActive: boolean): ClassValue =>
     "bg-violet-900 hover:bg-violet-800 hover:text-white active:text-white active:bg-violet-950",
     {
       "test-stone-50": isActive,
+      "text-stone-200": !isActive,
+    },
+    Base,
+  );
+const DangerVariant = (isActive: boolean): ClassValue =>
+  clsx(
+    "bg-red-800 hover:bg-red-700 hover:text-white active:text-white active:bg-red-950",
+    {
+      "text-stone-50": isActive,
       "text-stone-200": !isActive,
     },
     Base,

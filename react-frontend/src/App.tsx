@@ -5,6 +5,7 @@ import { fetcher } from "./api/cardboardApi.ts";
 import { Outlet, Route, Routes, useSearchParams } from "react-router";
 import { DevicesIndex } from "./pages/DevicesIndex.tsx";
 import { LogsIndex } from "./pages/LogsIndex.tsx";
+import { AssociationsIndex } from "./pages/AssociationsIndex.tsx";
 
 // note: all icons from https://tablericons.com/
 
@@ -33,6 +34,7 @@ function App() {
                 />
               }
             />
+            <Route path="/associations" element={<AssociationsIndex />} />
             <Route path="/logs" element={<LogsIndex />} />
             <Route path="*" element={<NoMatch />} />
           </Route>

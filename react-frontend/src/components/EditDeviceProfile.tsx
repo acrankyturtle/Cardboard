@@ -64,6 +64,7 @@ import {
   createEndSequenceActionEvent,
   createStartSequenceActionEvent,
 } from "../lib/actionEventUtils.ts";
+import { AddIcon } from "../assets/sharedIcons.tsx";
 
 export function EditDeviceProfile({ className }: { className?: string }) {
   return (
@@ -1282,23 +1283,6 @@ function BindingsPanelIcon() {
       strokeLinejoin="round"
     >
       <path d="M17 20h-11a3 3 0 0 1 0 -6h11a3 3 0 0 0 0 6h1a3 3 0 0 0 3 -3v-11a2 2 0 0 0 -2 -2h-10a2 2 0 0 0 -2 2v8" />
-    </svg>
-  );
-}
-
-function AddIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 5l0 14" />
-      <path d="M5 12l14 0" />
     </svg>
   );
 }

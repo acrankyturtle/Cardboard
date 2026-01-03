@@ -18,6 +18,9 @@ export function NavBar({ className }: { className?: string }) {
           <NavBarButton to="/devices">
             {(selected) => <DeviceIcon selected={selected} />}
           </NavBarButton>
+          <NavBarButton to="/associations">
+            {(selected) => <AssociationsIcon selected={selected} />}
+          </NavBarButton>
           <div className="grow" />
           <NavBarButton to="/logs">
             {(selected) => <LogIcon selected={selected} />}
@@ -110,6 +113,16 @@ function DeviceIcon({ selected }: { selected?: boolean }) {
     <ToggledIcon
       activeComponent={<DeviceIconFilled />}
       normalComponent={<DeviceIconOutline />}
+      selected={selected}
+    />
+  );
+}
+
+function AssociationsIcon({ selected }: { selected?: boolean }) {
+  return (
+    <ToggledIcon
+      activeComponent={<AssociationsFilled />}
+      normalComponent={<AssociationsOutline />}
       selected={selected}
     />
   );
@@ -211,6 +224,44 @@ function DeviceIconFilled() {
       height="24"
     >
       <path d="M15 2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 1 1v8a6 6 0 1 1 -12 0v-8a1 1 0 0 1 1 -1h1v-4a1 1 0 0 1 1 -1zm-1 2h-4v3h4z"></path>
+    </svg>
+  );
+}
+
+function AssociationsOutline() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M6 18m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+      <path d="M18 18m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+      <path d="M6 12v-2a6 6 0 1 1 12 0v2" />
+      <path d="M15 9l3 3l3 -3" />
+    </svg>
+  );
+}
+
+function AssociationsFilled() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M6 18m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+      <path d="M18 18m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+      <path d="M6 12v-2a6 6 0 1 1 12 0v2" />
+      <path d="M15 9l3 3l3 -3" />
     </svg>
   );
 }
