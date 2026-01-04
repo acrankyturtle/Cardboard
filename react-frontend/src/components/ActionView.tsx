@@ -24,7 +24,7 @@ import {
   MouseButtonDownActionEvent,
   MouseButtonUpActionEvent,
 } from "../api/devices.ts";
-import { ReactNode, useMemo } from "react";
+import { forwardRef, ReactNode, useMemo } from "react";
 import clsx from "clsx";
 import { Button, getButtonClassName } from "./Button.tsx";
 import { Input } from "@headlessui/react";
@@ -42,24 +42,24 @@ import {
 } from "../lib/editDeviceContext.tsx";
 import { ActionTypeMenu } from "./ActionTypeMenu.tsx";
 
-export function ActionView({
-  className,
-  action,
-  setAction,
-  onEdit,
-  onDelete,
-  compact,
-}: {
-  className?: string;
-  action: Action;
-  setAction?: (a: Action) => void;
-  onEdit?: () => void;
-  onDelete?: () => void;
-  compact?: boolean;
-}) {
+export const ActionView = forwardRef<
+  HTMLDivElement,
+  {
+    className?: string;
+    action: Action;
+    setAction?: (a: Action) => void;
+    onEdit?: () => void;
+    onDelete?: () => void;
+    compact?: boolean;
+  }
+>(function ActionView(
+  { className, action, setAction, onEdit, onDelete, compact },
+  ref,
+) {
   if (compact) {
     return (
       <div
+        ref={ref}
         className={clsx(
           "flex items-center gap-1 rounded bg-stone-800 px-2 py-1 text-xs shadow shadow-black/25",
           className,
@@ -80,6 +80,7 @@ export function ActionView({
 
   return (
     <div
+      ref={ref}
       className={clsx(
         "rounded bg-stone-800 shadow shadow-black/25",
         {
@@ -193,7 +194,7 @@ export function ActionView({
       </div>
     </div>
   );
-}
+});
 
 function ActionEventView({
   event,

@@ -3,7 +3,7 @@ import clsx from "clsx";
 import { ActionView } from "./ActionView.tsx";
 import { ActionTypeMenu } from "./ActionTypeMenu.tsx";
 import { getButtonClassName } from "./Button.tsx";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   convertSequenceDownToUp,
   convertSequenceUpToDown,
@@ -52,6 +52,33 @@ export function SequenceEditor({
   };
 
   const [editIndex, setEditIndex] = useState<number | null>(null);
+  const actionRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const shouldScrollRef = useRef(false);
+
+  // Scroll newly inserted action into view (centered to show insert buttons above/below)
+  useEffect(() => {
+    if (editIndex !== null && shouldScrollRef.current) {
+      shouldScrollRef.current = false;
+      const element = actionRefs.current[editIndex];
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+  }, [editIndex]);
+
+  const handleInsert = (index: number) => {
+    shouldScrollRef.current = true;
+    setEditIndex(index);
+  };
+
+  const handleEdit = (index: number) => {
+    if (editIndex !== index) {
+      shouldScrollRef.current = true;
+      setEditIndex(index);
+    } else {
+      setEditIndex(null);
+    }
+  };
 
   // handle clicks outside the ActionView being edited to exit edit mode
   useEffect(() => {
@@ -141,12 +168,15 @@ export function SequenceEditor({
             index={0}
             sequence={value}
             setSequence={setValue}
-            onInsert={setEditIndex}
+            onInsert={handleInsert}
             transformActionEvent={transformActionEvent}
           />
           {value.actions.map((a, i) => (
             <Fragment key={i}>
               <ActionView
+                ref={(el) => {
+                  actionRefs.current[i] = el;
+                }}
                 className="w-full overflow-hidden"
                 action={a}
                 setAction={
@@ -162,7 +192,7 @@ export function SequenceEditor({
                         })
                     : undefined
                 }
-                onEdit={() => setEditIndex(editIndex !== i ? i : null)}
+                onEdit={() => handleEdit(i)}
                 onDelete={() =>
                   setValue({
                     ...value,
@@ -175,7 +205,7 @@ export function SequenceEditor({
                 index={i + 1}
                 sequence={value}
                 setSequence={setValue}
-                onInsert={setEditIndex}
+                onInsert={handleInsert}
                 transformActionEvent={transformActionEvent}
               />
             </Fragment>
@@ -192,7 +222,7 @@ export function SequenceEditor({
             index={0}
             sequence={value}
             setSequence={setValue}
-            onInsert={setEditIndex}
+            onInsert={handleInsert}
             transformActionEvent={transformActionEvent}
           />
         </div>
