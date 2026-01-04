@@ -159,6 +159,8 @@ public static class Devices
 			: TypedResults.InternalServerError();
 	}
 
+	private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(30);
+
 	private static async Task StreamDeviceEvents(
 		HttpContext context,
 		[FromServices] IDeviceService deviceService,
@@ -169,8 +171,42 @@ public static class Devices
 		context.Response.Headers.CacheControl = "no-cache";
 		context.Response.Headers.Connection = "keep-alive";
 
-		var tcs = new TaskCompletionSource();
-		cancellationToken.Register(() => tcs.TrySetResult());
+		using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+		var linkedToken = cts.Token;
+
+		// Send initial keepalive to confirm connection
+		try
+		{
+			await context.Response.WriteAsync(": connected\n\n", linkedToken);
+			await context.Response.Body.FlushAsync(linkedToken);
+		}
+		catch (Exception) when (linkedToken.IsCancellationRequested)
+		{
+			return;
+		}
+
+		// Heartbeat task to detect stale connections
+		var heartbeatTask = Task.Run(
+			async () =>
+			{
+				using var timer = new PeriodicTimer(HeartbeatInterval);
+				while (await timer.WaitForNextTickAsync(linkedToken))
+				{
+					try
+					{
+						await context.Response.WriteAsync(": keepalive\n\n", linkedToken);
+						await context.Response.Body.FlushAsync(linkedToken);
+					}
+					catch (Exception)
+					{
+						// Write failed - client disconnected
+						await cts.CancelAsync();
+						return;
+					}
+				}
+			},
+			linkedToken
+		);
 
 		using var subscription = deviceService.OnDevicesChanged.Subscribe(async evt =>
 		{
@@ -184,17 +220,25 @@ public static class Devices
 				var json = JsonSerializer.Serialize(data);
 				await context.Response.WriteAsync(
 					$"event: devicesChanged\ndata: {json}\n\n",
-					cancellationToken
+					linkedToken
 				);
-				await context.Response.Body.FlushAsync(cancellationToken);
+				await context.Response.Body.FlushAsync(linkedToken);
 			}
-			catch (OperationCanceledException)
+			catch (Exception)
 			{
-				// client disconnected
+				// Write failed - client disconnected
+				await cts.CancelAsync();
 			}
 		});
 
-		await tcs.Task;
+		try
+		{
+			await heartbeatTask;
+		}
+		catch (OperationCanceledException)
+		{
+			// Expected when client disconnects or server shuts down
+		}
 	}
 }
 
