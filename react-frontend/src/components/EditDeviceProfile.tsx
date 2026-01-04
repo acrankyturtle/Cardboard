@@ -1,7 +1,7 @@
 import clsx, { ClassValue } from "clsx";
 import { Button, getButtonClassName } from "./Button.tsx";
 import { ListBox, ListBoxItem } from "./ListBox.tsx";
-import { CSSProperties, ReactNode, useCallback, useMemo } from "react";
+import { CSSProperties, ReactNode, useCallback, useMemo, useState } from "react";
 import {
   DeviceKey,
   DeviceKeyLayer,
@@ -65,6 +65,7 @@ import {
   createStartSequenceActionEvent,
 } from "../lib/actionEventUtils.ts";
 import { AddIcon } from "../assets/sharedIcons.tsx";
+import { TemplatePanel } from "./MacroTemplates.tsx";
 
 export function EditDeviceProfile({ className }: { className?: string }) {
   return (
@@ -962,6 +963,8 @@ function MacroListItem({ item }: { item: ListBoxItem }) {
 
 function EditMacroDialog() {
   const { state, dispatch } = useEditDeviceContext();
+  const [isTemplateEditing, setIsTemplateEditing] = useState(false);
+  const [tabIndex, setTabIndex] = useState(0);
 
   const showModal =
     state.modal !== null &&
@@ -985,10 +988,9 @@ function EditMacroDialog() {
     return { macro, setMacro };
   }, [state]);
 
-  const closeModal = useCallback(
-    () => dispatch({ type: "setModal", modal: null }),
-    [dispatch],
-  );
+  const closeModal = useCallback(() => {
+    dispatch({ type: "setModal", modal: null });
+  }, [dispatch]);
 
   if (!macro) return <></>;
 
@@ -1057,12 +1059,21 @@ function EditMacroDialog() {
           </div>
         </Fieldset>
         <DialogDivider />
-        <TabGroup className="space-y-4">
+        <TabGroup
+          className="space-y-4"
+          selectedIndex={tabIndex}
+          onChange={(index) => {
+            // Prevent switching to sequences when template is being edited
+            if (isTemplateEditing && index === 0) return;
+            setTabIndex(index);
+          }}
+        >
           <TabList className="space-x-1">
             <Tab
               as={Button}
               className="px-4"
               buttonStyle={{ variant: "navbar" }}
+              disabled={isTemplateEditing}
             >
               Sequences
             </Tab>
@@ -1126,16 +1137,28 @@ function EditMacroDialog() {
                 }}
               />
             </TabPanel>
-            <TabPanel
-              tabIndex={-1}
-              className="flex size-full flex-wrap items-center justify-center gap-2 p-3"
-            >
-              <Template className="bg-sky-900 hover:bg-sky-800 active:bg-sky-950">
-                Basic
-              </Template>
-              <Template className="bg-orange-900 hover:bg-orange-800 active:bg-orange-950">
-                Rapid Fire
-              </Template>
+            <TabPanel tabIndex={-1} className="size-full p-3">
+              <TemplatePanel
+                setMacro={(result) => {
+                  setMacro({
+                    ...macro,
+                    startSequence: result.start,
+                    loopSequence: result.loop,
+                    endSequence: result.end,
+                  });
+                }}
+                onEditingChange={setIsTemplateEditing}
+                currentMacro={
+                  macro
+                    ? {
+                        start: macro.startSequence,
+                        loop: macro.loopSequence,
+                        end: macro.endSequence,
+                      }
+                    : undefined
+                }
+                onSwitchToSequences={() => setTabIndex(0)}
+              />
             </TabPanel>
           </TabPanels>
         </TabGroup>
@@ -1173,26 +1196,6 @@ function EditMacroDialog() {
         <DialogCancelButton onClick={closeModal}>Cancel</DialogCancelButton>
       </DialogFooter>
     </Dialog>
-  );
-}
-
-function Template({
-  className,
-  children,
-}: {
-  className?: string;
-  children?: ReactNode;
-}) {
-  return (
-    <button
-      className={clsx(
-        "h-24 w-56 rounded-2xl shadow-lg shadow-black/25",
-        getButtonClassName({ rounded: "none", variant: "no-color" }),
-        className,
-      )}
-    >
-      {children}
-    </button>
   );
 }
 

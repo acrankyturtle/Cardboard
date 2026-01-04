@@ -48,13 +48,36 @@ export function ActionView({
   setAction,
   onEdit,
   onDelete,
+  compact,
 }: {
   className?: string;
   action: Action;
   setAction?: (a: Action) => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  compact?: boolean;
 }) {
+  if (compact) {
+    return (
+      <div
+        className={clsx(
+          "flex items-center gap-1 rounded bg-stone-800 px-2 py-1 text-xs shadow shadow-black/25",
+          className,
+        )}
+      >
+        <ActionEventView event={action.actionEvent} />
+        {onDelete && (
+          <button
+            className="ml-1 text-stone-400 hover:text-stone-200"
+            onClick={onDelete}
+          >
+            ×
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div
       className={clsx(
