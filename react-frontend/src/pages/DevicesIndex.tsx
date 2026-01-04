@@ -378,33 +378,33 @@ function DataProvider({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let canceled = false;
+    const abortController = new AbortController();
+    const signal = abortController.signal;
+
     setError(null);
     setDevice(undefined);
     setProfile(undefined);
 
-    getDeviceDetails(deviceId)
+    getDeviceDetails(deviceId, signal)
       .then((d) => {
-        if (canceled) return;
         setDevice(d);
       })
       .catch((e) => {
-        if (canceled) return;
+        if (e instanceof Error && e.name === "AbortError") return;
         setError(e instanceof Error ? e.message : "Failed to load device");
       });
 
-    getDeviceProfile(deviceId)
+    getDeviceProfile(deviceId, signal)
       .then((p) => {
-        if (canceled) return;
         setProfile(p);
       })
       .catch((e) => {
-        if (canceled) return;
+        if (e instanceof Error && e.name === "AbortError") return;
         setError(e instanceof Error ? e.message : "Failed to load profile");
       });
 
     return () => {
-      canceled = true;
+      abortController.abort();
     };
   }, [deviceId]);
 

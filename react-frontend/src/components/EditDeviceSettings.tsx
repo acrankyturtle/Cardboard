@@ -31,18 +31,25 @@ export function EditDeviceSettings({
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
+    const abortController = new AbortController();
+
     setLoading(true);
     setLoadError(null);
-    getDeviceSettings(device.id)
+    getDeviceSettings(device.id, abortController.signal)
       .then((s) => {
         setSettings(s);
         setOriginalSettings(s);
         setLoading(false);
       })
       .catch((e) => {
+        if (e instanceof Error && e.name === "AbortError") return;
         setLoadError(e instanceof Error ? e.message : "Failed to load settings");
         setLoading(false);
       });
+
+    return () => {
+      abortController.abort();
+    };
   }, [device.id]);
 
   const hasChanges =

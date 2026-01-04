@@ -52,8 +52,11 @@ export const useDeviceEvents = () => {
   }, [mutate]);
 };
 
-export const getDeviceDetails = async (deviceId: string) => {
-  const response = await fetch(getApiUrl(`devices/${deviceId}`));
+export const getDeviceDetails = async (
+  deviceId: string,
+  signal?: AbortSignal,
+) => {
+  const response = await fetch(getApiUrl(`devices/${deviceId}`), { signal });
 
   if (!response.ok) {
     throw new Error(`Failed to fetch device details: ${response.statusText}`);
@@ -75,8 +78,13 @@ export const useDeviceDetails = (deviceId: string) => {
   };
 };
 
-export const getDeviceProfile = async (deviceId: string) => {
-  const response = await fetch(getApiUrl(`devices/${deviceId}/profile`));
+export const getDeviceProfile = async (
+  deviceId: string,
+  signal?: AbortSignal,
+) => {
+  const response = await fetch(getApiUrl(`devices/${deviceId}/profile`), {
+    signal,
+  });
 
   if (!response.ok) {
     throw new Error(`Failed to fetch device profile: ${response.statusText}`);
@@ -148,8 +156,11 @@ export const updateDeviceFirmware = async (
 
 export const getDeviceSettings = async (
   deviceId: string,
+  signal?: AbortSignal,
 ): Promise<DeviceSettings> => {
-  const response = await fetch(getApiUrl(`devices/${deviceId}/settings`));
+  const response = await fetch(getApiUrl(`devices/${deviceId}/settings`), {
+    signal,
+  });
 
   if (!response.ok) {
     throw new Error(`Failed to fetch device settings: ${response.statusText}`);

@@ -629,18 +629,25 @@ function InputDevicesDialog({
   useEffect(() => {
     if (!open) return;
 
+    const abortController = new AbortController();
+
     setLoading(true);
     setError(null);
 
-    getInputDevices()
+    getInputDevices(abortController.signal)
       .then((devices) => {
         setDevices(devices);
         setLoading(false);
       })
       .catch((e) => {
+        if (e instanceof Error && e.name === "AbortError") return;
         setError(e instanceof Error ? e.message : "Failed to load devices");
         setLoading(false);
       });
+
+    return () => {
+      abortController.abort();
+    };
   }, [open]);
 
   return (

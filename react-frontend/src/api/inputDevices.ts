@@ -7,8 +7,10 @@ export interface InputDeviceInfo {
   description: string;
 }
 
-export const getInputDevices = async (): Promise<InputDeviceInfo[]> => {
-  const response = await fetch(getApiUrl("input-devices"));
+export const getInputDevices = async (
+  signal?: AbortSignal,
+): Promise<InputDeviceInfo[]> => {
+  const response = await fetch(getApiUrl("input-devices"), { signal });
 
   if (!response.ok) {
     throw new Error(`Failed to fetch input devices: ${response.statusText}`);
