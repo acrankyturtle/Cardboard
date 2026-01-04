@@ -1,7 +1,14 @@
 import clsx, { ClassValue } from "clsx";
 import { Button, getButtonClassName } from "./Button.tsx";
 import { ListBox, ListBoxItem } from "./ListBox.tsx";
-import { CSSProperties, ReactNode, useCallback, useMemo, useState } from "react";
+import {
+  CSSProperties,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   DeviceKey,
   DeviceKeyLayer,
@@ -55,7 +62,6 @@ import {
   TabList,
   TabPanel,
   TabPanels,
-  Textarea,
 } from "@headlessui/react";
 import { InputClassName } from "./Input.tsx";
 import { SequenceEditor } from "./SequenceEditor.tsx";
@@ -1026,36 +1032,48 @@ function EditMacroDialog() {
       </DialogHeader>
       <DialogDivider />
       <DialogBody className="gap-y-5">
-        <Fieldset className="space-y-8">
-          <div className="grid grid-cols-2 gap-x-8">
-            <div className="flex flex-col gap-4">
-              <Field className="flex flex-col gap-1">
-                <Label>Name</Label>
-                <Input
-                  className={clsx("w-full", InputClassName)}
-                  type="text"
-                  maxLength={255}
-                  value={macro.name}
-                  onChange={(e) => setMacro({ ...macro, name: e.target.value })}
+        <Fieldset className="space-y-4">
+          <Field className="flex flex-col gap-1">
+            <Label>Name</Label>
+            <Input
+              className={clsx("w-full", InputClassName)}
+              type="text"
+              maxLength={255}
+              value={macro.name}
+              onChange={(e) => setMacro({ ...macro, name: e.target.value })}
+            />
+          </Field>
+          <div className="grid grid-cols-[1fr_2fr] gap-x-6">
+            <Field className="flex flex-col gap-1">
+              <Label className="flex items-center gap-2">
+                Play Channel
+                <ChannelSummaryLink
+                  profile={state.profile}
+                  currentMacro={macro}
                 />
-              </Field>
-              <Field className="flex flex-col gap-1" disabled>
-                <Label className="data-disabled:opacity-50">Play Channel</Label>
-                <Input
-                  className={clsx("w-full", InputClassName)}
-                  type="number"
-                  min={0}
-                  max={255}
-                />
-              </Field>
-            </div>
-            <Field className="flex h-full flex-col gap-1" disabled>
-              <Label className="data-disabled:opacity-50">Cut Channels</Label>
-              <Textarea
-                className={clsx("grow resize-none", InputClassName)}
-                disabled
+              </Label>
+              <Input
+                className={clsx("w-full", InputClassName)}
+                type="number"
+                min={0}
+                max={255}
+                value={macro.playChannel ?? ""}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setMacro({
+                    ...macro,
+                    playChannel: value === "" ? undefined : parseInt(value, 10),
+                  });
+                }}
+                placeholder="None"
               />
             </Field>
+            <CutChannelsField
+              value={macro.cutChannels}
+              onChange={(channels) =>
+                setMacro({ ...macro, cutChannels: channels })
+              }
+            />
           </div>
         </Fieldset>
         <DialogDivider />
@@ -1441,5 +1459,169 @@ function DeselectIcon() {
       <path d="M20 16v.01" />
       <path d="M3 3l18 18" />
     </svg>
+  );
+}
+
+function CutChannelsField({
+  value,
+  onChange,
+}: {
+  value: readonly number[];
+  onChange: (channels: number[]) => void;
+}) {
+  const [inputValue, setInputValue] = useState(value.join(", "));
+
+  // Sync input when external value changes (e.g., when switching macros)
+  useEffect(() => {
+    setInputValue(value.join(", "));
+  }, [value]);
+
+  const parseAndUpdate = () => {
+    const channels = inputValue
+      .split(/[,\s]+/)
+      .map((s) => parseInt(s.trim(), 10))
+      .filter((n) => !isNaN(n) && n >= 0 && n <= 255);
+    onChange(channels);
+    // Also normalize the display
+    setInputValue(channels.join(", "));
+  };
+
+  return (
+    <Field className="flex flex-col gap-1">
+      <Label>Cut Channels</Label>
+      <Input
+        className={clsx("w-full", InputClassName)}
+        type="text"
+        value={inputValue}
+        onChange={(e) => setInputValue(e.target.value)}
+        onBlur={parseAndUpdate}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            parseAndUpdate();
+          }
+        }}
+        placeholder="e.g. 1, 2, 3"
+      />
+    </Field>
+  );
+}
+
+function ChannelSummaryLink({
+  profile,
+  currentMacro,
+}: {
+  profile: DeviceProfile;
+  currentMacro: DeviceMacro;
+}) {
+  const [showDialog, setShowDialog] = useState(false);
+
+  // Collect all channel usage info, using currentMacro instead of the saved version
+  const channelInfo = useMemo(() => {
+    const playChannels = new Map<number, string[]>();
+    const cutChannels = new Map<number, string[]>();
+
+    // Build macro list: replace existing macro with currentMacro, or add if new
+    const macros = profile.macros.some((m) => m.id === currentMacro.id)
+      ? profile.macros.map((m) => (m.id === currentMacro.id ? currentMacro : m))
+      : [...profile.macros, currentMacro];
+
+    for (const macro of macros) {
+      if (macro.playChannel !== undefined) {
+        const existing = playChannels.get(macro.playChannel) ?? [];
+        playChannels.set(macro.playChannel, [...existing, macro.name]);
+      }
+      for (const channel of macro.cutChannels) {
+        const existing = cutChannels.get(channel) ?? [];
+        cutChannels.set(channel, [...existing, macro.name]);
+      }
+    }
+
+    // Get all unique channels
+    const allChannels = new Set([
+      ...playChannels.keys(),
+      ...cutChannels.keys(),
+    ]);
+    const sortedChannels = [...allChannels].sort((a, b) => a - b);
+
+    return { playChannels, cutChannels, sortedChannels };
+  }, [profile.macros, currentMacro]);
+
+  return (
+    <>
+      <button
+        type="button"
+        className="text-xs text-violet-400 hover:text-violet-300 hover:underline"
+        onClick={() => setShowDialog(true)}
+      >
+        (view all)
+      </button>
+      <Dialog
+        open={showDialog}
+        onClose={() => setShowDialog(false)}
+        className="w-2xl"
+      >
+        <DialogHeader>
+          <DialogHeaderTitle>Channel Summary</DialogHeaderTitle>
+          <DialogHeaderDescription>
+            Overview of all channels used in this profile
+          </DialogHeaderDescription>
+        </DialogHeader>
+        <DialogDivider />
+        <DialogBody className="max-h-80 overflow-y-auto">
+          {channelInfo.sortedChannels.length === 0 ? (
+            <div className="text-stone-400 italic">
+              No channels are currently in use.
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-3">
+              {channelInfo.sortedChannels.map((channel) => {
+                const playMacros = channelInfo.playChannels.get(channel) ?? [];
+                const cutMacros = channelInfo.cutChannels.get(channel) ?? [];
+                return (
+                  <div
+                    key={channel}
+                    className="flex flex-col gap-1 rounded-md bg-stone-800 px-2 pt-1 pb-2 shadow shadow-black/25"
+                  >
+                    <div className="font-semibold text-violet-300">
+                      Channel #{channel}
+                    </div>
+                    {playMacros.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {playMacros.map((name) => (
+                          <ChannelSummaryMacro key={name}>
+                            {name}
+                          </ChannelSummaryMacro>
+                        ))}
+                      </div>
+                    )}
+                    {cutMacros.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1">
+                        <span className="text-sm text-stone-400">Cut by:</span>
+                        {cutMacros.map((name) => (
+                          <ChannelSummaryMacro key={name}>
+                            {name}
+                          </ChannelSummaryMacro>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </DialogBody>
+        <DialogFooter className="justify-end">
+          <DialogCancelButton onClick={() => setShowDialog(false)}>
+            Close
+          </DialogCancelButton>
+        </DialogFooter>
+      </Dialog>
+    </>
+  );
+}
+
+function ChannelSummaryMacro({ children }: { children: ReactNode }) {
+  return (
+    <span className="rounded bg-blue-900 px-2 py-0.5 text-xs">{children}</span>
   );
 }
