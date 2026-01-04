@@ -10,7 +10,7 @@ import {
   getDeviceProfile,
   updateDeviceProfile,
 } from "../api/devices.ts";
-import { ReactNode, useCallback, useEffect, useState } from "react";
+import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
 import { Button, getButtonClassName } from "../components/Button.tsx";
 import { Link, useNavigate } from "react-router";
@@ -281,8 +281,11 @@ function EditDeviceView() {
     });
   }, [saving, state.device.id, state.profile]);
 
-  const hasChanges =
-    JSON.stringify(state.profile) !== JSON.stringify(state.originalProfile);
+  const hasChanges = useMemo(
+    () =>
+      JSON.stringify(state.profile) !== JSON.stringify(state.originalProfile),
+    [state.profile, state.originalProfile],
+  );
 
   return (
     <>

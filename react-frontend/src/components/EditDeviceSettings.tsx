@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import clsx from "clsx";
 import Header from "./Header.tsx";
@@ -52,10 +52,13 @@ export function EditDeviceSettings({
     };
   }, [device.id]);
 
-  const hasChanges =
-    settings !== null &&
-    originalSettings !== null &&
-    JSON.stringify(settings) !== JSON.stringify(originalSettings);
+  const hasChanges = useMemo(
+    () =>
+      settings !== null &&
+      originalSettings !== null &&
+      JSON.stringify(settings) !== JSON.stringify(originalSettings),
+    [settings, originalSettings],
+  );
 
   const handleSave = async () => {
     if (!settings || saving) return;
