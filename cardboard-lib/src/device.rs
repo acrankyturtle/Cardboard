@@ -1,6 +1,6 @@
 use core::fmt::Display;
 
-use alloc::{string::String, string::ToString, vec::Vec};
+use alloc::{string::ToString, vec::Vec};
 use defmt::Format;
 use uuid::Uuid;
 
@@ -93,7 +93,6 @@ impl Format for CommandId {
 
 pub struct DeviceInfo {
 	pub id: DeviceId,
-	pub name: &'static str,
 	pub manufacturer: &'static str,
 	pub r#type: DeviceTypeId,
 	pub variant: Option<DeviceVariant>,
@@ -104,7 +103,6 @@ pub struct DeviceInfo {
 impl Writeable for DeviceInfo {
 	async fn write_to<W: WriteAsync>(&self, writer: &mut W) -> Result<(), &'static str> {
 		self.id.write_to(writer).await?;
-		writer.write_string_u8(self.name).await?;
 		writer.write_string_u8(self.manufacturer).await?;
 		self.r#type.write_to(writer).await?;
 		writer.write_option(self.variant).await?;
@@ -115,14 +113,12 @@ impl Writeable for DeviceInfo {
 }
 
 pub struct DeviceOptions {
-	pub name: String,
 	pub mouse_enabled: bool,
 }
 
 impl Default for DeviceOptions {
 	fn default() -> Self {
 		DeviceOptions {
-			name: "Cardboard Device".to_string(),
 			mouse_enabled: false,
 		}
 	}
@@ -130,7 +126,6 @@ impl Default for DeviceOptions {
 
 impl Writeable for DeviceOptions {
 	async fn write_to<W: WriteAsync>(&self, writer: &mut W) -> Result<(), &'static str> {
-		writer.write_string_u8(&self.name).await?;
 		writer.write_bool(self.mouse_enabled).await?;
 		Ok(())
 	}

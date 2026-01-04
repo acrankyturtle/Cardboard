@@ -1,6 +1,6 @@
 use cardboard_lib::{
 	device::DeviceInfo,
-	hid::{HidDevice},
+	hid::HidDevice,
 	profile::{ConsumerControlEvent, KeyboardEvent, MouseEvent},
 };
 use defmt::info;
@@ -58,8 +58,9 @@ pub fn init_usb<
 	usb: USB,
 	device_info: &DeviceInfo,
 	serial_number: &'static str,
+	model: &'static str,
 ) -> UsbDevices<{ KeyboardImpl::SIZE }, { MouseImpl::SIZE }, { ConsumerImpl::SIZE }> {
-	let mut usb_builder = get_usb_builder(usb, device_info, serial_number);
+	let mut usb_builder = get_usb_builder(usb, device_info, serial_number, model);
 
 	let keyboard_writer = get_keyboard_writer::<KeyboardImpl>(&mut usb_builder);
 	let mouse_writer = get_mouse_writer::<MouseImpl>(&mut usb_builder);
@@ -86,8 +87,9 @@ pub fn init_usb_no_mouse<
 	usb: USB,
 	device_info: &DeviceInfo,
 	serial_number: &'static str,
+	model: &'static str,
 ) -> UsbDevicesNoMouse<{ KeyboardImpl::SIZE }, { ConsumerImpl::SIZE }> {
-	let mut usb_builder = get_usb_builder(usb, device_info, serial_number);
+	let mut usb_builder = get_usb_builder(usb, device_info, serial_number, model);
 
 	let keyboard_writer = get_keyboard_writer::<KeyboardImpl>(&mut usb_builder);
 	let consumer_writer = get_consumer_writer::<ConsumerImpl>(&mut usb_builder);
@@ -109,10 +111,11 @@ fn get_usb_builder(
 	usb: USB,
 	device_info: &DeviceInfo,
 	serial_number: &'static str,
+	model: &'static str,
 ) -> Builder<'static, Driver<'static, USB>> {
 	let mut config = Config::new(0xF055, 0x6969);
 	config.manufacturer = Some(device_info.manufacturer);
-	config.product = Some(device_info.name);
+	config.product = Some(model);
 	config.serial_number = Some(serial_number);
 
 	let config_descriptor = {

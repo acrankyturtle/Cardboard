@@ -61,11 +61,15 @@ public sealed class DeviceSummary
 	public required string Model { get; init; }
 	public string? IconUrl { get; init; }
 
-	public static DeviceSummary From(DeviceInfo deviceInfo, DeviceTypeInfo deviceTypeInfo) =>
+	public static DeviceSummary From(
+		DeviceInfo deviceInfo,
+		DeviceTypeInfo deviceTypeInfo,
+		DeviceProfile profile
+	) =>
 		new()
 		{
 			Id = deviceInfo.Id,
-			Name = deviceInfo.Name,
+			Name = profile.Name,
 			Model = deviceTypeInfo.Model,
 			IconUrl = deviceTypeInfo.IconUrl,
 		};
@@ -97,12 +101,13 @@ public sealed class DeviceDetails
 		DeviceSettings settings,
 		DeviceStatus status,
 		DeviceTypeInfo typeInfo,
-		uint? latestVersion
+		uint? latestVersion,
+		string profileName
 	) =>
 		new()
 		{
 			Id = info.Id,
-			Name = info.Name,
+			Name = profileName,
 			Type = info.Type,
 			Variant = info.Variant,
 			Model = typeInfo.Model,
@@ -222,8 +227,30 @@ file sealed class DeviceRepository(
 	)
 	{
 		var devices = await deviceService.GetDevices(cancellationToken);
-		var deviceSummaries = devices.Select(x => DeviceSummary.From(x, GetDeviceTypeInfo(x.Type))).ToList();
-		return deviceSummaries;
+
+		var summaries = new List<DeviceSummary>();
+		foreach (var device in devices)
+		{
+			var profileResult = await deviceService.SendCommand(
+				new GetProfileCommand(),
+				new(),
+				device.Id,
+				cancellationToken
+			);
+
+			if (!profileResult.TryGetSuccess(out var profile))
+			{
+				_logger.LogError(
+					"Could not get profile for {DeviceId}, omitting from device list",
+					device.Id
+				);
+				continue;
+			}
+
+			summaries.Add(DeviceSummary.From(device, GetDeviceTypeInfo(device.Type), profile));
+		}
+
+		return summaries;
 	}
 
 	public async Task<DeviceDetails?> GetDeviceDetails(
@@ -267,9 +294,28 @@ file sealed class DeviceRepository(
 			return null;
 		}
 
+		var deviceProfile = (
+			await deviceService.SendCommand(new GetProfileCommand(), new(), deviceId, cancellationToken)
+		).TryGetSuccess(out var profile)
+			? profile
+			: null;
+
+		if (deviceProfile is null)
+		{
+			_logger.LogError("Could not get profile for {DeviceId}", deviceId);
+			return null;
+		}
+
 		var deviceTypeInfo = GetDeviceTypeInfo(deviceInfo.Type);
 		var latestVersion = await latestVersionTask;
-		return DeviceDetails.From(deviceInfo, deviceSettings, deviceStatus, deviceTypeInfo, latestVersion);
+		return DeviceDetails.From(
+			deviceInfo,
+			deviceSettings,
+			deviceStatus,
+			deviceTypeInfo,
+			latestVersion,
+			deviceProfile.Name
+		);
 	}
 
 	public async Task<Profile?> GetDeviceProfile(

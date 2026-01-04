@@ -48,9 +48,7 @@ if (device == null)
 	return;
 }
 
-Console.WriteLine(
-	$"Sending profile `{profileName}` to device `{device.Name}` ({device.Id}) with name `{name}`... "
-);
+Console.WriteLine($"Sending profile `{profileName}` to device `{device.Id}` with name `{name}`... ");
 
 var profileResult = await deviceService.SendCommand(new UpdateProfileCommand(), profile, device.Id);
 profileResult.Match(
@@ -65,7 +63,7 @@ profileResult.Match(
 if (!profileResult.IsSuccess || settings == null)
 	return;
 
-Console.WriteLine($"Sending settings to device `{device.Name}` ({device.Id})... ");
+Console.WriteLine($"Sending settings to device `{device.Id}`... ");
 
 var settingsResult = await deviceService.SendCommand(new UpdateSettingsCommand(), settings, device.Id);
 settingsResult.Match(
@@ -95,7 +93,7 @@ static async Task<DeviceInfo?> SelectDevice(IDeviceService deviceService)
 		for (var i = 0; i < devices.Count; i++)
 		{
 			var device = devices[i];
-			Console.WriteLine($"{i + 1}: {device.Name} ({device.Id})");
+			Console.WriteLine($"{i + 1}: {device.Id}");
 		}
 
 		Console.WriteLine();

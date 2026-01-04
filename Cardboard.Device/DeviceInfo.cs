@@ -5,7 +5,6 @@ namespace Cardboard.Device;
 public sealed class DeviceInfo : IReadable<DeviceInfo>
 {
 	public required DeviceId Id { get; init; }
-	public required string Name { get; init; }
 	public required string Manufacturer { get; init; }
 	public required DeviceTypeId Type { get; init; }
 	public required uint? Variant { get; init; }
@@ -15,7 +14,6 @@ public sealed class DeviceInfo : IReadable<DeviceInfo>
 	public static DeviceInfo ReadFrom(BinaryReader reader)
 	{
 		var id = DeviceId.ReadFrom(reader);
-		var name = reader.ReadStringU8();
 		var manufacturer = reader.ReadStringU8();
 		var type = DeviceTypeId.ReadFrom(reader);
 		var variant = reader.ReadOption(br => br.ReadUInt32());
@@ -25,7 +23,6 @@ public sealed class DeviceInfo : IReadable<DeviceInfo>
 		return new()
 		{
 			Id = id,
-			Name = name,
 			Manufacturer = manufacturer,
 			Type = type,
 			Variant = variant,

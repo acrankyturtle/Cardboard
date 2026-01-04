@@ -24,8 +24,8 @@ use cardboard::{
 };
 use cardboard_lib::{
 	command::{
-		UpdateProfileCommand, Command, GetProfileCommand, GetSettingsCommand, GetStatusCommand,
-		IdentifyCommand, RebootCommand, SetExternalTagsCommand, SetVirtualKeysCommand,
+		Command, GetProfileCommand, GetSettingsCommand, GetStatusCommand, IdentifyCommand,
+		RebootCommand, SetExternalTagsCommand, SetVirtualKeysCommand, UpdateProfileCommand,
 		UpdateSettingsCommand,
 	},
 	context::Context,
@@ -178,7 +178,6 @@ async fn main(spawner: Spawner) -> () {
 	static DEVICE_INFO: StaticCell<DeviceInfo> = StaticCell::new();
 	let device_info = DEVICE_INFO.init(DeviceInfo {
 		id: device_id,
-		name: "Cardboard",
 		manufacturer: "cranky",
 		r#type: DeviceTypeId::new(Uuid::from_u128(0x0407db48_ca74_5783_9b11_489637b7c615)),
 		variant: None,
@@ -248,8 +247,12 @@ async fn main(spawner: Spawner) -> () {
 	let serial_reset_timeout = 1.secs();
 
 	let (serial_reader, serial_writer, usb_device) = if settings.mouse_enabled {
-		let usb =
-			init_usb::<KeyboardImpl, MouseImpl, ConsumerImpl>(p.USB, &device_info, serial_number);
+		let usb = init_usb::<KeyboardImpl, MouseImpl, ConsumerImpl>(
+			p.USB,
+			&device_info,
+			serial_number,
+			"CK1-30",
+		);
 		spawner
 			.spawn(hid_task(
 				usb.keyboard_writer,
@@ -260,8 +263,12 @@ async fn main(spawner: Spawner) -> () {
 			.unwrap();
 		(usb.serial_reader, usb.serial_writer, usb.device)
 	} else {
-		let usb =
-			init_usb_no_mouse::<KeyboardImpl, ConsumerImpl>(p.USB, &device_info, serial_number);
+		let usb = init_usb_no_mouse::<KeyboardImpl, ConsumerImpl>(
+			p.USB,
+			&device_info,
+			serial_number,
+			"CK1-30",
+		);
 		spawner
 			.spawn(hid_task_no_mouse(
 				usb.keyboard_writer,

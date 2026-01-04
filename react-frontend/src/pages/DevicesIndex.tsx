@@ -32,6 +32,7 @@ import {
   useEditDeviceContext,
 } from "../lib/editDeviceContext.tsx";
 import { NavigationBlocker } from "../components/NavigationBlocker.tsx";
+import { EditableProfileName } from "../components/EditableProfileName.tsx";
 
 export function DevicesIndex({
   deviceId,
@@ -261,7 +262,7 @@ function EditDeviceView() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const { state } = useEditDeviceContext();
+  const { state, dispatch } = useEditDeviceContext();
 
   const hasChanges =
     JSON.stringify(state.profile) !== JSON.stringify(state.originalProfile);
@@ -275,8 +276,19 @@ function EditDeviceView() {
       <DevicesHeader>
         <div className="flex grow items-end gap-3">
           <div>Edit</div>
-          <div className="text-lg font-normal">{state.device.name}</div>
-          <div className="text-lg font-normal">{state.device.id}</div>
+          <EditableProfileName
+            name={state.profile.name}
+            fallback={state.device.model}
+            onChange={(newName) =>
+              dispatch({
+                type: "setProfile",
+                profile: { ...state.profile, name: newName },
+              })
+            }
+          />
+          <div className="text-lg font-normal text-stone-400">
+            {state.device.id}
+          </div>
         </div>
         <div
           className={clsx("p-1 text-lg text-green-500 transition", {
