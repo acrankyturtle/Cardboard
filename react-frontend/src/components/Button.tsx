@@ -1,4 +1,4 @@
-import { ButtonHTMLAttributes, ReactNode } from "react";
+import { ButtonHTMLAttributes, forwardRef, ReactNode } from "react";
 import clsx, { ClassValue } from "clsx";
 
 interface ButtonStyleOptions {
@@ -19,25 +19,24 @@ interface ButtonStyleOptions {
   isActive?: boolean;
 }
 
-export function Button({
-  className,
-  children,
-  buttonStyle,
-  ...props
-}: {
-  className?: string;
-  children?: ReactNode;
-  buttonStyle?: ButtonStyleOptions;
-} & ButtonHTMLAttributes<HTMLButtonElement>) {
+export const Button = forwardRef<
+  HTMLButtonElement,
+  {
+    className?: string;
+    children?: ReactNode;
+    buttonStyle?: ButtonStyleOptions;
+  } & ButtonHTMLAttributes<HTMLButtonElement>
+>(function Button({ className, children, buttonStyle, ...props }, ref) {
   return (
     <button
+      ref={ref}
       className={clsx(getButtonClassName(buttonStyle ?? {}), className)}
       {...props}
     >
       {children}
     </button>
   );
-}
+});
 
 export const getButtonClassName = ({
   animation = "normal",
