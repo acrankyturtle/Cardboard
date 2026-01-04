@@ -45,6 +45,7 @@ export type EditDeviceAction = EditDeviceActionBase &
     | SetSelectedBindingsAction
     | SetSelectedTagsAction
     | SetModalAction
+    | CleanChangesAction
   );
 
 export interface SetProfileAction {
@@ -80,6 +81,10 @@ export interface SetSelectedTagsAction {
 export interface SetModalAction {
   type: "setModal";
   modal: ModalOptions;
+}
+
+export interface CleanChangesAction {
+  type: "cleanChanges";
 }
 
 interface ModalBaseOptions {
@@ -158,6 +163,11 @@ const editDeviceReducer = (
       return {
         ...state,
         modal: action.modal,
+      };
+    case "cleanChanges":
+      return {
+        ...state,
+        originalProfile: state.profile,
       };
   }
 };

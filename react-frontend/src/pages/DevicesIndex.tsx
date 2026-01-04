@@ -10,7 +10,7 @@ import {
   getDeviceProfile,
   updateDeviceProfile,
 } from "../api/devices.ts";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useCallback, useEffect, useState } from "react";
 import clsx from "clsx";
 import { Button, getButtonClassName } from "../components/Button.tsx";
 import { Link, useNavigate } from "react-router";
@@ -264,6 +264,23 @@ function EditDeviceView() {
 
   const { state, dispatch } = useEditDeviceContext();
 
+  const handleSave = useCallback(() => {
+    if (saving) return;
+    setSaving(true);
+    setSaveError(null);
+
+    updateDeviceProfile(state.device.id, state.profile).then((v) => {
+      setSaving(false);
+      if (v !== "success") {
+        setSaveError(v.error);
+      } else {
+        setSaveSuccess(true);
+        dispatch({ type: "cleanChanges" });
+        setTimeout(() => setSaveSuccess(false), 5000);
+      }
+    });
+  }, [saving, state.device.id, state.profile]);
+
   const hasChanges =
     JSON.stringify(state.profile) !== JSON.stringify(state.originalProfile);
 
@@ -308,21 +325,7 @@ function EditDeviceView() {
         <Button
           className="min-w-24 px-3"
           buttonStyle={{ variant: "submit" }}
-          onClick={() => {
-            if (saving) return;
-            setSaving(true);
-            setSaveError(null);
-
-            updateDeviceProfile(state.device.id, state.profile).then((v) => {
-              setSaving(false);
-              if (v !== "success") {
-                setSaveError(v.error);
-              } else {
-                setSaveSuccess(true);
-                setTimeout(() => setSaveSuccess(false), 5000);
-              }
-            });
-          }}
+          onClick={handleSave}
         >
           Save
         </Button>
