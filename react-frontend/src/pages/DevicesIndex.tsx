@@ -44,7 +44,10 @@ export function DevicesIndex({
     <>
       <div className="flex size-full flex-col justify-items-center">
         {deviceId && action === "edit" ? (
-          <DataProvider deviceId={deviceId}>
+          <DataProvider
+            deviceId={deviceId}
+            loadingHeader={<DevicesHeader>Edit</DevicesHeader>}
+          >
             {(device, profile) => (
               <EditDeviceContextProvider
                 device={device}
@@ -55,7 +58,10 @@ export function DevicesIndex({
             )}
           </DataProvider>
         ) : deviceId && action === "settings" ? (
-          <DataProvider deviceId={deviceId}>
+          <DataProvider
+            deviceId={deviceId}
+            loadingHeader={<DevicesHeader>Settings</DevicesHeader>}
+          >
             {(device) => <EditDeviceSettings device={device} />}
           </DataProvider>
         ) : (
@@ -345,9 +351,11 @@ function DevicesHeader({
 
 function DataProvider({
   deviceId,
+  loadingHeader,
   children,
 }: {
   deviceId: string;
+  loadingHeader?: ReactNode;
   children: (device: DeviceDetails, profile: DeviceProfile) => ReactNode;
 }) {
   const [device, setDevice] = useState<DeviceDetails | undefined>(undefined);
@@ -387,17 +395,23 @@ function DataProvider({
 
   if (error) {
     return (
-      <div className="flex size-full flex-col items-center justify-center gap-4 text-stone-400">
-        <div className="text-red-400">Error: {error}</div>
-      </div>
+      <>
+        {loadingHeader}
+        <div className="flex size-full flex-col items-center justify-center gap-4 text-stone-400">
+          <div className="text-red-400">Error: {error}</div>
+        </div>
+      </>
     );
   }
 
   if (!device || !profile) {
     return (
-      <div className="flex size-full items-center justify-center">
-        <LoadingIndicator className="size-12 text-stone-400" />
-      </div>
+      <>
+        {loadingHeader}
+        <div className="flex size-full items-center justify-center">
+          <LoadingIndicator className="size-12 text-stone-400" />
+        </div>
+      </>
     );
   }
 
