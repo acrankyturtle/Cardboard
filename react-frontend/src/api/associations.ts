@@ -64,47 +64,71 @@ export const getAssociation = async (id: string): Promise<Association> => {
 
 export const createAssociation = async (
   data: AssociationData,
-): Promise<string> => {
-  const response = await fetch(getApiUrl("tags"), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  });
+): Promise<{ id: string } | { error: string }> => {
+  try {
+    const response = await fetch(getApiUrl("tags"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
 
-  if (!response.ok) {
-    throw new Error(`Failed to create association: ${response.statusText}`);
+    if (!response.ok) {
+      return { error: `Failed to create association: ${response.statusText}` };
+    }
+
+    const result: { id: string } = await response.json();
+    return result;
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Failed to create association",
+    };
   }
-
-  const result: { id: string } = await response.json();
-  return result.id;
 };
 
 export const updateAssociation = async (
   id: string,
   data: AssociationData,
-): Promise<void> => {
-  const response = await fetch(getApiUrl(`tags/${id}`), {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  });
+): Promise<"success" | { error: string }> => {
+  try {
+    const response = await fetch(getApiUrl(`tags/${id}`), {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
 
-  if (!response.ok) {
-    throw new Error(`Failed to update association: ${response.statusText}`);
+    if (!response.ok) {
+      return { error: `Failed to update association: ${response.statusText}` };
+    }
+
+    return "success";
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Failed to update association",
+    };
   }
 };
 
-export const deleteAssociation = async (id: string): Promise<void> => {
-  const response = await fetch(getApiUrl(`tags/${id}`), {
-    method: "DELETE",
-  });
+export const deleteAssociation = async (
+  id: string,
+): Promise<"success" | { error: string }> => {
+  try {
+    const response = await fetch(getApiUrl(`tags/${id}`), {
+      method: "DELETE",
+    });
 
-  if (!response.ok) {
-    throw new Error(`Failed to delete association: ${response.statusText}`);
+    if (!response.ok) {
+      return { error: `Failed to delete association: ${response.statusText}` };
+    }
+
+    return "success";
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Failed to delete association",
+    };
   }
 };
 

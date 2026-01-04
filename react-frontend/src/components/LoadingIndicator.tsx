@@ -42,12 +42,13 @@ export function DelayedLoadingIndicator({
   const [delayedIsLoading, setDelayedIsLoading] = useState(false);
 
   useEffect(() => {
+    setDelayedIsLoading(false);
     const timer = setTimeout(() => {
       setDelayedIsLoading(true);
     }, delayMs);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [delayMs]);
 
   return <>{delayedIsLoading ? renderLoading() : renderWait()}</>;
 }

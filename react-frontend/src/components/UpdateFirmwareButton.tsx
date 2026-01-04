@@ -17,11 +17,18 @@ export function UpdateFirmwareButton({
   const onClick = useCallback(() => {
     setUpdating(true);
     onResult?.(null);
-    updateDeviceFirmware(deviceId).then((r) => {
-      setUpdating(false);
-      onResult?.(r);
-    });
-  }, []);
+    updateDeviceFirmware(deviceId)
+      .then((r) => {
+        setUpdating(false);
+        onResult?.(r);
+      })
+      .catch((e) => {
+        setUpdating(false);
+        onResult?.({
+          error: e instanceof Error ? e.message : "Failed to update firmware",
+        });
+      });
+  }, [deviceId, onResult]);
 
   return (
     <>

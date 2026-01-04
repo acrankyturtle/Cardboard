@@ -116,19 +116,27 @@ export const updateDeviceProfile = async (
   deviceId: string,
   profile: DeviceProfile,
 ): Promise<"success" | { error: string }> => {
-  const response = await fetch(getApiUrl(`devices/${deviceId}/profile`), {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(profile),
-  });
+  try {
+    const response = await fetch(getApiUrl(`devices/${deviceId}/profile`), {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(profile),
+    });
 
-  if (!response.ok) {
-    return { error: `Failed to update device profile: ${response.statusText}` };
+    if (!response.ok) {
+      return {
+        error: `Failed to update device profile: ${response.statusText}`,
+      };
+    }
+
+    return "success";
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Failed to update device profile",
+    };
   }
-
-  return "success";
 };
 
 export const updateDeviceFirmware = async (
@@ -136,22 +144,29 @@ export const updateDeviceFirmware = async (
   version?: number,
   migrateProfile: boolean = true,
 ): Promise<"success" | { error: string }> => {
-  const url = new URL(getApiUrl(`devices/${deviceId}/update`));
-  url.searchParams.set("migrate", migrateProfile.toString());
-  if (version !== undefined)
-    url.searchParams.set("version", version.toString());
+  try {
+    const url = new URL(getApiUrl(`devices/${deviceId}/update`));
+    url.searchParams.set("migrate", migrateProfile.toString());
+    if (version !== undefined)
+      url.searchParams.set("version", version.toString());
 
-  const response = await fetch(url, {
-    method: "POST",
-  });
+    const response = await fetch(url, {
+      method: "POST",
+    });
 
-  if (!response.ok) {
+    if (!response.ok) {
+      return {
+        error: `Failed to update device firmware: ${response.statusText}`,
+      };
+    }
+
+    return "success";
+  } catch (e) {
     return {
-      error: `Failed to update device firmware: ${response.statusText}`,
+      error:
+        e instanceof Error ? e.message : "Failed to update device firmware",
     };
   }
-
-  return "success";
 };
 
 export const getDeviceSettings = async (
@@ -174,21 +189,28 @@ export const updateDeviceSettings = async (
   deviceId: string,
   settings: DeviceSettings,
 ): Promise<"success" | { error: string }> => {
-  const response = await fetch(getApiUrl(`devices/${deviceId}/settings`), {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(settings),
-  });
+  try {
+    const response = await fetch(getApiUrl(`devices/${deviceId}/settings`), {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(settings),
+    });
 
-  if (!response.ok) {
+    if (!response.ok) {
+      return {
+        error: `Failed to update device settings: ${response.statusText}`,
+      };
+    }
+
+    return "success";
+  } catch (e) {
     return {
-      error: `Failed to update device settings: ${response.statusText}`,
+      error:
+        e instanceof Error ? e.message : "Failed to update device settings",
     };
   }
-
-  return "success";
 };
 
 export interface DeviceSummary {

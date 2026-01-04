@@ -50,8 +50,11 @@ export function AssociationsIndex() {
   } | null>(null);
   const [deletingAssociation, setDeletingAssociation] =
     useState<Association | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const handleAdd = () => {
+    setSaveError(null);
     setEditingAssociation({
       id: null,
       data: createEmptyAssociationData(),
@@ -59,6 +62,7 @@ export function AssociationsIndex() {
   };
 
   const handleEdit = (association: Association) => {
+    setSaveError(null);
     setEditingAssociation({
       id: association.id,
       data: { ...association.data },
@@ -68,28 +72,35 @@ export function AssociationsIndex() {
   const handleSave = async (data: AssociationData) => {
     if (!editingAssociation) return;
 
-    try {
-      if (editingAssociation.id) {
-        await updateAssociation(editingAssociation.id, data);
-      } else {
-        await createAssociation(data);
-      }
+    setSaveError(null);
+    let result: "success" | { error: string };
+
+    if (editingAssociation.id) {
+      result = await updateAssociation(editingAssociation.id, data);
+    } else {
+      const createResult = await createAssociation(data);
+      result = "error" in createResult ? createResult : "success";
+    }
+
+    if (result === "success") {
       setEditingAssociation(null);
       mutate();
-    } catch (e) {
-      console.error("Failed to save association:", e);
+    } else {
+      setSaveError(result.error);
     }
   };
 
   const handleDelete = async () => {
     if (!deletingAssociation) return;
 
-    try {
-      await deleteAssociation(deletingAssociation.id);
+    setDeleteError(null);
+    const result = await deleteAssociation(deletingAssociation.id);
+
+    if (result === "success") {
       setDeletingAssociation(null);
       mutate();
-    } catch (e) {
-      console.error("Failed to delete association:", e);
+    } else {
+      setDeleteError(result.error);
     }
   };
 
@@ -146,6 +157,7 @@ export function AssociationsIndex() {
         }
         onClose={() => setEditingAssociation(null)}
         onSave={handleSave}
+        error={saveError}
       />
 
       <DeleteConfirmDialog
@@ -153,6 +165,7 @@ export function AssociationsIndex() {
         association={deletingAssociation}
         onClose={() => setDeletingAssociation(null)}
         onConfirm={handleDelete}
+        error={deleteError}
       />
     </div>
   );
@@ -222,6 +235,7 @@ function EditAssociationDialog({
   setData,
   onClose,
   onSave,
+  error,
 }: {
   open: boolean;
   isNew: boolean;
@@ -229,6 +243,7 @@ function EditAssociationDialog({
   setData: (data: AssociationData) => void;
   onClose: () => void;
   onSave: (data: AssociationData) => void;
+  error: string | null;
 }) {
   const { devices } = useDeviceList();
   const [showInputDevices, setShowInputDevices] = useState(false);
@@ -407,6 +422,7 @@ function EditAssociationDialog({
         onClose={() => setShowInputDevices(false)}
       />
       <DialogFooter className="justify-end">
+        {error && <div className="mr-auto text-red-400">{error}</div>}
         <DialogCancelButton onClick={onClose}>Cancel</DialogCancelButton>
         <DialogConfirmButton onClick={handleSaveWithProcess}>
           {isNew ? "Create" : "Save"}
@@ -713,11 +729,13 @@ function DeleteConfirmDialog({
   association,
   onClose,
   onConfirm,
+  error,
 }: {
   open: boolean;
   association: Association | null;
   onClose: () => void;
   onConfirm: () => void;
+  error: string | null;
 }) {
   return (
     <Dialog className="w-96" open={open} onClose={onClose}>
@@ -736,6 +754,7 @@ function DeleteConfirmDialog({
         <p className="text-sm text-stone-400">This action cannot be undone.</p>
       </DialogBody>
       <DialogFooter className="justify-end">
+        {error && <div className="mr-auto text-red-400">{error}</div>}
         <DialogCancelButton onClick={onClose}>Cancel</DialogCancelButton>
         <Button
           className="min-w-24"
