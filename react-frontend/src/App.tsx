@@ -7,12 +7,16 @@ import { DevicesIndex } from "./pages/DevicesIndex.tsx";
 import { LogsIndex } from "./pages/LogsIndex.tsx";
 import { AssociationsIndex } from "./pages/AssociationsIndex.tsx";
 import { DashboardIndex } from "./pages/DashboardIndex.tsx";
+import { useDeviceEvents } from "./api/devices.ts";
 
 // note: all icons from https://tablericons.com/
 
 function App() {
   // TODO: set to true when editing stuff
   useWarnOnNavigate(false);
+
+  // Subscribe to real-time device connection events
+  useDeviceEvents();
 
   const [searchParams] = useSearchParams();
 

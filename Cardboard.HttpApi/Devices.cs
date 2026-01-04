@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Cardboard.Device;
 using Cardboard.Repositories;
 using Microsoft.AspNetCore.Builder;
@@ -57,6 +58,11 @@ public static class Devices
 			.WithName("Update Firmware")
 			.Produces(StatusCodes.Status204NoContent)
 			.Produces(StatusCodes.Status503ServiceUnavailable)
+			.WithOpenApi();
+		group
+			.MapGet("/events", StreamDeviceEvents)
+			.WithName("Device Events Stream")
+			.Produces(StatusCodes.Status200OK, contentType: "text/event-stream")
 			.WithOpenApi();
 	}
 
@@ -152,6 +158,50 @@ public static class Devices
 			)
 			: TypedResults.InternalServerError();
 	}
+
+	private static async Task StreamDeviceEvents(
+		HttpContext context,
+		[FromServices] IDeviceService deviceService,
+		CancellationToken cancellationToken
+	)
+	{
+		context.Response.Headers.ContentType = "text/event-stream";
+		context.Response.Headers.CacheControl = "no-cache";
+		context.Response.Headers.Connection = "keep-alive";
+
+		var tcs = new TaskCompletionSource();
+		cancellationToken.Register(() => tcs.TrySetResult());
+
+		using var subscription = deviceService.OnDevicesChanged.Subscribe(async evt =>
+		{
+			try
+			{
+				var data = new DevicesChangedEventData
+				{
+					Added = evt.Added.Select(d => d.Id).ToList(),
+					Removed = evt.Removed.Select(d => d.Id).ToList(),
+				};
+				var json = JsonSerializer.Serialize(data);
+				await context.Response.WriteAsync(
+					$"event: devicesChanged\ndata: {json}\n\n",
+					cancellationToken
+				);
+				await context.Response.Body.FlushAsync(cancellationToken);
+			}
+			catch (OperationCanceledException)
+			{
+				// client disconnected
+			}
+		});
+
+		await tcs.Task;
+	}
+}
+
+public sealed class DevicesChangedEventData
+{
+	public required IReadOnlyCollection<DeviceId> Added { get; init; }
+	public required IReadOnlyCollection<DeviceId> Removed { get; init; }
 }
 
 public sealed class DeviceListResponse

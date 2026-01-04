@@ -1,4 +1,5 @@
-import useSWR from "swr";
+import { useEffect, useRef } from "react";
+import useSWR, { useSWRConfig } from "swr";
 import { getApiUrl } from "./cardboardApi.ts";
 
 export const useDeviceList = (): {
@@ -12,10 +13,43 @@ export const useDeviceList = (): {
 
   return {
     devices: data?.devices ?? [],
-    // devices: fakeDevices,
     isLoading,
     error,
   };
+};
+
+/**
+ * Hook that subscribes to real-time device connection/disconnection events via SSE.
+ * Automatically revalidates the device list when devices change.
+ * Should be called once at the app level.
+ */
+export const useDeviceEvents = () => {
+  const { mutate } = useSWRConfig();
+  const eventSourceRef = useRef<EventSource | null>(null);
+
+  useEffect(() => {
+    const connect = () => {
+      const eventSource = new EventSource(getApiUrl("devices/events"));
+      eventSourceRef.current = eventSource;
+
+      eventSource.addEventListener("devicesChanged", () => {
+        // Revalidate device list when devices change
+        mutate("devices");
+      });
+
+      eventSource.onerror = () => {
+        eventSource.close();
+        // Reconnect after a delay
+        setTimeout(connect, 3000);
+      };
+    };
+
+    connect();
+
+    return () => {
+      eventSourceRef.current?.close();
+    };
+  }, [mutate]);
 };
 
 export const getDeviceDetails = async (deviceId: string) => {
