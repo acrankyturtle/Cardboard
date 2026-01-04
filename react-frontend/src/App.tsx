@@ -6,6 +6,7 @@ import { Outlet, Route, Routes, useSearchParams } from "react-router";
 import { DevicesIndex } from "./pages/DevicesIndex.tsx";
 import { LogsIndex } from "./pages/LogsIndex.tsx";
 import { AssociationsIndex } from "./pages/AssociationsIndex.tsx";
+import { DashboardIndex } from "./pages/DashboardIndex.tsx";
 
 // note: all icons from https://tablericons.com/
 
@@ -24,7 +25,7 @@ function App() {
       <main className="flex h-full bg-stone-950 text-stone-100">
         <Routes>
           <Route element={<Layout />}>
-            <Route index element={<></>} />
+            <Route index element={<DashboardIndex />} />
             <Route
               path="/devices"
               element={
