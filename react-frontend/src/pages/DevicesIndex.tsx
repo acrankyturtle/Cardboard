@@ -31,6 +31,7 @@ import {
   EditDeviceContextProvider,
   useEditDeviceContext,
 } from "../lib/editDeviceContext.tsx";
+import { NavigationBlocker } from "../components/NavigationBlocker.tsx";
 
 export function DevicesIndex({
   deviceId,
@@ -256,8 +257,15 @@ function EditDeviceView() {
 
   const { state } = useEditDeviceContext();
 
+  const hasChanges =
+    JSON.stringify(state.profile) !== JSON.stringify(state.originalProfile);
+
   return (
     <>
+      <NavigationBlocker
+        hasChanges={hasChanges}
+        message="You have unsaved profile changes. Are you sure you want to leave?"
+      />
       <DevicesHeader>
         <div className="flex grow items-end gap-3">
           <div>Edit</div>

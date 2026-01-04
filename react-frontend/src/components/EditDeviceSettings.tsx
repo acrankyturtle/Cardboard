@@ -12,6 +12,7 @@ import {
 import { LoadingIndicator } from "./LoadingIndicator.tsx";
 import { Dialog, DialogBody, DialogDivider, DialogHeader } from "./Dialog.tsx";
 import { Checkbox } from "@headlessui/react";
+import { NavigationBlocker } from "./NavigationBlocker.tsx";
 
 export function EditDeviceSettings({
   device,
@@ -68,6 +69,10 @@ export function EditDeviceSettings({
 
   return (
     <div className={clsx("flex size-full flex-col", className)}>
+      <NavigationBlocker
+        hasChanges={hasChanges}
+        message="You have unsaved settings changes. Are you sure you want to leave?"
+      />
       <Header className="sticky top-0 flex gap-2 justify-self-start">
         <div className="flex grow items-end gap-3">
           <div>Settings</div>
