@@ -65,7 +65,7 @@ group.MapGet(
 		FindFirmware(deviceTypeId, variant, null, ParseChannelQueryParam(channel)) is { } latest
 			? Results.Redirect(
 				QueryHelpers.AddQueryString(
-					$"/{apiRoot}/firmware/{deviceTypeId}/{latest.Version}",
+					BuildRedirectPath($"/firmware/{deviceTypeId}/{latest.Version}"),
 					new Dictionary<string, string?> { { "variant", variant }, { "channel", channel } }
 				)
 			)
@@ -135,7 +135,7 @@ group.MapGet(
 		FindControllerRelease(null, ParseChannelQueryParam(channel)) is { } latest
 			? Results.Redirect(
 				QueryHelpers.AddQueryString(
-					$"/{apiRoot}/controller/{latest.Version}",
+					BuildRedirectPath($"/controller/{latest.Version}"),
 					new Dictionary<string, string?> { { "channel", channel } }
 				)
 			)
@@ -190,6 +190,10 @@ return;
 
 UpdateChannel ParseChannelQueryParam(string channel) =>
 	channel.Equals("preview", StringComparison.OrdinalIgnoreCase) ? UpdateChannel.All : UpdateChannel.Stable;
+
+// Builds a redirect path, handling the case where apiRoot may be null.
+// Note: apiRoot is already trimmed of slashes and path should start with '/'.
+string BuildRedirectPath(string path) => string.IsNullOrEmpty(apiRoot) ? path : $"/{apiRoot}{path}";
 
 FirmwareFileInfo? FindFirmware(string deviceTypeId, string? variant, uint? version, UpdateChannel channel)
 {
