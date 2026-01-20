@@ -80,6 +80,11 @@ public static class UpdateController
 	}
 }
 
+/// <summary>
+/// Response for the local controller version endpoint.
+/// Not to be confused with <see cref="Update.Api.Abstractions.ControllerVersionResponse"/>
+/// which is used for update server communication.
+/// </summary>
 public sealed class ControllerVersionResponse
 {
 	public required string Version { get; init; }
