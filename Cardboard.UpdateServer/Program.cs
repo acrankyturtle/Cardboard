@@ -145,7 +145,12 @@ group.MapGet(
 group.MapGet(
 	"/controller/{version}",
 	(string version, [FromQuery] string channel = "stable") =>
-		FindControllerRelease(version, ParseChannelQueryParam(channel)) is { } release
+	{
+		// Validate version format (must be valid semantic version)
+		if (!Version.TryParse(version, out _))
+			return Results.BadRequest("Invalid version format. Expected format: major.minor.patch");
+
+		return FindControllerRelease(version, ParseChannelQueryParam(channel)) is { } release
 			? Results.Ok(
 				new ControllerVersionResponse
 				{
@@ -154,19 +159,31 @@ group.MapGet(
 					Sha256 = release.Sha256,
 				}
 			)
-			: Results.NotFound()
+			: Results.NotFound();
+	}
 );
 
 group.MapGet(
 	"/controller/{versionStr}/download",
 	(string versionStr, [FromQuery] string channel = "stable") =>
 	{
-		var version = versionStr.Equals("latest", StringComparison.OrdinalIgnoreCase) ? null : versionStr;
+		string? version;
+		if (versionStr.Equals("latest", StringComparison.OrdinalIgnoreCase))
+		{
+			version = null;
+		}
+		else
+		{
+			// Validate version format
+			if (!Version.TryParse(versionStr, out _))
+				return Results.BadRequest("Invalid version format. Expected format: major.minor.patch");
+			version = versionStr;
+		}
 
 		var release = FindControllerRelease(version, ParseChannelQueryParam(channel));
 
 		if (release == null)
-			return TypedResults.NotFound();
+			return Results.NotFound();
 
 		return Results.File(
 			release.LocalPath,
@@ -197,6 +214,10 @@ string BuildRedirectPath(string path) => string.IsNullOrEmpty(apiRoot) ? path : 
 
 FirmwareFileInfo? FindFirmware(string deviceTypeId, string? variant, uint? version, UpdateChannel channel)
 {
+	// validate deviceTypeId is a valid GUID
+	if (!Guid.TryParse(deviceTypeId, out _))
+		return null;
+
 	var filePath = Path.Combine(firmwarePath, deviceTypeId);
 
 	if (!Directory.Exists(filePath))
