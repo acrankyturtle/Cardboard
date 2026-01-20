@@ -10,6 +10,7 @@
 		</Reference>
 	</ItemGroup>
 	<ItemGroup>
+		<ProjectReference Include="..\Cardboard.Update.Api.Abstractions\Cardboard.Update.Api.Abstractions.csproj" />
 		<ProjectReference Include="..\Cardboard.Update\Cardboard.Update.csproj" />
 	</ItemGroup>
 </Project>

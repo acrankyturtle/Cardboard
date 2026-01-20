@@ -15,7 +15,7 @@ var firmware = new DeviceFirmware
 	Version = 0,
 	Firmware = firmwareBytes,
 };
-var options = new UpdateOptions { FlashOnly = false, MigrateProfile = true };
+var options = new FirmwareUpdateOptions { FlashOnly = false, MigrateProfile = true };
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -38,7 +38,7 @@ file class Updater(IDeviceUpdater updater, IHostApplicationLifetime lifetime, IL
 	public async Task Execute(
 		DeviceId deviceId,
 		DeviceFirmware firmware,
-		UpdateOptions options,
+		FirmwareUpdateOptions options,
 		CancellationToken stoppingToken = default
 	)
 	{

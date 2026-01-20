@@ -5,6 +5,8 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<UserSecretsId>dotnet-Cardboard.Controller-713aafc6-76e6-4750-9881-194a8894336d</UserSecretsId>
 		<ApplicationIcon>key.ico</ApplicationIcon>
+		<Version>1.0.0</Version>
+		<AssemblyVersion>1.0.0</AssemblyVersion>
 	</PropertyGroup>
 	<!-- Include wwwroot content in build output -->
 	<ItemGroup>

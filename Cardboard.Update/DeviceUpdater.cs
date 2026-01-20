@@ -140,7 +140,7 @@ public sealed class DeviceFirmware
 	public required ReadOnlyMemory<byte> Firmware { get; init; }
 }
 
-public class UpdateOptions
+public class FirmwareUpdateOptions
 {
 	/// <summary>
 	/// Look for a device already in bootloader mode and flash it without performing any other steps.

@@ -14,6 +14,7 @@
 		<ProjectReference Include="..\Cardboard.Events\Cardboard.Events.csproj" />
 		<ProjectReference Include="..\Cardboard.Repositories\Cardboard.Repositories.csproj" />
 		<ProjectReference Include="..\Cardboard.Update\Cardboard.Update.csproj" />
+		<ProjectReference Include="..\Cardboard.Update.Api\Cardboard.Update.Api.csproj" />
 	</ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.7" />

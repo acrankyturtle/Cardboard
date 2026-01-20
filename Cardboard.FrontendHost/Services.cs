@@ -74,6 +74,7 @@ public static partial class Services
 		api.MapSchemaEndpoints();
 		api.MapLogEndpoints();
 		api.MapInputDeviceEndpoints();
+		api.MapControllerEndpoints();
 
 		return builder;
 	}

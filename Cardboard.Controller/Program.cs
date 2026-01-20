@@ -66,6 +66,7 @@ var pathsConfig = builder.Configuration.GetSection("Paths");
 builder
 	.Services.AddInitialization()
 	.AddApiFirmwareSource(updateConfig)
+	.AddApiControllerSource()
 	.AddDeviceServices()
 	.AddDeviceUpdater()
 	.AddCardboardServices()

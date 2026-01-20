@@ -1,6 +1,7 @@
 ﻿using System.Net.Http.Json;
 using System.Text.Json;
 using Cardboard.Device;
+using Cardboard.Update.Api.Abstractions;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,7 +27,7 @@ file class ApiFirmwareSource(HttpClient httpClient, IOptions<UpdateSourceConfigu
 		response.EnsureSuccessStatusCode();
 
 		return (
-			await response.Content.ReadFromJsonAsync<FirmwareInfoResponse>(cancellationToken)
+			await response.Content.ReadFromJsonAsync<FirmwareVersionResponse>(cancellationToken)
 			?? throw new JsonException()
 		).Version;
 	}
@@ -95,25 +96,4 @@ partial class Services
 		services.Configure<UpdateSourceConfiguration>(configuration);
 		return services;
 	}
-}
-
-file class UpdateSourceConfiguration
-{
-	public string Url { get; init; } = "https://cardboard.ggbim.com/update";
-
-	public UpdateChannel Channel { get; init; } = UpdateChannel.Stable;
-}
-
-[Flags]
-public enum UpdateChannel
-{
-	Stable = 1,
-	Preview = 2,
-	All = ~0,
-}
-
-public sealed class FirmwareInfoResponse
-{
-	public required uint Version { get; init; }
-	public required bool IsPreview { get; init; }
 }
