@@ -3,6 +3,7 @@ import clsx from "clsx";
 import { ReactElement, ReactNode } from "react";
 import { NavLink, To } from "react-router";
 import logo from "./assets/key.png";
+import { useControllerUpdate } from "./api/controller.ts";
 
 export function NavBar({ className }: { className?: string }) {
   return (
@@ -29,6 +30,7 @@ export function NavBar({ className }: { className?: string }) {
           {/*  {(selected) => <SettingsIcon selected={selected} />}*/}
           {/*</NavBarButton>*/}
         </div>
+        <VersionInfo />
       </div>
     </nav>
   );
@@ -73,6 +75,27 @@ function Logo() {
         src={logo}
         alt="Cardboard"
       />
+    </div>
+  );
+}
+
+function VersionInfo() {
+  const { updateInfo } = useControllerUpdate();
+
+  return (
+    <div className="flex flex-col items-center pb-3 text-center text-xs text-stone-500">
+      <span className="font-mono">v{updateInfo?.currentVersion ?? "..."}</span>
+      {updateInfo?.updateAvailable && updateInfo.downloadUrl && (
+        <a
+          href={updateInfo.downloadUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-1 text-amber-400 hover:text-amber-300"
+          title={`Update to v${updateInfo.latestVersion}`}
+        >
+          Update
+        </a>
+      )}
     </div>
   );
 }
