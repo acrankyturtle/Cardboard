@@ -188,3 +188,5 @@ public class FailedToFindPicoInBootloaderException(PicoWatcher.WaitForBootloader
 
 public class FailedToFindDeviceAfterUpdateException()
 	: UpdateDeviceException("Failed to find device after updating firmware.");
+
+public class FirmwareIntegrityException(string message) : Exception(message);

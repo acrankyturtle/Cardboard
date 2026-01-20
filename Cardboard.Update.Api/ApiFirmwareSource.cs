@@ -1,4 +1,5 @@
 ﻿using System.Net.Http.Json;
+using System.Security.Cryptography;
 using System.Text.Json;
 using Cardboard.Device;
 using Cardboard.Update.Api.Abstractions;
@@ -39,15 +40,40 @@ file class ApiFirmwareSource(HttpClient httpClient, IOptions<UpdateSourceConfigu
 		CancellationToken cancellationToken = default
 	)
 	{
-		var url = GetFirmwareUrl("download", deviceType, variant, version, options.Value.Channel);
-		var response = await httpClient.GetAsync(url, cancellationToken);
+		// First, get the version info which includes the expected hash
+		var versionUrl = GetFirmwareUrl(null, deviceType, variant, version, options.Value.Channel);
 
-		if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+		var versionResponse = await httpClient.GetAsync(versionUrl, cancellationToken);
+
+		if (versionResponse.StatusCode == System.Net.HttpStatusCode.NotFound)
 			return null;
 
-		response.EnsureSuccessStatusCode();
+		versionResponse.EnsureSuccessStatusCode();
 
-		var firmwareBytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+		var versionInfo =
+			await versionResponse.Content.ReadFromJsonAsync<FirmwareVersionResponse>(cancellationToken)
+			?? throw new JsonException("Failed to parse firmware version response");
+
+		// Download the firmware
+		var downloadUrl = GetFirmwareUrl("download", deviceType, variant, version, options.Value.Channel);
+
+		var downloadResponse = await httpClient.GetAsync(downloadUrl, cancellationToken);
+
+		if (downloadResponse.StatusCode == System.Net.HttpStatusCode.NotFound)
+			return null;
+
+		downloadResponse.EnsureSuccessStatusCode();
+
+		var firmwareBytes = await downloadResponse.Content.ReadAsByteArrayAsync(cancellationToken);
+
+		// Verify the hash
+		var actualHash = Convert.ToHexString(SHA256.HashData(firmwareBytes)).ToLowerInvariant();
+		if (!string.Equals(actualHash, versionInfo.Sha256, StringComparison.OrdinalIgnoreCase))
+		{
+			throw new FirmwareIntegrityException(
+				$"Firmware hash mismatch. Expected: {versionInfo.Sha256}, Actual: {actualHash}"
+			);
+		}
 
 		return new()
 		{

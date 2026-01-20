@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Cardboard.Update.Api;
 using Cardboard.Update.Api.Abstractions;
 using Cardboard.Utilities;
@@ -68,6 +69,7 @@ group.MapGet(
 				{
 					Version = firmware.Version,
 					IsPreview = firmware.Channel.HasFlag(UpdateChannel.Preview),
+					Sha256 = firmware.Sha256,
 				}
 			)
 			: Results.NotFound()
@@ -132,6 +134,7 @@ group.MapGet(
 				{
 					Version = release.Version,
 					IsPreview = release.Channel.HasFlag(UpdateChannel.Preview),
+					Sha256 = release.Sha256,
 				}
 			)
 			: Results.NotFound()
@@ -195,7 +198,8 @@ FirmwareFileInfo? FindFirmware(string deviceTypeId, string? variant, uint? versi
 				file.Variant,
 				path,
 				file.Version,
-				file.Channel
+				file.Channel,
+				FileHasher.ComputeSha256(path)
 			);
 		});
 
@@ -247,7 +251,13 @@ ControllerFileInfo? FindControllerRelease(string? version, UpdateChannel channel
 			if (!channel.HasFlag(file.Channel))
 				return null;
 
-			return new ControllerFileInfo(name.ToString(), path, file.Version, file.Channel);
+			return new ControllerFileInfo(
+				name.ToString(),
+				path,
+				file.Version,
+				file.Channel,
+				FileHasher.ComputeSha256(path)
+			);
 		});
 
 	if (version is not null)
@@ -271,7 +281,13 @@ static (string Version, UpdateChannel Channel)? ParseControllerFileName(ReadOnly
 	return (versionSpan.ToString(), isPreview ? UpdateChannel.Preview : UpdateChannel.Stable);
 }
 
-file record ControllerFileInfo(string Name, string LocalPath, string Version, UpdateChannel Channel);
+file record ControllerFileInfo(
+	string Name,
+	string LocalPath,
+	string Version,
+	UpdateChannel Channel,
+	string Sha256
+);
 
 file record FirmwareFileInfo(
 	string Name,
@@ -279,8 +295,19 @@ file record FirmwareFileInfo(
 	string? Variant,
 	string LocalPath,
 	uint Version,
-	UpdateChannel Channel
+	UpdateChannel Channel,
+	string Sha256
 );
+
+file static class FileHasher
+{
+	public static string ComputeSha256(string filePath)
+	{
+		using var stream = File.OpenRead(filePath);
+		var hashBytes = SHA256.HashData(stream);
+		return Convert.ToHexString(hashBytes).ToLowerInvariant();
+	}
+}
 
 file class UpdateServerPathConfiguration
 {
