@@ -85,17 +85,27 @@ internal class DeviceUpdate(IDeviceService deviceService) : IDeviceUpdater
 			// update pico in bootloader mode
 			await UpdateDevice(firmware, cancellationToken);
 
+			// Wait for device to reconnect after firmware update with a timeout
+			const int reconnectTimeoutSeconds = 30;
+			logger.LogDebug("Waiting up to {Timeout}s for device to reconnect", reconnectTimeoutSeconds);
+
+			using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(reconnectTimeoutSeconds));
+			using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(
+				cancellationToken,
+				timeoutCts.Token
+			);
+
 			var findAfterReboot = await Polling.Poll<Unit, Unit>(
 				async () =>
 				{
-					var deviceChanged = await deviceService.OnDevicesChanged.ToTask(cancellationToken);
+					var deviceChanged = await deviceService.OnDevicesChanged.ToTask(combinedCts.Token);
 					if (deviceChanged.Added.Any(x => x.Id == deviceId))
 						return Result.Fail(Unit.Value);
 
 					return Result.Success(Unit.Value);
 				},
 				TimeSpan.FromMilliseconds(100),
-				cancellationToken
+				combinedCts.Token
 			);
 
 			if (!findAfterReboot.IsSuccess)
