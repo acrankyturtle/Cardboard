@@ -2,16 +2,19 @@
 ; Cardboard Installer Script for Inno Setup
 ; ==========================================================================
 ; Requires Inno Setup 6.2+
-; Build with: ISCC.exe /DMyAppVersion=1.0.0 Cardboard.iss
+; Build with: ISCC.exe /DMyAppVersion=1.0.0 /DMyOutputFilename=1.0.0 Cardboard.iss
 ;
 ; Usage:
-;   CardboardSetup.exe           - Install normally
-;   CardboardSetup.exe /uninstall - Uninstall existing installation
+;   {version}.exe           - Install normally
+;   {version}.exe /uninstall - Uninstall existing installation
 ; ==========================================================================
 
 #define MyAppName "Cardboard"
 #ifndef MyAppVersion
   #define MyAppVersion "1.0.0"
+#endif
+#ifndef MyOutputFilename
+  #define MyOutputFilename MyAppVersion
 #endif
 #define MyAppPublisher "Cardboard"
 #define MyAppExeName "Cardboard.Controller.exe"
@@ -42,7 +45,7 @@ LicenseFile=License.rtf
 
 ; Output settings
 OutputDir=bin
-OutputBaseFilename=CardboardSetup-{#MyAppVersion}
+OutputBaseFilename={#MyOutputFilename}
 SetupIconFile={#IconPath}
 UninstallDisplayIcon={app}\{#MyAppExeName}
 UninstallDisplayName={#MyAppName}

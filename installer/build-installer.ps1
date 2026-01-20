@@ -3,14 +3,14 @@
 # Prerequisites: Inno Setup 6.2+ installed
 #
 # Usage:
-#   .\build-installer.ps1                    # Build with default version 1.0.0
-#   .\build-installer.ps1 -Version "1.2.0"   # Build with specific version
+#   .\build-installer.ps1                    # Build with version from assembly
+#   .\build-installer.ps1 -Preview           # Build as preview release
 #   .\build-installer.ps1 -SkipPublish       # Skip dotnet publish step
 
 param(
-    [string]$Version = "1.0.0",
     [string]$Configuration = "Release",
-    [switch]$SkipPublish
+    [switch]$SkipPublish,
+    [switch]$Preview
 )
 
 $ErrorActionPreference = "Stop"
@@ -20,8 +20,8 @@ $ControllerProject = Join-Path $SolutionDir "Cardboard.Controller\Cardboard.Cont
 $IssFile = Join-Path $ScriptDir "Cardboard.iss"
 
 Write-Host "=== Cardboard Installer Build ===" -ForegroundColor Cyan
-Write-Host "Version: $Version"
 Write-Host "Configuration: $Configuration"
+Write-Host "Preview: $Preview"
 Write-Host ""
 
 # Find Inno Setup Compiler
@@ -77,18 +77,40 @@ if (-not (Test-Path $ExePath)) {
 
 Write-Host "Publish directory verified: $PublishDir" -ForegroundColor Gray
 
-# Step 3: Compile Inno Setup Script
+# Step 3: Extract version from the published assembly
+Write-Host ""
+Write-Host "=== Extracting Version ===" -ForegroundColor Green
+
+$FileVersionInfo = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($ExePath)
+$Version = $FileVersionInfo.ProductVersion
+
+# Strip any +commit suffix (e.g., "1.0.0+abc123" -> "1.0.0")
+if ($Version -match '^\d+\.\d+\.\d+') {
+    $Version = $Matches[0]
+} else {
+    Write-Error "Could not parse version from assembly: $Version"
+    exit 1
+}
+
+Write-Host "Assembly version: $Version" -ForegroundColor Gray
+
+# Determine output filename based on preview flag
+$PreviewSuffix = if ($Preview) { ".p" } else { "" }
+$OutputFileName = "$Version$PreviewSuffix"
+Write-Host "Output filename: $OutputFileName.exe" -ForegroundColor Gray
+
+# Step 4: Compile Inno Setup Script
 Write-Host ""
 Write-Host "=== Compiling Installer ===" -ForegroundColor Green
 
-& $IsccExe "/DMyAppVersion=$Version" $IssFile
+& $IsccExe "/DMyAppVersion=$Version" "/DMyOutputFilename=$OutputFileName" $IssFile
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Inno Setup compilation failed"
     exit $LASTEXITCODE
 }
 
-# Step 4: Report success
-$OutputFile = Join-Path $ScriptDir "bin\CardboardSetup-$Version.exe"
+# Step 5: Report success
+$OutputFile = Join-Path $ScriptDir "bin\$OutputFileName.exe"
 if (Test-Path $OutputFile) {
     $FileInfo = Get-Item $OutputFile
     $SizeMB = [math]::Round($FileInfo.Length / 1MB, 2)
