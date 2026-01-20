@@ -11,11 +11,28 @@ using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
 builder.Services.AddCors(options =>
 {
 	options.AddDefaultPolicy(policy =>
 	{
-		policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+		if (corsOrigins is { Length: > 0 })
+		{
+			policy.WithOrigins(corsOrigins);
+		}
+		else
+		{
+			// Default: allow localhost origins for development
+			policy.SetIsOriginAllowed(origin =>
+			{
+				var uri = new Uri(origin);
+				return uri.Host is "localhost" or "127.0.0.1";
+			});
+		}
+
+		// Only allow GET requests since this is a read-only file server
+		policy.WithMethods("GET", "HEAD", "OPTIONS");
+		policy.AllowAnyHeader();
 	});
 });
 
