@@ -32,7 +32,7 @@ public interface IDeviceRepository
 		CancellationToken cancellationToken = default
 	);
 
-	Task<bool?> UpdateFirmware(
+	IAsyncEnumerable<FirmwareUpdateReport> UpdateFirmware(
 		DeviceId deviceId,
 		uint? version,
 		CancellationToken cancellationToken = default
@@ -453,27 +453,36 @@ file sealed class DeviceRepository(
 		return UpdateDeviceSettingsResult.DeviceError;
 	}
 
-	public async Task<bool?> UpdateFirmware(
+	public async IAsyncEnumerable<FirmwareUpdateReport> UpdateFirmware(
 		DeviceId deviceId,
 		uint? version,
-		CancellationToken cancellationToken = default
+		[System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default
 	)
 	{
 		var device = (await deviceService.GetDevices(cancellationToken)).FirstOrDefault(x =>
 			x.Id == deviceId
 		);
 		if (device is null)
-			return null;
+		{
+			yield return new FirmwareUpdateComplete { Result = UpdateFirmwareResult.DeviceNotFound };
+			yield break;
+		}
 
 		if (version is null)
 		{
 			version = await firmwareSource.GetLatestVersion(device.Type, device.Variant, cancellationToken);
 			if (version is null)
-				return null;
+			{
+				yield return new FirmwareUpdateComplete { Result = UpdateFirmwareResult.FirmwareNotFound };
+				yield break;
+			}
 		}
 
 		if (version <= device.Version)
-			return false;
+		{
+			yield return new FirmwareUpdateComplete { Result = UpdateFirmwareResult.AlreadyUpToDate };
+			yield break;
+		}
 
 		var firmware = await firmwareSource.GetFirmware(
 			device.Type,
@@ -482,20 +491,17 @@ file sealed class DeviceRepository(
 			cancellationToken
 		);
 		if (firmware is null)
-			return null;
+		{
+			yield return new FirmwareUpdateComplete { Result = UpdateFirmwareResult.FirmwareNotFound };
+			yield break;
+		}
 
 		Debug.Assert(firmware.Version == version);
 
-		try
+		await foreach (var report in deviceUpdater.UpdateDevice(deviceId, firmware, true, cancellationToken))
 		{
-			await deviceUpdater.UpdateDevice(deviceId, firmware, true, cancellationToken);
+			yield return report;
 		}
-		catch (UpdateDeviceException)
-		{
-			return false;
-		}
-
-		return true;
 	}
 
 	private DeviceTypeInfo GetDeviceTypeInfo(DeviceTypeId deviceTypeId) =>

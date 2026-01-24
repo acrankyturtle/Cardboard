@@ -11,11 +11,26 @@ public static class Polling
 	)
 	{
 		var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+		Result<TSuccess, TError>? lastResult = null;
 
 		while (true)
 		{
 			stopwatch.Restart();
-			var result = await func();
+
+			Result<TSuccess, TError> result;
+			try
+			{
+				result = await func();
+			}
+			catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+			{
+				// Function was cancelled - return last result or a failed result
+				if (lastResult.HasValue)
+					return lastResult.Value;
+				throw;
+			}
+
+			lastResult = result;
 
 			if (result.IsSuccess || cancellationToken.IsCancellationRequested)
 				return result;

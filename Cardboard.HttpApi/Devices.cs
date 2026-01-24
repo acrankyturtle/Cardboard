@@ -1,6 +1,8 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Cardboard.Device;
 using Cardboard.Repositories;
+using Cardboard.Update;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -56,8 +58,7 @@ public static class Devices
 		group
 			.MapPost("/{id}/update", UpdateFirmware)
 			.WithName("Update Firmware")
-			.Produces(StatusCodes.Status204NoContent)
-			.Produces(StatusCodes.Status503ServiceUnavailable)
+			.Produces(StatusCodes.Status200OK, contentType: "text/event-stream")
 			.WithOpenApi();
 		group
 			.MapGet("/events", StreamDeviceEvents)
@@ -141,29 +142,89 @@ public static class Devices
 			_ => throw new InvalidOperationException(),
 		};
 
-	private static async Task<Results<Ok<UpdateFirmwareResponse>, InternalServerError>> UpdateFirmware(
+	private static async Task UpdateFirmware(
+		HttpContext context,
 		[FromServices] IDeviceRepository deviceRepository,
+		[FromServices] JsonSerializerOptions jsonOptions,
 		[FromRoute(Name = "id")] DeviceId deviceId,
 		[FromQuery(Name = "migrate")] bool migrateProfile,
 		[FromQuery] uint? version,
 		CancellationToken cancellationToken
 	)
 	{
-		return await deviceRepository.UpdateFirmware(deviceId, version, cancellationToken) is { } updated
-			? TypedResults.Ok(
-				new UpdateFirmwareResponse
-				{
-					Action = updated ? UpdateFirmwareAction.Updated : UpdateFirmwareAction.AlreadyUpToDate,
-				}
+		context.Response.Headers.ContentType = "text/event-stream";
+		context.Response.Headers.CacheControl = "no-cache";
+		context.Response.Headers.Connection = "keep-alive";
+
+		try
+		{
+			await foreach (
+				var report in deviceRepository.UpdateFirmware(deviceId, version, cancellationToken)
 			)
-			: TypedResults.InternalServerError();
+			{
+				var evt = ToEvent(report);
+				var json = JsonSerializer.Serialize(evt, jsonOptions);
+				await context.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
+				await context.Response.Body.FlushAsync(cancellationToken);
+			}
+		}
+		catch (Exception ex)
+		{
+			var evt = new FirmwareUpdateErrorEvent
+			{
+				Result = UpdateFirmwareResult.DeviceNotReconnected,
+				Message = ex.Message,
+			};
+			var json = JsonSerializer.Serialize<FirmwareUpdateEvent>(evt, jsonOptions);
+			await context.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
+			await context.Response.Body.FlushAsync(cancellationToken);
+		}
 	}
+
+	private static FirmwareUpdateEvent ToEvent(FirmwareUpdateReport report) =>
+		report switch
+		{
+			FirmwareUpdateProgress progress => new FirmwareUpdateProgressEvent { Stage = progress.Stage },
+			FirmwareUpdateComplete { Result: UpdateFirmwareResult.Success } => new FirmwareUpdateSuccessEvent
+			{
+				AlreadyUpToDate = false,
+			},
+			FirmwareUpdateComplete { Result: UpdateFirmwareResult.AlreadyUpToDate } =>
+				new FirmwareUpdateSuccessEvent { AlreadyUpToDate = true },
+			FirmwareUpdateComplete complete => new FirmwareUpdateErrorEvent
+			{
+				Result = complete.Result,
+				Message = GetErrorMessage(complete.Result),
+			},
+			_ => throw new InvalidOperationException($"Unknown report type: {report.GetType()}"),
+		};
+
+	private static string GetErrorMessage(UpdateFirmwareResult result) =>
+		result switch
+		{
+			UpdateFirmwareResult.DeviceNotFound => "The specified device was not found.",
+			UpdateFirmwareResult.FirmwareNotFound => "No firmware is available for this device.",
+			UpdateFirmwareResult.DeviceAlreadyInBootloader =>
+				"Another device is already in bootloader mode. Please complete or cancel that update first.",
+			UpdateFirmwareResult.DeviceTypeMismatch => "The firmware does not match the device type.",
+			UpdateFirmwareResult.DeviceVariantMismatch => "The firmware does not match the device variant.",
+			UpdateFirmwareResult.FailedToGetProfile => "Failed to backup the device profile before updating.",
+			UpdateFirmwareResult.FailedToRestoreProfile =>
+				"The update completed but failed to restore the device profile.",
+			UpdateFirmwareResult.FailedToEnterBootloader => "Failed to put the device into bootloader mode.",
+			UpdateFirmwareResult.FailedToFindBootloader =>
+				"The device entered bootloader mode but was not detected by the system.",
+			UpdateFirmwareResult.DeviceNotReconnected =>
+				"The update completed but the device did not reconnect.",
+			_ => "An unknown error occurred.",
+		};
 
 	private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(30);
 
 	private static async Task StreamDeviceEvents(
 		HttpContext context,
 		[FromServices] IDeviceService deviceService,
+		[FromServices] JsonSerializerOptions jsonOptions,
 		CancellationToken cancellationToken
 	)
 	{
@@ -217,11 +278,8 @@ public static class Devices
 					Added = evt.Added.Select(d => d.Id).ToList(),
 					Removed = evt.Removed.Select(d => d.Id).ToList(),
 				};
-				var json = JsonSerializer.Serialize(data);
-				await context.Response.WriteAsync(
-					$"event: devicesChanged\ndata: {json}\n\n",
-					linkedToken
-				);
+				var json = JsonSerializer.Serialize(data, jsonOptions);
+				await context.Response.WriteAsync($"event: devicesChanged\ndata: {json}\n\n", linkedToken);
 				await context.Response.Body.FlushAsync(linkedToken);
 			}
 			catch (Exception)
@@ -268,13 +326,24 @@ public sealed class GetDeviceSettingsResponse
 	public required DeviceSettings DeviceSettings { get; init; }
 }
 
-public sealed class UpdateFirmwareResponse
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
+[JsonDerivedType(typeof(FirmwareUpdateProgressEvent), "progress")]
+[JsonDerivedType(typeof(FirmwareUpdateSuccessEvent), "success")]
+[JsonDerivedType(typeof(FirmwareUpdateErrorEvent), "error")]
+public abstract class FirmwareUpdateEvent;
+
+public sealed class FirmwareUpdateProgressEvent : FirmwareUpdateEvent
 {
-	public required UpdateFirmwareAction Action { get; init; }
+	public required FirmwareUpdateStage Stage { get; init; }
 }
 
-public enum UpdateFirmwareAction
+public sealed class FirmwareUpdateSuccessEvent : FirmwareUpdateEvent
 {
-	Updated,
-	AlreadyUpToDate,
+	public required bool AlreadyUpToDate { get; init; }
+}
+
+public sealed class FirmwareUpdateErrorEvent : FirmwareUpdateEvent
+{
+	public required UpdateFirmwareResult Result { get; init; }
+	public required string Message { get; init; }
 }

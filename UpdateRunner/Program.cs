@@ -44,28 +44,48 @@ file class Updater(IDeviceUpdater updater, IHostApplicationLifetime lifetime, IL
 	{
 		try
 		{
-			await updater.UpdateDevice(deviceId, firmware, options.MigrateProfile, stoppingToken);
+			await foreach (
+				var report in updater.UpdateDevice(deviceId, firmware, options.MigrateProfile, stoppingToken)
+			)
+			{
+				switch (report)
+				{
+					case FirmwareUpdateProgress progress:
+						switch (progress.Stage)
+						{
+							case FirmwareUpdateStage.BackingUpProfile:
+								logger.LogInformation("Backing up profile");
+								break;
+							case FirmwareUpdateStage.EnteringBootloader:
+								logger.LogInformation("Entering bootloader");
+								break;
+							case FirmwareUpdateStage.WaitingForBootloader:
+								logger.LogInformation("Waiting for bootloader");
+								break;
+							case FirmwareUpdateStage.WritingFirmware:
+								logger.LogInformation("Writing firmware");
+								break;
+							case FirmwareUpdateStage.WaitingForReconnect:
+								logger.LogInformation("Waiting for device to reconnect");
+								break;
+							case FirmwareUpdateStage.RestoringProfile:
+								logger.LogInformation("Restoring profile");
+								break;
+						}
+
+						break;
+					case FirmwareUpdateComplete completed:
+						if (completed.Result == UpdateFirmwareResult.Success)
+							logger.LogInformation("Firmware update completed successfully");
+						else
+							logger.LogError("Firmware update failed: {Result}", completed.Result);
+						break;
+				}
+			}
 		}
 		catch (Exception e)
 		{
 			logger.LogError(e, "Failed to update device {DeviceId}", deviceId);
-			throw;
-		}
-		finally
-		{
-			lifetime.StopApplication();
-		}
-	}
-
-	public async Task Execute(DeviceFirmware firmware, CancellationToken stoppingToken = default)
-	{
-		try
-		{
-			await updater.UpdateDevice(firmware, stoppingToken);
-		}
-		catch (Exception e)
-		{
-			logger.LogError(e, "Failed to update device");
 			throw;
 		}
 		finally

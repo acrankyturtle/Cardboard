@@ -101,9 +101,6 @@ function DeviceInfoDialog({ deviceId }: { deviceId: string | null }) {
       setLatch(deviceId);
     }
   }, [deviceId]);
-  const [lastFirmwareResult, setLastFirmwareResult] = useState<
-    "success" | { error: string } | null
-  >(null);
 
   return (
     latch && (
@@ -157,19 +154,13 @@ function DeviceInfoDialog({ deviceId }: { deviceId: string | null }) {
                         {device.latestVersion}
                         <UpdateFirmwareButton
                           deviceId={device.id}
-                          onResult={(r) => setLastFirmwareResult(r)}
+                          deviceName={device.name}
+                          currentVersion={device.version}
+                          targetVersion={device.latestVersion}
                         />
                       </>
                     ) : (
                       device.latestVersion
-                    )}
-                    {lastFirmwareResult === "success" ? (
-                      <div className="font-semibold text-lime-700">Success</div>
-                    ) : (
-                      <div className="font-semibold text-red-500">
-                        {lastFirmwareResult !== null &&
-                          lastFirmwareResult.error}
-                      </div>
                     )}
                   </div>
                 </StatValue>
