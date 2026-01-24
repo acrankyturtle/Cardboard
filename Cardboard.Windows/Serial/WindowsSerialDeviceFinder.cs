@@ -29,6 +29,7 @@ internal class WindowsSerialDeviceFinder : IWindowsSerialDeviceFinder, IDisposab
 	{
 		_subscription = windowsService
 			.OnMessage.Where(x => x.Msg == WM_DEVICECHANGE)
+			.Throttle(TimeSpan.FromMilliseconds(500))
 			.Subscribe(_ =>
 			{
 				UpdateDevices();
