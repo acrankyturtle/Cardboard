@@ -112,21 +112,3 @@ impl Writeable for DeviceInfo {
 	}
 }
 
-pub struct DeviceOptions {
-	pub mouse_enabled: bool,
-}
-
-impl Default for DeviceOptions {
-	fn default() -> Self {
-		DeviceOptions {
-			mouse_enabled: false,
-		}
-	}
-}
-
-impl Writeable for DeviceOptions {
-	async fn write_to<W: WriteAsync>(&self, writer: &mut W) -> Result<(), &'static str> {
-		writer.write_bool(self.mouse_enabled).await?;
-		Ok(())
-	}
-}

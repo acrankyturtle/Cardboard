@@ -36,9 +36,9 @@ use cardboard_lib::{
 	input::{ColPin, KeyId, KeyMatrix, RowPin},
 	profile::{KeyboardProfile, LayerTag},
 	serial::BufferedReader,
-	serialize::Readable,
+	settings::{SettingsData, VersionedSettings},
 	storage::{load_profile_from_flash, load_settings_from_flash, BlockFlashExt, FlashPartition},
-	stream::{ReadAsync, ReadAsyncExt},
+	stream::{ReadAsync, ReadAsyncExt, WriteAsync, WriteAsyncExt},
 	TrackingAllocator,
 };
 use cardboard_lib::{
@@ -76,6 +76,9 @@ static mut FLASH_DATA: MaybeUninit<[u8; FLASH_DATA_SIZE]> = MaybeUninit::uninit(
 const FLASH_DATA_SIZE: usize = 500 * 1024; // 500 KB
 const SETTINGS_SIZE: usize = 4 * 1024; // 4 KB
 const PROFILE_SIZE: usize = FLASH_DATA_SIZE - SETTINGS_SIZE;
+
+// settings
+type Settings = VersionedSettings<Ck130Settings>;
 
 // hid
 type KeyboardImpl = cardboard_lib::hid::NKROKeyboard;
@@ -171,9 +174,7 @@ async fn main(spawner: Spawner) -> () {
 
 	let settings: Settings = load_settings_from_flash(&mut flash.partition(&settings_partition))
 		.await
-		.unwrap_or_else(|_| Settings {
-			mouse_enabled: true,
-		});
+		.unwrap_or_default();
 
 	static DEVICE_INFO: StaticCell<DeviceInfo> = StaticCell::new();
 	let device_info = DEVICE_INFO.init(DeviceInfo {
@@ -246,7 +247,7 @@ async fn main(spawner: Spawner) -> () {
 	let serial_write_timeout = 1.secs();
 	let serial_reset_timeout = 1.secs();
 
-	let (serial_reader, serial_writer, usb_device) = if settings.mouse_enabled {
+	let (serial_reader, serial_writer, usb_device) = if settings.inner.mouse_enabled {
 		let usb = init_usb::<KeyboardImpl, MouseImpl, ConsumerImpl>(
 			p.USB,
 			&device_info,
@@ -390,26 +391,20 @@ async fn hid_task_no_mouse(
 	cardboard::rp2040::hid::hid_task_no_mouse(keyboard, consumer, signal).await;
 }
 
-const SETTINGS_VERSION: u32 = 1;
-
-struct Settings {
+struct Ck130Settings {
 	mouse_enabled: bool,
 }
 
-impl Readable for Settings {
-	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
-	where
-		Self: Sized,
-	{
-		let version = reader
-			.read_u32()
-			.await
-			.ok_or("Could not read settings version")?;
+impl Default for Ck130Settings {
+	fn default() -> Self {
+		Self { mouse_enabled: true }
+	}
+}
 
-		if version != SETTINGS_VERSION {
-			return Err("Unsupported settings version");
-		}
+impl SettingsData for Ck130Settings {
+	const VERSION: u32 = 1;
 
+	async fn read_data<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str> {
 		Ok(Self {
 			mouse_enabled: reader
 				.read_bool()
@@ -417,17 +412,8 @@ impl Readable for Settings {
 				.ok_or("Could not read mouse enabled")?,
 		})
 	}
-}
 
-// impl Writeable for Settings {
-// 	async fn write_to<W: WriteAsync>(&self, writer: &mut W) -> Result<(), &'static str> {
-// 		writer
-// 			.write_u32(SETTINGS_VERSION)
-// 			.await
-// 			.map_err(|_| "Could not write settings version")?;
-// 		writer
-// 			.write_bool(self.mouse_enabled)
-// 			.await
-// 			.map_err(|_| "Could not write mouse enabled")
-// 	}
-// }
+	async fn write_data<W: WriteAsync>(&self, writer: &mut W) -> Result<(), &'static str> {
+		writer.write_bool(self.mouse_enabled).await
+	}
+}

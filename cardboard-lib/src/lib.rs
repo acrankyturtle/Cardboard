@@ -17,6 +17,7 @@ pub mod input;
 pub mod profile;
 pub mod serial;
 pub mod serialize;
+pub mod settings;
 pub mod state;
 pub mod storage;
 pub mod stream;
