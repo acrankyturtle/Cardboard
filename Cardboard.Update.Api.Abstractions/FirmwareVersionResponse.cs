@@ -7,6 +7,7 @@ public sealed class FirmwareVersionResponse
 	/// </summary>
 	public required string Version { get; init; }
 	public required bool IsPreview { get; init; }
+
 	/// <summary>
 	/// SHA256 hash of the firmware file in lowercase hex format.
 	/// </summary>

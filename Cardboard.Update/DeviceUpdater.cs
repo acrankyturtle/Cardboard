@@ -138,7 +138,10 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 					firmware.Variant,
 					device.Variant
 				);
-				yield return new FirmwareUpdateComplete { Result = UpdateFirmwareResult.DeviceVariantMismatch };
+				yield return new FirmwareUpdateComplete
+				{
+					Result = UpdateFirmwareResult.DeviceVariantMismatch,
+				};
 				yield break;
 			}
 
@@ -156,7 +159,10 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 				if (!getProfileResult.TryGetSuccess(out deviceProfile))
 				{
 					logger.LogError("Failed to get device profile for backup");
-					yield return new FirmwareUpdateComplete { Result = UpdateFirmwareResult.FailedToGetProfile };
+					yield return new FirmwareUpdateComplete
+					{
+						Result = UpdateFirmwareResult.FailedToGetProfile,
+					};
 					yield break;
 				}
 
@@ -179,7 +185,10 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 			if (!bootloaderResult.IsSuccess)
 			{
 				logger.LogError("Failed to send bootloader command");
-				yield return new FirmwareUpdateComplete { Result = UpdateFirmwareResult.FailedToEnterBootloader };
+				yield return new FirmwareUpdateComplete
+				{
+					Result = UpdateFirmwareResult.FailedToEnterBootloader,
+				};
 				yield break;
 			}
 
@@ -193,7 +202,10 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 			if (!picoResult.TryGet(out var picoDrive, out var error))
 			{
 				logger.LogError("Failed to find device in bootloader mode: {Error}", error);
-				yield return new FirmwareUpdateComplete { Result = UpdateFirmwareResult.FailedToFindBootloader };
+				yield return new FirmwareUpdateComplete
+				{
+					Result = UpdateFirmwareResult.FailedToFindBootloader,
+				};
 				yield break;
 			}
 
@@ -235,7 +247,10 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 			if (!findAfterReboot.IsSuccess)
 			{
 				logger.LogError("Device {DeviceId} did not reconnect after firmware update", deviceId);
-				yield return new FirmwareUpdateComplete { Result = UpdateFirmwareResult.DeviceNotReconnected };
+				yield return new FirmwareUpdateComplete
+				{
+					Result = UpdateFirmwareResult.DeviceNotReconnected,
+				};
 				yield break;
 			}
 
@@ -254,7 +269,10 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 				if (!restoreProfileResult.IsSuccess)
 				{
 					logger.LogError("Failed to restore device profile");
-					yield return new FirmwareUpdateComplete { Result = UpdateFirmwareResult.FailedToRestoreProfile };
+					yield return new FirmwareUpdateComplete
+					{
+						Result = UpdateFirmwareResult.FailedToRestoreProfile,
+					};
 					yield break;
 				}
 
@@ -270,7 +288,6 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 			logger.LogDebug("Released update lock for device {DeviceId}", deviceId);
 		}
 	}
-
 }
 
 public sealed class DeviceFirmware
