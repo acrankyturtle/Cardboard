@@ -55,8 +55,15 @@ public static class ReaderExtensions
 		return System.Text.Encoding.UTF8.GetString(span);
 	}
 
-	public static T? ReadOption<T>(this BinaryReader reader, Func<BinaryReader, T> readValue)
+	public static T? ReadOptionValue<T>(this BinaryReader reader, Func<BinaryReader, T> readValue)
 		where T : struct
+	{
+		var hasValue = reader.ReadBoolean();
+		return hasValue ? readValue(reader) : null;
+	}
+
+	public static T? ReadOptionRef<T>(this BinaryReader reader, Func<BinaryReader, T> readValue)
+		where T : class
 	{
 		var hasValue = reader.ReadBoolean();
 		return hasValue ? readValue(reader) : null;

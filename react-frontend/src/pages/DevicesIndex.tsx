@@ -148,15 +148,14 @@ function DeviceInfoDialog({ deviceId }: { deviceId: string | null }) {
                 <StatName>Latest Version</StatName>
                 <StatValue>
                   <div className="flex items-center gap-1.5">
-                    {device.latestVersion !== undefined &&
-                    device.latestVersion > device.version ? (
+                    {device.updateAvailable ? (
                       <>
                         {device.latestVersion}
                         <UpdateFirmwareButton
                           deviceId={device.id}
                           deviceName={device.name}
                           currentVersion={device.version}
-                          targetVersion={device.latestVersion}
+                          targetVersion={device.latestVersion!}
                         />
                       </>
                     ) : (

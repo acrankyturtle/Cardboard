@@ -167,7 +167,7 @@ public sealed class Macro : IReadable<Macro>, IWriteable
 	{
 		var id = MacroId.ReadFrom(reader);
 		var name = reader.ReadStringU8();
-		var playChannel = reader.ReadOption(Channel.ReadFrom);
+		var playChannel = reader.ReadOptionValue(Channel.ReadFrom);
 		var cutChannels = reader.ReadCollectionU8<Channel>();
 		var startSequence = Sequence.ReadFrom(reader);
 		var loopSequence = Sequence.ReadFrom(reader);

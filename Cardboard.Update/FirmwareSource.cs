@@ -4,16 +4,16 @@ namespace Cardboard.Update;
 
 public interface IFirmwareSource
 {
-	Task<uint?> GetLatestVersion(
+	Task<Version?> GetLatestVersion(
 		DeviceTypeId deviceType,
-		uint? variant,
+		string? variant,
 		CancellationToken cancellationToken = default
 	);
 
 	Task<DeviceFirmware?> GetFirmware(
 		DeviceTypeId deviceType,
-		uint? variant,
-		uint version,
+		string? variant,
+		Version version,
 		CancellationToken cancellationToken = default
 	);
 }

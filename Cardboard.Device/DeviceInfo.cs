@@ -7,8 +7,8 @@ public sealed class DeviceInfo : IReadable<DeviceInfo>
 	public required DeviceId Id { get; init; }
 	public required string Manufacturer { get; init; }
 	public required DeviceTypeId Type { get; init; }
-	public required uint? Variant { get; init; }
-	public required uint Version { get; init; }
+	public required string? Variant { get; init; }
+	public required Version Version { get; init; }
 	public required IReadOnlyList<CommandInfo> Commands { get; init; }
 
 	public static DeviceInfo ReadFrom(BinaryReader reader)
@@ -16,8 +16,8 @@ public sealed class DeviceInfo : IReadable<DeviceInfo>
 		var id = DeviceId.ReadFrom(reader);
 		var manufacturer = reader.ReadStringU8();
 		var type = DeviceTypeId.ReadFrom(reader);
-		var variant = reader.ReadOption(br => br.ReadUInt32());
-		var version = reader.ReadUInt32();
+		var variant = reader.ReadOptionRef(br => br.ReadStringU8());
+		var version = FirmwareVersion.ReadFrom(reader).ToVersion();
 		var commands = reader.ReadCollectionU8<CommandInfo>();
 
 		return new()
@@ -30,6 +30,20 @@ public sealed class DeviceInfo : IReadable<DeviceInfo>
 			Commands = commands,
 		};
 	}
+}
+
+file readonly record struct FirmwareVersion(byte Major, byte Minor, byte Revision)
+	: IReadable<FirmwareVersion>
+{
+	public static FirmwareVersion ReadFrom(BinaryReader reader)
+	{
+		var major = reader.ReadByte();
+		var minor = reader.ReadByte();
+		var revision = reader.ReadByte();
+		return new(major, minor, revision);
+	}
+
+	public Version ToVersion() => new(Major, Minor, Revision);
 }
 
 public sealed class CommandInfo : IReadable<CommandInfo>

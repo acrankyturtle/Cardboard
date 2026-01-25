@@ -13,8 +13,8 @@ import {
 interface FirmwareUpdateConfirmDialogProps {
   open: boolean;
   deviceName: string;
-  currentVersion: number;
-  targetVersion: number;
+  currentVersion: string;
+  targetVersion: string;
   onConfirm: () => void;
   onCancel: () => void;
 }

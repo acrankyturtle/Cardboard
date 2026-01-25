@@ -100,7 +100,10 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 					"Another device is already in bootloader mode at {Path}",
 					existing.RootDirectory.FullName
 				);
-				yield return new FirmwareUpdateComplete { Result = UpdateFirmwareResult.DeviceAlreadyInBootloader };
+				yield return new FirmwareUpdateComplete
+				{
+					Result = UpdateFirmwareResult.DeviceAlreadyInBootloader,
+				};
 				yield break;
 			}
 
@@ -127,7 +130,7 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 				yield break;
 			}
 
-			if (firmware.Variant != device.Variant)
+			if (!string.Equals(firmware.Variant, device.Variant, StringComparison.OrdinalIgnoreCase))
 			{
 				logger.LogError(
 					"Device variant mismatch for {DeviceId}: expected {Expected}, got {Actual}",
@@ -273,8 +276,8 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 public sealed class DeviceFirmware
 {
 	public required DeviceTypeId DeviceType { get; init; }
-	public required uint Version { get; init; }
-	public uint? Variant { get; init; }
+	public required Version Version { get; init; }
+	public string? Variant { get; init; }
 	public required ReadOnlyMemory<byte> Firmware { get; init; }
 }
 

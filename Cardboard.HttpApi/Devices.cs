@@ -148,7 +148,7 @@ public static class Devices
 		[FromServices] JsonSerializerOptions jsonOptions,
 		[FromRoute(Name = "id")] DeviceId deviceId,
 		[FromQuery(Name = "migrate")] bool migrateProfile,
-		[FromQuery] uint? version,
+		[FromQuery] string? version,
 		CancellationToken cancellationToken
 	)
 	{
@@ -156,10 +156,12 @@ public static class Devices
 		context.Response.Headers.CacheControl = "no-cache";
 		context.Response.Headers.Connection = "keep-alive";
 
+		var parsedVersion = version is not null ? Version.Parse(version) : null;
+
 		try
 		{
 			await foreach (
-				var report in deviceRepository.UpdateFirmware(deviceId, version, cancellationToken)
+				var report in deviceRepository.UpdateFirmware(deviceId, parsedVersion, cancellationToken)
 			)
 			{
 				var evt = ToEvent(report);

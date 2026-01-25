@@ -34,7 +34,7 @@ public interface IDeviceRepository
 
 	IAsyncEnumerable<FirmwareUpdateReport> UpdateFirmware(
 		DeviceId deviceId,
-		uint? version,
+		Version? version,
 		CancellationToken cancellationToken = default
 	);
 }
@@ -80,11 +80,12 @@ public sealed class DeviceDetails
 	public required DeviceId Id { get; init; }
 	public required string Name { get; init; }
 	public required DeviceTypeId Type { get; init; }
-	public required uint? Variant { get; init; }
+	public required string? Variant { get; init; }
 	public required string Model { get; init; }
 	public string? IconUrl { get; init; }
-	public required uint Version { get; init; }
-	public required uint? LatestVersion { get; init; }
+	public required Version Version { get; init; }
+	public required Version? LatestVersion { get; init; }
+	public required bool UpdateAvailable { get; init; }
 
 	public required DeviceSettingsReport Settings { get; init; }
 
@@ -101,7 +102,7 @@ public sealed class DeviceDetails
 		DeviceSettings settings,
 		DeviceStatus status,
 		DeviceTypeInfo typeInfo,
-		uint? latestVersion,
+		Version? latestVersion,
 		string profileName
 	) =>
 		new()
@@ -114,6 +115,7 @@ public sealed class DeviceDetails
 			IconUrl = typeInfo.IconUrl,
 			Version = info.Version,
 			LatestVersion = latestVersion,
+			UpdateAvailable = latestVersion is not null && latestVersion > info.Version,
 			Settings = new() { IsMouseEnabled = settings.MouseEnabled },
 			Status = DeviceStatusReport.From(status),
 			Commands = info.Commands,
@@ -455,7 +457,7 @@ file sealed class DeviceRepository(
 
 	public async IAsyncEnumerable<FirmwareUpdateReport> UpdateFirmware(
 		DeviceId deviceId,
-		uint? version,
+		Version? version,
 		[System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default
 	)
 	{
@@ -487,7 +489,7 @@ file sealed class DeviceRepository(
 		var firmware = await firmwareSource.GetFirmware(
 			device.Type,
 			device.Variant,
-			version.Value,
+			version,
 			cancellationToken
 		);
 		if (firmware is null)

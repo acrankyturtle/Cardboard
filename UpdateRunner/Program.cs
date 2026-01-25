@@ -12,7 +12,7 @@ var firmwareBytes = File.ReadAllBytes(firmwarePath);
 var firmware = new DeviceFirmware
 {
 	DeviceType = DeviceTypeId.Parse("0407db48-ca74-5783-9b11-489637b7c615"),
-	Version = 0,
+	Version = new(1, 0, 0),
 	Firmware = firmwareBytes,
 };
 var options = new FirmwareUpdateOptions { FlashOnly = false, MigrateProfile = true };

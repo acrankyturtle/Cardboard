@@ -17,9 +17,9 @@ file class ApiFirmwareSource(
 	ILogger<ApiFirmwareSource> logger
 ) : IFirmwareSource
 {
-	public async Task<uint?> GetLatestVersion(
+	public async Task<Version?> GetLatestVersion(
 		DeviceTypeId deviceType,
-		uint? variant,
+		string? variant,
 		CancellationToken cancellationToken = default
 	)
 	{
@@ -36,19 +36,20 @@ file class ApiFirmwareSource(
 
 		response.EnsureSuccessStatusCode();
 
-		var result = (
+		var versionStr = (
 			await response.Content.ReadFromJsonAsync<FirmwareVersionResponse>(cancellationToken)
 			?? throw new JsonException()
 		).Version;
 
-		logger.LogInformation("Latest firmware version for {DeviceType}: {Version}", deviceType, result);
-		return result;
+		var version = Version.Parse(versionStr);
+		logger.LogInformation("Latest firmware version for {DeviceType}: {Version}", deviceType, version);
+		return version;
 	}
 
 	public async Task<DeviceFirmware?> GetFirmware(
 		DeviceTypeId deviceType,
-		uint? variant,
-		uint version,
+		string? variant,
+		Version version,
 		CancellationToken cancellationToken = default
 	)
 	{
@@ -67,7 +68,11 @@ file class ApiFirmwareSource(
 
 		if (versionResponse.StatusCode == System.Net.HttpStatusCode.NotFound)
 		{
-			logger.LogWarning("Firmware version {Version} not found for device {DeviceType}", version, deviceType);
+			logger.LogWarning(
+				"Firmware version {Version} not found for device {DeviceType}",
+				version,
+				deviceType
+			);
 			return null;
 		}
 
@@ -126,8 +131,8 @@ file class ApiFirmwareSource(
 	private string GetFirmwareUrl(
 		string? action,
 		DeviceTypeId deviceType,
-		uint? variant,
-		uint? version,
+		string? variant,
+		Version? version,
 		UpdateChannel channel
 	)
 	{
@@ -135,7 +140,7 @@ file class ApiFirmwareSource(
 			$"{options.Value.Url}/firmware/{deviceType}/{(version is { } v ? v.ToString() : "latest")}/{action}";
 		var queryParams = new Dictionary<string, string?>
 		{
-			["variant"] = variant?.ToString(),
+			["variant"] = variant,
 			["channel"] = channel.HasFlag(UpdateChannel.Preview) ? "preview" : "stable",
 		};
 		return QueryHelpers.AddQueryString(url, queryParams);

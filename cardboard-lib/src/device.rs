@@ -47,32 +47,38 @@ impl Writeable for DeviceTypeId {
 }
 
 #[derive(Copy, Clone, PartialEq)]
-pub struct DeviceVersion(u32);
+pub struct DeviceVersion {
+	pub major: u8,
+	pub minor: u8,
+	pub patch: u8,
+}
 
 impl DeviceVersion {
-	pub const fn new(version: u32) -> Self {
-		DeviceVersion(version)
+	pub const fn new(major: u8, minor: u8, patch: u8) -> Self {
+		DeviceVersion { major, minor, patch }
 	}
 }
 
 impl Writeable for DeviceVersion {
 	async fn write_to<W: WriteAsync>(&self, writer: &mut W) -> Result<(), &'static str> {
-		writer.write_u32(self.0).await
+		writer.write_u8(self.major).await?;
+		writer.write_u8(self.minor).await?;
+		writer.write_u8(self.patch).await
 	}
 }
 
 #[derive(Copy, Clone, PartialEq)]
-pub struct DeviceVariant(u32);
+pub struct DeviceVariant(&'static str);
 
 impl DeviceVariant {
-	pub const fn new(variant: u32) -> Self {
+	pub const fn new(variant: &'static str) -> Self {
 		DeviceVariant(variant)
 	}
 }
 
 impl Writeable for DeviceVariant {
 	async fn write_to<W: WriteAsync>(&self, writer: &mut W) -> Result<(), &'static str> {
-		writer.write_u32(self.0).await
+		writer.write_string_u8(self.0).await
 	}
 }
 

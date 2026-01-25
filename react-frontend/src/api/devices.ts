@@ -141,14 +141,13 @@ export const updateDeviceProfile = async (
 
 export const updateDeviceFirmware = async (
   deviceId: string,
-  version?: number,
+  version?: string,
   migrateProfile: boolean = true,
 ): Promise<"success" | { error: string }> => {
   try {
     const url = new URL(getApiUrl(`devices/${deviceId}/update`));
     url.searchParams.set("migrate", migrateProfile.toString());
-    if (version !== undefined)
-      url.searchParams.set("version", version.toString());
+    if (version !== undefined) url.searchParams.set("version", version);
 
     const response = await fetch(url, {
       method: "POST",
@@ -224,11 +223,12 @@ export interface DeviceDetails {
   id: string;
   name: string;
   type: string;
-  variant?: number;
+  variant?: string;
   model: string;
   iconUrl?: string;
-  version: number;
-  latestVersion?: number;
+  version: string;
+  latestVersion?: string;
+  updateAvailable: boolean;
   settings: DeviceSettingsReport;
   status: DeviceStatusReport;
   commands: readonly CommandInfo[];

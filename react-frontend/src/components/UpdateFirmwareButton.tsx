@@ -7,8 +7,8 @@ import { FirmwareUpdateDialog } from "./FirmwareUpdateDialog";
 interface UpdateFirmwareButtonProps {
   deviceId: string;
   deviceName: string;
-  currentVersion: number;
-  targetVersion: number;
+  currentVersion: string;
+  targetVersion: string;
 }
 
 export function UpdateFirmwareButton({

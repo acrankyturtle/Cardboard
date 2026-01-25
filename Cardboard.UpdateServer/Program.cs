@@ -65,7 +65,7 @@ group.MapGet(
 		FindFirmware(deviceTypeId, variant, null, ParseChannelQueryParam(channel)) is { } latest
 			? Results.Redirect(
 				QueryHelpers.AddQueryString(
-					BuildRedirectPath($"/firmware/{deviceTypeId}/{latest.Version}"),
+					BuildRedirectPath($"/firmware/{deviceTypeId}/{latest.Version.ToSemanticString()}"),
 					new Dictionary<string, string?> { { "variant", variant }, { "channel", channel } }
 				)
 			)
@@ -76,20 +76,26 @@ group.MapGet(
 	"/firmware/{deviceTypeId}/{version}",
 	(
 		string deviceTypeId,
-		uint version,
+		string version,
 		[FromQuery] string? variant = null,
 		[FromQuery] string channel = "stable"
 	) =>
-		FindFirmware(deviceTypeId, variant, version, ParseChannelQueryParam(channel)) is { } firmware
+	{
+		// Validate version format
+		if (!Version.TryParse(version, out _))
+			return Results.BadRequest("Invalid version format. Expected format: major.minor.patch");
+
+		return FindFirmware(deviceTypeId, variant, version, ParseChannelQueryParam(channel)) is { } firmware
 			? Results.Ok(
 				new FirmwareVersionResponse
 				{
-					Version = firmware.Version,
+					Version = firmware.Version.ToSemanticString(),
 					IsPreview = firmware.Channel.HasFlag(UpdateChannel.Preview),
 					Sha256 = firmware.Sha256,
 				}
 			)
-			: Results.NotFound()
+			: Results.NotFound();
+	}
 );
 
 group.MapGet(
@@ -101,7 +107,7 @@ group.MapGet(
 		[FromQuery] string channel = "stable"
 	) =>
 	{
-		uint? version;
+		string? version;
 
 		if (versionStr.Equals("latest", StringComparison.OrdinalIgnoreCase))
 		{
@@ -109,21 +115,22 @@ group.MapGet(
 		}
 		else
 		{
-			if (!uint.TryParse(versionStr, out var v))
-				return TypedResults.BadRequest();
+			// Validate version format
+			if (!Version.TryParse(versionStr, out _))
+				return Results.BadRequest("Invalid version format. Expected format: major.minor.patch");
 
-			version = v;
+			version = versionStr;
 		}
 
 		var firmware = FindFirmware(deviceTypeId, variant, version, ParseChannelQueryParam(channel));
 
 		if (firmware == null)
-			return TypedResults.NotFound();
+			return Results.NotFound();
 
 		return Results.File(
 			firmware.LocalPath,
 			"application/octet-stream",
-			$"cardboard_{deviceTypeId}_{firmware.Version}.uf2"
+			$"cardboard_{deviceTypeId}_{firmware.Version.ToSemanticString()}.uf2"
 		);
 	}
 );
@@ -135,7 +142,7 @@ group.MapGet(
 		FindControllerRelease(null, ParseChannelQueryParam(channel)) is { } latest
 			? Results.Redirect(
 				QueryHelpers.AddQueryString(
-					BuildRedirectPath($"/controller/{latest.Version}"),
+					BuildRedirectPath($"/controller/{latest.Version.ToSemanticString()}"),
 					new Dictionary<string, string?> { { "channel", channel } }
 				)
 			)
@@ -154,7 +161,7 @@ group.MapGet(
 			? Results.Ok(
 				new ControllerVersionResponse
 				{
-					Version = release.Version,
+					Version = release.Version.ToSemanticString(),
 					IsPreview = release.Channel.HasFlag(UpdateChannel.Preview),
 					Sha256 = release.Sha256,
 				}
@@ -188,7 +195,7 @@ group.MapGet(
 		return Results.File(
 			release.LocalPath,
 			"application/octet-stream",
-			$"CardboardSetup-{release.Version}.exe"
+			$"CardboardSetup-{release.Version.ToSemanticString()}.exe"
 		);
 	}
 );
@@ -212,7 +219,7 @@ UpdateChannel ParseChannelQueryParam(string channel) =>
 // Note: apiRoot is already trimmed of slashes and path should start with '/'.
 string BuildRedirectPath(string path) => string.IsNullOrEmpty(apiRoot) ? path : $"/{apiRoot}{path}";
 
-FirmwareFileInfo? FindFirmware(string deviceTypeId, string? variant, uint? version, UpdateChannel channel)
+FirmwareFileInfo? FindFirmware(string deviceTypeId, string? variant, string? version, UpdateChannel channel)
 {
 	// validate deviceTypeId is a valid GUID
 	if (!Guid.TryParse(deviceTypeId, out _))
@@ -245,8 +252,8 @@ FirmwareFileInfo? FindFirmware(string deviceTypeId, string? variant, uint? versi
 			);
 		});
 
-	if (version is { } v)
-		files = files.Where(f => f.Version == v);
+	if (version != null && Version.TryParse(version, out var parsedVersion))
+		files = files.Where(f => f.Version == parsedVersion);
 
 	var list = files.OrderByDescending(x => x.Version).ToList();
 
@@ -254,25 +261,36 @@ FirmwareFileInfo? FindFirmware(string deviceTypeId, string? variant, uint? versi
 		?? (variant is not null ? list.FirstOrDefault(f => f.Variant is null) : null);
 }
 
-static (uint Version, string? Variant, UpdateChannel Channel)? ParseFirmwareFileName(
+static (Version Version, string? Variant, UpdateChannel Channel)? ParseFirmwareFileName(
 	ReadOnlySpan<char> fileNameNoExt
 )
 {
-	Span<Range> regions = stackalloc Range[3];
-	var num = fileNameNoExt.Split(regions, '.');
+	// Expected format: {major}-{minor}-{patch}[_{variant}][.p]
+	// Examples: 0-0-1, 0-0-1_rev1, 0-0-1.p, 0-0-1_rev1.p
+	var underscoreIndex = fileNameNoExt.IndexOf('_');
+	var periodIndex = fileNameNoExt.IndexOf('.');
 
-	var versionStr = fileNameNoExt[regions[0]];
-	var variantStr = num >= 2 ? fileNameNoExt[regions[1]] : [];
-	var channelStr = num >= 2 ? fileNameNoExt[regions[2]] : [];
+	var versionRange = new Range(
+		0,
+		underscoreIndex > 0 ? underscoreIndex
+			: periodIndex > 0 ? periodIndex
+			: fileNameNoExt.Length
+	);
+	var variantRange =
+		underscoreIndex > 0
+			? new Range(underscoreIndex + 1, periodIndex > 0 ? periodIndex : fileNameNoExt.Length)
+			: (Range?)null;
 
-	if (!uint.TryParse(versionStr, out var version))
+	var versionStrRaw = fileNameNoExt[versionRange];
+	Span<char> versionStr = stackalloc char[versionStrRaw.Length];
+	versionStrRaw.Replace(versionStr, '-', '.');
+	if (!Version.TryParse(versionStr, out var version))
 		return null;
 
-	var variant = variantStr.Length > 0 ? variantStr.ToString() : null;
+	var variant = variantRange is not null ? fileNameNoExt[variantRange.Value].ToString() : null;
 
-	var channel = channelStr.Equals("p", StringComparison.OrdinalIgnoreCase)
-		? UpdateChannel.Preview
-		: UpdateChannel.Stable;
+	var isPreview = fileNameNoExt.EndsWith(".p", StringComparison.InvariantCultureIgnoreCase);
+	var channel = isPreview ? UpdateChannel.Preview : UpdateChannel.Stable;
 
 	return (version, variant, channel);
 }
@@ -302,31 +320,31 @@ ControllerFileInfo? FindControllerRelease(string? version, UpdateChannel channel
 			);
 		});
 
-	if (version is not null)
-		files = files.Where(f => f.Version.Equals(version, StringComparison.OrdinalIgnoreCase));
+	if (version is not null && Version.TryParse(version, out var parsedVersion))
+		files = files.Where(f => f.Version == parsedVersion);
 
-	return files
-		.OrderByDescending(x => Version.TryParse(x.Version, out var v) ? v : new Version(0, 0, 0))
-		.FirstOrDefault();
+	return files.OrderByDescending(x => x.Version).FirstOrDefault();
 }
 
-static (string Version, UpdateChannel Channel)? ParseControllerFileName(ReadOnlySpan<char> fileNameNoExt)
+static (Version Version, UpdateChannel Channel)? ParseControllerFileName(ReadOnlySpan<char> fileNameNoExt)
 {
-	// Expected format: {major}.{minor}.{patch}[.p]
-	// Examples: 1.0.0, 1.2.3.p
+	// Expected format: {major}-{minor}-{patch}[.p]
+	// Examples: 1-0-0, 1-2-3.p
 	var isPreview = fileNameNoExt.EndsWith(".p", StringComparison.OrdinalIgnoreCase);
 	var versionSpan = isPreview ? fileNameNoExt[..^2] : fileNameNoExt;
 
-	if (!Version.TryParse(versionSpan, out _))
+	Span<char> versionStr = stackalloc char[versionSpan.Length];
+	versionSpan.Replace(versionStr, '-', '.');
+	if (!Version.TryParse(versionStr, out var version))
 		return null;
 
-	return (versionSpan.ToString(), isPreview ? UpdateChannel.Preview : UpdateChannel.Stable);
+	return (version, isPreview ? UpdateChannel.Preview : UpdateChannel.Stable);
 }
 
 file record ControllerFileInfo(
 	string Name,
 	string LocalPath,
-	string Version,
+	Version Version,
 	UpdateChannel Channel,
 	string Sha256
 );
@@ -336,7 +354,7 @@ file record FirmwareFileInfo(
 	string DeviceTypeId,
 	string? Variant,
 	string LocalPath,
-	uint Version,
+	Version Version,
 	UpdateChannel Channel,
 	string Sha256
 );
@@ -349,6 +367,14 @@ file static class FileHasher
 		var hashBytes = SHA256.HashData(stream);
 		return Convert.ToHexString(hashBytes).ToLowerInvariant();
 	}
+}
+
+file static class VersionExtensions
+{
+	/// <summary>
+	/// Formats a Version as "major.minor.build" (3 components).
+	/// </summary>
+	public static string ToSemanticString(this Version version) => version.ToString(3);
 }
 
 file class UpdateServerPathConfiguration
