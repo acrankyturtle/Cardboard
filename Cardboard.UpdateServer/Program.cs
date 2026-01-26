@@ -257,8 +257,7 @@ FirmwareFileInfo? FindFirmware(string deviceTypeId, string? variant, string? ver
 
 	var list = files.OrderByDescending(x => x.Version).ToList();
 
-	return list.FirstOrDefault(f => string.Equals(variant, f.Variant, StringComparison.OrdinalIgnoreCase))
-		?? (variant is not null ? list.FirstOrDefault(f => f.Variant is null) : null);
+	return list.FirstOrDefault(f => string.Equals(variant, f.Variant, StringComparison.OrdinalIgnoreCase));
 }
 
 static (Version Version, string? Variant, UpdateChannel Channel)? ParseFirmwareFileName(
