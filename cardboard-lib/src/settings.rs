@@ -23,6 +23,13 @@ impl<T: SettingsData> VersionedSettings<T> {
 	pub fn new(inner: T) -> Self {
 		Self { inner }
 	}
+
+	pub fn requires_reboot<F>(&self, other: &Self, f: F) -> bool
+	where
+		F: Fn(&T, &T) -> bool,
+	{
+		f(&self.inner, &other.inner)
+	}
 }
 
 impl<T: SettingsData> Default for VersionedSettings<T> {

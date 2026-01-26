@@ -128,7 +128,10 @@ async fn main(spawner: Spawner) -> () {
 		/* 0x04 */ Box::new(RebootCommand {}),
 		/* 0x05 */ Box::new(GetStatusCommand {}),
 		/* 0x06 */ Box::new(SetVirtualKeysCommand::<VIRTUAL_KEY_BITFIELD_SIZE> {}),
-		/* 0x07 */ Box::new(UpdateSettingsCommand {}),
+		/* 0x07 */ Box::new(UpdateSettingsCommand::<Settings, _>::new(|old, new| {
+			// reboot if mouse_enabled changed (requires USB re-enumeration)
+			old.inner.mouse_enabled != new.inner.mouse_enabled
+		})),
 		/* 0x08 */ Box::new(GetSettingsCommand {}),
 	];
 

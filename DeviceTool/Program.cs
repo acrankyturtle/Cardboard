@@ -75,10 +75,6 @@ settingsResult.Match(
 	}
 );
 
-var rebootResult = await deviceService.SendCommand(new RebootCommand(), new(), device.Id);
-if (!rebootResult.IsSuccess)
-	Console.WriteLine("Failed to reboot device. Settings may not take effect` until device is rebooted.");
-
 return;
 
 static async Task<DeviceInfo?> SelectDevice(IDeviceService deviceService)

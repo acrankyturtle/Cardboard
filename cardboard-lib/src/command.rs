@@ -3,13 +3,15 @@ use crate::context::ContextErrorLog;
 use crate::context::ContextSettingsFlash;
 use crate::error::Error;
 use crate::error::ErrorLog;
-use crate::serialize::Writeable;
+use crate::serialize::{Readable, Writeable};
+use crate::storage::load_settings_from_flash;
 use crate::storage::BlockFlash;
 use crate::storage::BlockFlashExt;
 use crate::storage::PartitionedFlashMemory;
 use crate::time::Clock;
 use async_trait::async_trait;
 use core::cmp::Ord;
+use core::marker::PhantomData;
 use core::module_path;
 use core::option_env;
 use core::panic;
@@ -329,12 +331,38 @@ where
 	}
 }
 
-pub struct UpdateSettingsCommand;
+pub struct UpdateSettingsCommand<Settings, F>
+where
+	F: Fn(&Settings, &Settings) -> bool,
+{
+	requires_reboot: F,
+	_marker: PhantomData<Settings>,
+}
 
-impl UpdateSettingsCommand {
-	async fn try_execute<Context: ContextSerialRx + ContextSerialTx + ContextSettingsFlash>(
+impl<Settings, F> UpdateSettingsCommand<Settings, F>
+where
+	F: Fn(&Settings, &Settings) -> bool,
+{
+	pub fn new(requires_reboot: F) -> Self {
+		Self {
+			requires_reboot,
+			_marker: PhantomData,
+		}
+	}
+
+	async fn try_execute<Context>(
+		&self,
 		ctx: &mut Context,
-	) -> Result<(), (u8, &'static str)> {
+	) -> Result<bool, (u8, &'static str)>
+	where
+		Context: ContextSerialRx + ContextSerialTx + ContextSettingsFlash,
+		Settings: Readable + Default,
+	{
+		// Load old settings BEFORE erasing flash (use Default if none exist)
+		let old_settings: Settings = load_settings_from_flash(&mut ctx.settings_flash())
+			.await
+			.unwrap_or_default();
+
 		let len = ctx.serial_rx().read_u16().await.ok_or_else(|| {
 			error!("Failed to read settings length");
 			(0x10u8, "Failed to read settings length")
@@ -369,13 +397,25 @@ impl UpdateSettingsCommand {
 				}
 			})?;
 
-		Ok(())
+		let new_settings: Settings = load_settings_from_flash(&mut ctx.settings_flash())
+			.await
+			.map_err(|e| {
+				error!("Failed to load settings from flash: {:?}", e);
+				(0x2Cu8, "Failed to load settings from flash")
+			})?;
+
+		let reboot_needed = (self.requires_reboot)(&old_settings, &new_settings);
+
+		Ok(reboot_needed)
 	}
 }
 
 #[async_trait(?Send)]
-impl<Context: ContextSerialRx + ContextSerialTx + ContextSettingsFlash> Command<Context>
-	for UpdateSettingsCommand
+impl<Context, Settings, F> Command<Context> for UpdateSettingsCommand<Settings, F>
+where
+	Context: ContextSerialRx + ContextSerialTx + ContextSettingsFlash + ContextReboot,
+	Settings: Readable + Default,
+	F: Fn(&Settings, &Settings) -> bool,
 {
 	fn info(&self) -> CommandInfo {
 		CommandInfo {
@@ -385,20 +425,27 @@ impl<Context: ContextSerialRx + ContextSerialTx + ContextSettingsFlash> Command<
 	}
 
 	async fn execute(&self, ctx: &mut Context) -> Result<(), &'static str> {
-		let result = Self::try_execute(ctx).await;
+		let result = self.try_execute(ctx).await;
 
-		let response = match result {
-			Ok(_) => 0xFF,
-			Err((code, _)) => code,
+		let (response, should_reboot) = match &result {
+			Ok(reboot_needed) => (0xFF, *reboot_needed),
+			Err((code, _)) => (*code, false),
 		};
 
+		// send response BEFORE potential reboot
 		ctx.serial_tx().write_u8(response).await.or_else(|e| {
 			error!("Failed to write response to serial port: {:?}", e);
 			Err("Failed to write response")
 		})?;
 
 		match result {
-			Ok(_) => Ok(()),
+			Ok(reboot_needed) => {
+				if reboot_needed {
+					debug!("Settings require reboot, rebooting...");
+					let _ = ctx.reboot(); // never returns
+				}
+				Ok(())
+			}
 			Err((_, msg)) => Err(msg),
 		}
 	}
