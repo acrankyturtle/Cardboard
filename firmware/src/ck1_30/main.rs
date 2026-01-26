@@ -4,6 +4,8 @@
 #![feature(impl_trait_in_assoc_type)]
 #![feature(generic_const_exprs)]
 
+mod config;
+
 extern crate alloc;
 extern crate cortex_m;
 extern crate usbd_human_interface_device;
@@ -181,7 +183,7 @@ async fn main(spawner: Spawner) -> () {
 		id: device_id,
 		manufacturer: "cranky",
 		r#type: DeviceTypeId::new(Uuid::from_u128(0x0407db48_ca74_5783_9b11_489637b7c615)),
-		variant: None,
+		variant: config::VARIANT,
 		version: DeviceVersion::new(1, 0, 0),
 		commands: cmds.iter().map(|cmd| cmd.info()).collect(),
 	});
@@ -252,7 +254,7 @@ async fn main(spawner: Spawner) -> () {
 			p.USB,
 			&device_info,
 			serial_number,
-			"CK1-30",
+			config::USB_MODEL,
 		);
 		spawner
 			.spawn(hid_task(
@@ -268,7 +270,7 @@ async fn main(spawner: Spawner) -> () {
 			p.USB,
 			&device_info,
 			serial_number,
-			"CK1-30",
+			config::USB_MODEL,
 		);
 		spawner
 			.spawn(hid_task_no_mouse(

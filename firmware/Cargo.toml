@@ -52,6 +52,10 @@ reboot-on-panic = []
 ck1-30 = []
 cfp-2 = []
 
+# CK1-30 variant features
+variant-blk = []
+variant-wht = []
+
 # necessary for getting delog (littlefs2 dependency) to build
 [patch.crates-io]
 delog = { git = "https://github.com/LechevSpace/delog.git", rev = "869167f7ff0630518c86f30afd215fee124d19c1" }
