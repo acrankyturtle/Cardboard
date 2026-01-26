@@ -124,6 +124,7 @@ file class ApiFirmwareSource(
 		{
 			DeviceType = deviceType,
 			Version = version,
+			Variant = variant,
 			Firmware = firmwareBytes,
 		};
 	}

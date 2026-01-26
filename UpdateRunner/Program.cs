@@ -13,6 +13,7 @@ var firmware = new DeviceFirmware
 {
 	DeviceType = DeviceTypeId.Parse("0407db48-ca74-5783-9b11-489637b7c615"),
 	Version = new(1, 0, 0),
+	Variant = null,
 	Firmware = firmwareBytes,
 };
 var options = new FirmwareUpdateOptions { FlashOnly = false, MigrateProfile = true };

@@ -294,7 +294,7 @@ public sealed class DeviceFirmware
 {
 	public required DeviceTypeId DeviceType { get; init; }
 	public required Version Version { get; init; }
-	public string? Variant { get; init; }
+	public required string? Variant { get; init; }
 	public required ReadOnlyMemory<byte> Firmware { get; init; }
 }
 
