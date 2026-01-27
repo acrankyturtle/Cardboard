@@ -26,7 +26,7 @@ export const STAGE_LABELS: Record<FirmwareUpdateStage, string> = {
   bootloader: "Entering Bootloader",
   flashing: "Flashing Firmware",
   reconnecting: "Reconnecting",
-  restoring: "Restoring Profile",
+  restoring: "Restoring",
   success: "Complete",
   error: "Error",
 };
@@ -63,18 +63,18 @@ export interface FirmwareUpdateErrorEvent {
 
 // Backend stage names (mapped to frontend stages)
 export type BackendFirmwareStage =
-  | "BackingUpProfile"
+  | "Preparing"
   | "EnteringBootloader"
   | "WaitingForBootloader"
   | "WritingFirmware"
   | "WaitingForReconnect"
-  | "RestoringProfile";
+  | "Restoring";
 
 export const BACKEND_STAGE_MAP: Record<BackendFirmwareStage, FirmwareUpdateStage> = {
-  BackingUpProfile: "preparing",
+  Preparing: "preparing",
   EnteringBootloader: "bootloader",
   WaitingForBootloader: "bootloader",
   WritingFirmware: "flashing",
   WaitingForReconnect: "reconnecting",
-  RestoringProfile: "restoring",
+  Restoring: "restoring",
 };

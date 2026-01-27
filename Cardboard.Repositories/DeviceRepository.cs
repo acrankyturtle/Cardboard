@@ -35,6 +35,7 @@ public interface IDeviceRepository
 	IAsyncEnumerable<FirmwareUpdateReport> UpdateFirmware(
 		DeviceId deviceId,
 		Version? version,
+		bool migrateData,
 		CancellationToken cancellationToken = default
 	);
 }
@@ -458,6 +459,7 @@ file sealed class DeviceRepository(
 	public async IAsyncEnumerable<FirmwareUpdateReport> UpdateFirmware(
 		DeviceId deviceId,
 		Version? version,
+		bool migrateData,
 		[System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default
 	)
 	{
@@ -500,7 +502,9 @@ file sealed class DeviceRepository(
 
 		Debug.Assert(firmware.Version == version);
 
-		await foreach (var report in deviceUpdater.UpdateDevice(deviceId, firmware, true, cancellationToken))
+		await foreach (
+			var report in deviceUpdater.UpdateDevice(deviceId, firmware, migrateData, cancellationToken)
+		)
 		{
 			yield return report;
 		}

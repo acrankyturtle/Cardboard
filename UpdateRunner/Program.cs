@@ -16,7 +16,7 @@ var firmware = new DeviceFirmware
 	Variant = null,
 	Firmware = firmwareBytes,
 };
-var options = new FirmwareUpdateOptions { FlashOnly = false, MigrateProfile = true };
+var options = new FirmwareUpdateOptions { FlashOnly = false, MigrateData = true };
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -46,7 +46,7 @@ file class Updater(IDeviceUpdater updater, IHostApplicationLifetime lifetime, IL
 		try
 		{
 			await foreach (
-				var report in updater.UpdateDevice(deviceId, firmware, options.MigrateProfile, stoppingToken)
+				var report in updater.UpdateDevice(deviceId, firmware, options.MigrateData, stoppingToken)
 			)
 			{
 				switch (report)
@@ -54,8 +54,8 @@ file class Updater(IDeviceUpdater updater, IHostApplicationLifetime lifetime, IL
 					case FirmwareUpdateProgress progress:
 						switch (progress.Stage)
 						{
-							case FirmwareUpdateStage.BackingUpProfile:
-								logger.LogInformation("Backing up profile");
+							case FirmwareUpdateStage.Preparing:
+								logger.LogInformation("Preparing");
 								break;
 							case FirmwareUpdateStage.EnteringBootloader:
 								logger.LogInformation("Entering bootloader");
@@ -69,8 +69,8 @@ file class Updater(IDeviceUpdater updater, IHostApplicationLifetime lifetime, IL
 							case FirmwareUpdateStage.WaitingForReconnect:
 								logger.LogInformation("Waiting for device to reconnect");
 								break;
-							case FirmwareUpdateStage.RestoringProfile:
-								logger.LogInformation("Restoring profile");
+							case FirmwareUpdateStage.Restoring:
+								logger.LogInformation("Restoring");
 								break;
 						}
 

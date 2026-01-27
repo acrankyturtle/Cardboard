@@ -147,7 +147,7 @@ public static class Devices
 		[FromServices] IDeviceRepository deviceRepository,
 		[FromServices] JsonSerializerOptions jsonOptions,
 		[FromRoute(Name = "id")] DeviceId deviceId,
-		[FromQuery(Name = "migrate")] bool migrateProfile,
+		[FromQuery(Name = "migrate")] bool migrateData,
 		[FromQuery] string? version,
 		CancellationToken cancellationToken
 	)
@@ -161,7 +161,12 @@ public static class Devices
 		try
 		{
 			await foreach (
-				var report in deviceRepository.UpdateFirmware(deviceId, parsedVersion, cancellationToken)
+				var report in deviceRepository.UpdateFirmware(
+					deviceId,
+					parsedVersion,
+					migrateData,
+					cancellationToken
+				)
 			)
 			{
 				var evt = ToEvent(report);
@@ -213,6 +218,10 @@ public static class Devices
 			UpdateFirmwareResult.FailedToGetProfile => "Failed to backup the device profile before updating.",
 			UpdateFirmwareResult.FailedToRestoreProfile =>
 				"The update completed but failed to restore the device profile.",
+			UpdateFirmwareResult.FailedToGetSettings =>
+				"Failed to backup the device settings before updating.",
+			UpdateFirmwareResult.FailedToRestoreSettings =>
+				"The update completed but failed to restore the device settings.",
 			UpdateFirmwareResult.FailedToEnterBootloader => "Failed to put the device into bootloader mode.",
 			UpdateFirmwareResult.FailedToFindBootloader =>
 				"The device entered bootloader mode but was not detected by the system.",

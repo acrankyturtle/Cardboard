@@ -26,7 +26,7 @@ public interface IDeviceUpdater
 	IAsyncEnumerable<FirmwareUpdateReport> UpdateDevice(
 		DeviceId deviceId,
 		DeviceFirmware firmware,
-		bool migrateProfile,
+		bool migrateData,
 		CancellationToken cancellationToken = default
 	);
 }
@@ -45,12 +45,12 @@ public sealed class FirmwareUpdateComplete : FirmwareUpdateReport
 
 public enum FirmwareUpdateStage
 {
-	BackingUpProfile,
+	Preparing,
 	EnteringBootloader,
 	WaitingForBootloader,
 	WritingFirmware,
 	WaitingForReconnect,
-	RestoringProfile,
+	Restoring,
 }
 
 public enum UpdateFirmwareResult
@@ -64,6 +64,8 @@ public enum UpdateFirmwareResult
 	DeviceAlreadyInBootloader,
 	FailedToGetProfile,
 	FailedToRestoreProfile,
+	FailedToGetSettings,
+	FailedToRestoreSettings,
 	FailedToEnterBootloader,
 	FailedToFindBootloader,
 	DeviceNotReconnected,
@@ -76,7 +78,7 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 	public async IAsyncEnumerable<FirmwareUpdateReport> UpdateDevice(
 		DeviceId deviceId,
 		DeviceFirmware firmware,
-		bool migrateProfile,
+		bool migrateData,
 		[System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default
 	)
 	{
@@ -87,6 +89,7 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 		);
 
 		DeviceProfile? deviceProfile = null;
+		DeviceSettings? deviceSettings = null;
 
 		await _lock.WaitAsync(cancellationToken);
 		logger.LogDebug("Acquired update lock for device {DeviceId}", deviceId);
@@ -145,10 +148,11 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 				yield break;
 			}
 
-			if (migrateProfile)
+			if (migrateData)
 			{
-				yield return new FirmwareUpdateProgress { Stage = FirmwareUpdateStage.BackingUpProfile };
-				logger.LogDebug("Backing up device profile for migration");
+				yield return new FirmwareUpdateProgress { Stage = FirmwareUpdateStage.Preparing };
+				logger.LogDebug("Backing up device profile and settings for migration");
+
 				// get profile
 				var getProfileResult = await deviceService.SendCommand(
 					new GetProfileCommand(),
@@ -165,8 +169,25 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 					};
 					yield break;
 				}
-
 				logger.LogDebug("Device profile backed up successfully");
+
+				// get settings
+				var getSettingsResult = await deviceService.SendCommand(
+					new GetSettingsCommand(),
+					new(),
+					deviceId,
+					cancellationToken
+				);
+				if (!getSettingsResult.TryGetSuccess(out deviceSettings))
+				{
+					logger.LogError("Failed to get device settings for backup");
+					yield return new FirmwareUpdateComplete
+					{
+						Result = UpdateFirmwareResult.FailedToGetSettings,
+					};
+					yield break;
+				}
+				logger.LogDebug("Device settings backed up successfully");
 			}
 
 			// Point of no return - from here on, we must complete the update regardless of cancellation
@@ -258,8 +279,9 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 
 			if (deviceProfile is not null)
 			{
-				yield return new FirmwareUpdateProgress { Stage = FirmwareUpdateStage.RestoringProfile };
-				logger.LogDebug("Restoring device profile after update");
+				yield return new FirmwareUpdateProgress { Stage = FirmwareUpdateStage.Restoring };
+				logger.LogDebug("Restoring device profile and settings after update");
+
 				var restoreProfileResult = await deviceService.SendCommand(
 					new UpdateProfileCommand(),
 					deviceProfile,
@@ -275,8 +297,27 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 					};
 					yield break;
 				}
-
 				logger.LogDebug("Device profile restored successfully");
+
+				if (deviceSettings is not null)
+				{
+					var restoreSettingsResult = await deviceService.SendCommand(
+						new UpdateSettingsCommand(),
+						deviceSettings,
+						deviceId,
+						CancellationToken.None
+					);
+					if (!restoreSettingsResult.IsSuccess)
+					{
+						logger.LogError("Failed to restore device settings");
+						yield return new FirmwareUpdateComplete
+						{
+							Result = UpdateFirmwareResult.FailedToRestoreSettings,
+						};
+						yield break;
+					}
+					logger.LogDebug("Device settings restored successfully");
+				}
 			}
 
 			yield return new FirmwareUpdateComplete { Result = UpdateFirmwareResult.Success };
@@ -305,7 +346,7 @@ public class FirmwareUpdateOptions
 	/// </summary>
 	public bool FlashOnly { get; set; }
 
-	public bool MigrateProfile { get; set; } = true;
+	public bool MigrateData { get; set; } = true;
 }
 
 public class FirmwareIntegrityException(string message) : Exception(message);
