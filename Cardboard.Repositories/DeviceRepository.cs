@@ -165,9 +165,10 @@ public sealed class DeviceStatusError
 	}
 }
 
-public sealed class DeviceTypeInfo
+public sealed record DeviceTypeInfo
 {
 	public required DeviceTypeId Id { get; init; }
+	public required string? Variant { get; init; }
 	public required string Model { get; init; }
 	public string? IconUrl { get; init; }
 	public IReadOnlyCollection<KeyInfo> KeyMap { get; init; } = [];
@@ -250,7 +251,9 @@ file sealed class DeviceRepository(
 				continue;
 			}
 
-			summaries.Add(DeviceSummary.From(device, GetDeviceTypeInfo(device.Type), profile));
+			summaries.Add(
+				DeviceSummary.From(device, GetDeviceTypeInfo(device.Type, device.Variant), profile)
+			);
 		}
 
 		return summaries;
@@ -309,7 +312,7 @@ file sealed class DeviceRepository(
 			return null;
 		}
 
-		var deviceTypeInfo = GetDeviceTypeInfo(deviceInfo.Type);
+		var deviceTypeInfo = GetDeviceTypeInfo(deviceInfo.Type, deviceInfo.Variant);
 		var latestVersion = await latestVersionTask;
 		return DeviceDetails.From(
 			deviceInfo,
@@ -510,12 +513,13 @@ file sealed class DeviceRepository(
 		}
 	}
 
-	private DeviceTypeInfo GetDeviceTypeInfo(DeviceTypeId deviceTypeId) =>
+	private DeviceTypeInfo GetDeviceTypeInfo(DeviceTypeId deviceTypeId, string? variant) =>
 		// TODO: fetch metadata for device -- use fake for now
-		_metadata.SingleOrDefault(m => m.Id == deviceTypeId)
+		_metadata.SingleOrDefault(m => m.Id == deviceTypeId && m.Variant == variant)
 		?? new DeviceTypeInfo
 		{
 			Id = deviceTypeId,
+			Variant = null,
 			Model = "???",
 			IconUrl = null,
 			KeyMap = [],
@@ -524,504 +528,268 @@ file sealed class DeviceRepository(
 	// todo: don't hard code
 	private readonly IReadOnlyCollection<DeviceTypeInfo> _metadata = new List<DeviceTypeInfo>
 	{
-		new()
+		_ck130,
+		_ck130 with
 		{
-			Id = DeviceTypeId.Parse("0407db48-ca74-5783-9b11-489637b7c615"),
-			Model = "CK1-30",
-			IconUrl = "/device-icons/ck1-30.svg",
-			KeyMap =
-			[
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("0661ee85-348b-5d93-b5e2-ac11cfa5344b"),
-					Name = "K-1",
-					Offset = new() { X = -200, Y = -100 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Accent1,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("87c4fd79-143b-576b-afa2-bea59e4cd02c"),
-					Name = "K-2",
-					Offset = new() { X = -100, Y = -100 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("1d652794-96a4-5c59-9948-afd441289317"),
-					Name = "K-3",
-					Offset = new() { X = 0, Y = -100 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("de57737c-e6c1-5818-bf94-d126ff5304a3"),
-					Name = "K-4",
-					Offset = new() { X = 100, Y = -100 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("85c20588-8148-5785-9e9f-44976e8dfef8"),
-					Name = "K-5",
-					Offset = new() { X = 200, Y = -100 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("b6ee974a-b405-5367-8c9f-e70a75045c37"),
-					Name = "K-6",
-					Offset = new() { X = 300, Y = -100 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Accent2,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("8a1052be-8165-5976-849b-511ce92f9956"),
-					Name = "K-7",
-					Offset = new() { X = -200, Y = 0 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("91206d06-70d4-5b75-9fdf-aad7f367fff5"),
-					Name = "K-8",
-					Offset = new() { X = -100, Y = 0 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("7abd3edf-f94c-522e-b2be-06a88bdb1cc9"),
-					Name = "K-9",
-					Offset = new() { X = 0, Y = 0 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Accent1,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("a32da69a-7f91-5f5a-87d2-dd5e4776b1c4"),
-					Name = "K-10",
-					Offset = new() { X = 100, Y = 0 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("3a801a21-1ef7-5803-bf42-ecd1e8444656"),
-					Name = "K-11",
-					Offset = new() { X = 200, Y = 0 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("c54ec31f-2381-5636-b0a5-edd448294b88"),
-					Name = "K-12",
-					Offset = new() { X = 300, Y = 0 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Accent2,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("16ad3daf-bd00-5168-885a-74008ce8de35"),
-					Name = "K-13",
-					Offset = new() { X = -200, Y = 100 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("da390fc5-5361-5af9-9398-d3823b81ecba"),
-					Name = "K-14",
-					Offset = new() { X = -100, Y = 100 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Accent1,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("1a549b65-43d5-5068-a3f5-59429946e404"),
-					Name = "K-15",
-					Offset = new() { X = 0, Y = 100 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Accent1,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("ec06b9a0-0713-5db1-862c-20fafd2b0764"),
-					Name = "K-16",
-					Offset = new() { X = 100, Y = 100 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Accent1,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("cbfef260-a498-599f-a6c0-8a6a51002b76"),
-					Name = "K-17",
-					Offset = new() { X = 200, Y = 100 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("852caff2-9ef9-59a3-ae41-e5eec3fa0d21"),
-					Name = "K-18",
-					Offset = new() { X = 300, Y = 100 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Accent2,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("96148043-9890-5767-a464-1b12f126da14"),
-					Name = "K-19",
-					Offset = new() { X = -200, Y = 200 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("7a30b4b5-f6b1-5aae-8cf5-f28bca7c1c13"),
-					Name = "K-20",
-					Offset = new() { X = -100, Y = 200 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("ab6039e8-38dc-5f91-b15c-6678def87cea"),
-					Name = "K-21",
-					Offset = new() { X = 0, Y = 200 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("0ef29fa7-07fb-5495-bb6f-33d164eda994"),
-					Name = "K-22",
-					Offset = new() { X = 100, Y = 200 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("e18caa6c-d922-558e-b146-0262173a28bd"),
-					Name = "K-23",
-					Offset = new() { X = 200, Y = 200 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("7b3285ea-4be6-5eae-9125-cec547fa3fb1"),
-					Name = "K-24",
-					Offset = new() { X = 300, Y = 200 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Accent2,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("4ade2cba-18d3-5fd0-a6d4-ba928bb47009"),
-					Name = "K-25",
-					Offset = new() { X = -200, Y = 300 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("474d0b39-6165-58e0-9745-2ca79493a9e8"),
-					Name = "K-26",
-					Offset = new() { X = -100, Y = 300 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("67fbbc39-8540-571c-a8e7-0a8bffbdc4c0"),
-					Name = "K-27",
-					Offset = new() { X = 0, Y = 300 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("00a68179-7585-5f08-89fd-c63464760575"),
-					Name = "K-28",
-					Offset = new() { X = 100, Y = 300 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("7b743c81-7260-5ae3-8c7e-fc451751a2c7"),
-					Name = "K-29",
-					Offset = new() { X = 200, Y = 300 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("15c56a3d-0f31-5ebd-bcf1-63aa968be49a"),
-					Name = "K-30",
-					Offset = new() { X = 300, Y = 350 },
-					Size = new() { Width = 100, Height = 200 },
-					Color = KeyColor.Accent1,
-				},
-			],
+			Variant = "BLK",
+			Model = "CK1-30 (black)",
 		},
-		new()
+		_ck130 with
 		{
-			Id = DeviceTypeId.Parse("c415be22-6662-4fb3-a4a1-0c40845a9075"),
-			Model = "Turdboard",
-			IconUrl = null,
-			KeyMap =
-			[
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("0661ee85-348b-5d93-b5e2-ac11cfa5344b"),
-					Name = "K-1",
-					Offset = new() { X = -200, Y = -100 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("87c4fd79-143b-576b-afa2-bea59e4cd02c"),
-					Name = "K-2",
-					Offset = new() { X = -100, Y = -100 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("1d652794-96a4-5c59-9948-afd441289317"),
-					Name = "K-3",
-					Offset = new() { X = 0, Y = -100 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("de57737c-e6c1-5818-bf94-d126ff5304a3"),
-					Name = "K-4",
-					Offset = new() { X = 100, Y = -100 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("85c20588-8148-5785-9e9f-44976e8dfef8"),
-					Name = "K-5",
-					Offset = new() { X = 200, Y = -100 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("b6ee974a-b405-5367-8c9f-e70a75045c37"),
-					Name = "K-6",
-					Offset = new() { X = 300, Y = -100 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("8a1052be-8165-5976-849b-511ce92f9956"),
-					Name = "K-7",
-					Offset = new() { X = -200, Y = 0 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("91206d06-70d4-5b75-9fdf-aad7f367fff5"),
-					Name = "K-8",
-					Offset = new() { X = -100, Y = 0 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("7abd3edf-f94c-522e-b2be-06a88bdb1cc9"),
-					Name = "K-9",
-					Offset = new() { X = 0, Y = 0 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("a32da69a-7f91-5f5a-87d2-dd5e4776b1c4"),
-					Name = "K-10",
-					Offset = new() { X = 100, Y = 0 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("3a801a21-1ef7-5803-bf42-ecd1e8444656"),
-					Name = "K-11",
-					Offset = new() { X = 200, Y = 0 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("c54ec31f-2381-5636-b0a5-edd448294b88"),
-					Name = "K-12",
-					Offset = new() { X = 300, Y = 0 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("16ad3daf-bd00-5168-885a-74008ce8de35"),
-					Name = "K-13",
-					Offset = new() { X = -200, Y = 100 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("da390fc5-5361-5af9-9398-d3823b81ecba"),
-					Name = "K-14",
-					Offset = new() { X = -100, Y = 100 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("1a549b65-43d5-5068-a3f5-59429946e404"),
-					Name = "K-15",
-					Offset = new() { X = 0, Y = 100 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("ec06b9a0-0713-5db1-862c-20fafd2b0764"),
-					Name = "K-16",
-					Offset = new() { X = 100, Y = 100 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("cbfef260-a498-599f-a6c0-8a6a51002b76"),
-					Name = "K-17",
-					Offset = new() { X = 200, Y = 100 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("852caff2-9ef9-59a3-ae41-e5eec3fa0d21"),
-					Name = "K-18",
-					Offset = new() { X = 300, Y = 100 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("96148043-9890-5767-a464-1b12f126da14"),
-					Name = "K-19",
-					Offset = new() { X = -200, Y = 200 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("7a30b4b5-f6b1-5aae-8cf5-f28bca7c1c13"),
-					Name = "K-20",
-					Offset = new() { X = -100, Y = 200 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("ab6039e8-38dc-5f91-b15c-6678def87cea"),
-					Name = "K-21",
-					Offset = new() { X = 0, Y = 200 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("0ef29fa7-07fb-5495-bb6f-33d164eda994"),
-					Name = "K-22",
-					Offset = new() { X = 100, Y = 200 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("e18caa6c-d922-558e-b146-0262173a28bd"),
-					Name = "K-23",
-					Offset = new() { X = 200, Y = 200 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("7b3285ea-4be6-5eae-9125-cec547fa3fb1"),
-					Name = "K-24",
-					Offset = new() { X = 300, Y = 200 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("4ade2cba-18d3-5fd0-a6d4-ba928bb47009"),
-					Name = "K-25",
-					Offset = new() { X = -200, Y = 300 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("474d0b39-6165-58e0-9745-2ca79493a9e8"),
-					Name = "K-26",
-					Offset = new() { X = -100, Y = 300 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("67fbbc39-8540-571c-a8e7-0a8bffbdc4c0"),
-					Name = "K-27",
-					Offset = new() { X = 0, Y = 300 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("00a68179-7585-5f08-89fd-c63464760575"),
-					Name = "K-28",
-					Offset = new() { X = 100, Y = 300 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("7b743c81-7260-5ae3-8c7e-fc451751a2c7"),
-					Name = "K-29",
-					Offset = new() { X = 200, Y = 300 },
-					Size = new() { Width = 100, Height = 100 },
-					Color = KeyColor.Regular,
-				},
-				new()
-				{
-					KeyId = DeviceKeyId.Parse("15c56a3d-0f31-5ebd-bcf1-63aa968be49a"),
-					Name = "K-30",
-					Offset = new() { X = 300, Y = 350 },
-					Size = new() { Width = 100, Height = 200 },
-					Color = KeyColor.Regular,
-				},
-			],
+			Variant = "WHT",
+			Model = "CK1-30 (white)",
 		},
+	};
+
+	private static readonly DeviceTypeInfo _ck130 = new()
+	{
+		Id = DeviceTypeId.Parse("0407db48-ca74-5783-9b11-489637b7c615"),
+		Variant = null,
+		Model = "CK1-30",
+		IconUrl = "/device-icons/ck1-30.svg",
+		KeyMap =
+		[
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("0661ee85-348b-5d93-b5e2-ac11cfa5344b"),
+				Name = "K-1",
+				Offset = new() { X = -200, Y = -100 },
+				Size = new() { Width = 100, Height = 100 },
+				Color = KeyColor.Accent1,
+			},
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("87c4fd79-143b-576b-afa2-bea59e4cd02c"),
+				Name = "K-2",
+				Offset = new() { X = -100, Y = -100 },
+				Size = new() { Width = 100, Height = 100 },
+				Color = KeyColor.Regular,
+			},
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("1d652794-96a4-5c59-9948-afd441289317"),
+				Name = "K-3",
+				Offset = new() { X = 0, Y = -100 },
+				Size = new() { Width = 100, Height = 100 },
+				Color = KeyColor.Regular,
+			},
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("de57737c-e6c1-5818-bf94-d126ff5304a3"),
+				Name = "K-4",
+				Offset = new() { X = 100, Y = -100 },
+				Size = new() { Width = 100, Height = 100 },
+				Color = KeyColor.Regular,
+			},
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("85c20588-8148-5785-9e9f-44976e8dfef8"),
+				Name = "K-5",
+				Offset = new() { X = 200, Y = -100 },
+				Size = new() { Width = 100, Height = 100 },
+				Color = KeyColor.Regular,
+			},
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("b6ee974a-b405-5367-8c9f-e70a75045c37"),
+				Name = "K-6",
+				Offset = new() { X = 300, Y = -100 },
+				Size = new() { Width = 100, Height = 100 },
+				Color = KeyColor.Accent2,
+			},
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("8a1052be-8165-5976-849b-511ce92f9956"),
+				Name = "K-7",
+				Offset = new() { X = -200, Y = 0 },
+				Size = new() { Width = 100, Height = 100 },
+				Color = KeyColor.Regular,
+			},
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("91206d06-70d4-5b75-9fdf-aad7f367fff5"),
+				Name = "K-8",
+				Offset = new() { X = -100, Y = 0 },
+				Size = new() { Width = 100, Height = 100 },
+				Color = KeyColor.Regular,
+			},
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("7abd3edf-f94c-522e-b2be-06a88bdb1cc9"),
+				Name = "K-9",
+				Offset = new() { X = 0, Y = 0 },
+				Size = new() { Width = 100, Height = 100 },
+				Color = KeyColor.Accent1,
+			},
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("a32da69a-7f91-5f5a-87d2-dd5e4776b1c4"),
+				Name = "K-10",
+				Offset = new() { X = 100, Y = 0 },
+				Size = new() { Width = 100, Height = 100 },
+				Color = KeyColor.Regular,
+			},
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("3a801a21-1ef7-5803-bf42-ecd1e8444656"),
+				Name = "K-11",
+				Offset = new() { X = 200, Y = 0 },
+				Size = new() { Width = 100, Height = 100 },
+				Color = KeyColor.Regular,
+			},
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("c54ec31f-2381-5636-b0a5-edd448294b88"),
+				Name = "K-12",
+				Offset = new() { X = 300, Y = 0 },
+				Size = new() { Width = 100, Height = 100 },
+				Color = KeyColor.Accent2,
+			},
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("16ad3daf-bd00-5168-885a-74008ce8de35"),
+				Name = "K-13",
+				Offset = new() { X = -200, Y = 100 },
+				Size = new() { Width = 100, Height = 100 },
+				Color = KeyColor.Regular,
+			},
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("da390fc5-5361-5af9-9398-d3823b81ecba"),
+				Name = "K-14",
+				Offset = new() { X = -100, Y = 100 },
+				Size = new() { Width = 100, Height = 100 },
+				Color = KeyColor.Accent1,
+			},
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("1a549b65-43d5-5068-a3f5-59429946e404"),
+				Name = "K-15",
+				Offset = new() { X = 0, Y = 100 },
+				Size = new() { Width = 100, Height = 100 },
+				Color = KeyColor.Accent1,
+			},
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("ec06b9a0-0713-5db1-862c-20fafd2b0764"),
+				Name = "K-16",
+				Offset = new() { X = 100, Y = 100 },
+				Size = new() { Width = 100, Height = 100 },
+				Color = KeyColor.Accent1,
+			},
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("cbfef260-a498-599f-a6c0-8a6a51002b76"),
+				Name = "K-17",
+				Offset = new() { X = 200, Y = 100 },
+				Size = new() { Width = 100, Height = 100 },
+				Color = KeyColor.Regular,
+			},
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("852caff2-9ef9-59a3-ae41-e5eec3fa0d21"),
+				Name = "K-18",
+				Offset = new() { X = 300, Y = 100 },
+				Size = new() { Width = 100, Height = 100 },
+				Color = KeyColor.Accent2,
+			},
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("96148043-9890-5767-a464-1b12f126da14"),
+				Name = "K-19",
+				Offset = new() { X = -200, Y = 200 },
+				Size = new() { Width = 100, Height = 100 },
+				Color = KeyColor.Regular,
+			},
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("7a30b4b5-f6b1-5aae-8cf5-f28bca7c1c13"),
+				Name = "K-20",
+				Offset = new() { X = -100, Y = 200 },
+				Size = new() { Width = 100, Height = 100 },
+				Color = KeyColor.Regular,
+			},
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("ab6039e8-38dc-5f91-b15c-6678def87cea"),
+				Name = "K-21",
+				Offset = new() { X = 0, Y = 200 },
+				Size = new() { Width = 100, Height = 100 },
+				Color = KeyColor.Regular,
+			},
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("0ef29fa7-07fb-5495-bb6f-33d164eda994"),
+				Name = "K-22",
+				Offset = new() { X = 100, Y = 200 },
+				Size = new() { Width = 100, Height = 100 },
+				Color = KeyColor.Regular,
+			},
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("e18caa6c-d922-558e-b146-0262173a28bd"),
+				Name = "K-23",
+				Offset = new() { X = 200, Y = 200 },
+				Size = new() { Width = 100, Height = 100 },
+				Color = KeyColor.Regular,
+			},
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("7b3285ea-4be6-5eae-9125-cec547fa3fb1"),
+				Name = "K-24",
+				Offset = new() { X = 300, Y = 200 },
+				Size = new() { Width = 100, Height = 100 },
+				Color = KeyColor.Accent2,
+			},
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("4ade2cba-18d3-5fd0-a6d4-ba928bb47009"),
+				Name = "K-25",
+				Offset = new() { X = -200, Y = 300 },
+				Size = new() { Width = 100, Height = 100 },
+				Color = KeyColor.Regular,
+			},
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("474d0b39-6165-58e0-9745-2ca79493a9e8"),
+				Name = "K-26",
+				Offset = new() { X = -100, Y = 300 },
+				Size = new() { Width = 100, Height = 100 },
+				Color = KeyColor.Regular,
+			},
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("67fbbc39-8540-571c-a8e7-0a8bffbdc4c0"),
+				Name = "K-27",
+				Offset = new() { X = 0, Y = 300 },
+				Size = new() { Width = 100, Height = 100 },
+				Color = KeyColor.Regular,
+			},
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("00a68179-7585-5f08-89fd-c63464760575"),
+				Name = "K-28",
+				Offset = new() { X = 100, Y = 300 },
+				Size = new() { Width = 100, Height = 100 },
+				Color = KeyColor.Regular,
+			},
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("7b743c81-7260-5ae3-8c7e-fc451751a2c7"),
+				Name = "K-29",
+				Offset = new() { X = 200, Y = 300 },
+				Size = new() { Width = 100, Height = 100 },
+				Color = KeyColor.Regular,
+			},
+			new()
+			{
+				KeyId = DeviceKeyId.Parse("15c56a3d-0f31-5ebd-bcf1-63aa968be49a"),
+				Name = "K-30",
+				Offset = new() { X = 300, Y = 350 },
+				Size = new() { Width = 100, Height = 200 },
+				Color = KeyColor.Accent1,
+			},
+		],
 	};
 }
 
