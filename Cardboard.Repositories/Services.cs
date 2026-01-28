@@ -11,6 +11,6 @@ public static partial class Services
 	)
 	{
 		services.Configure<ApplicationRepositoryConfiguration>(configuration);
-		return services.AddDeviceRepository().AddApplicationRepository().AddSchemaRepository().AddLogSink();
+		return services.AddDeviceRepository().AddApplicationRepository().AddLogSink();
 	}
 }

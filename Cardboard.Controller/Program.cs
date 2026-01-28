@@ -53,7 +53,6 @@ builder
 		options.MapStronglyTypedId<MacroId>();
 		options.MapStronglyTypedId<MacroIndex>();
 		options.MapStronglyTypedId<ApplicationAssociationId>();
-		options.MapStronglyTypedId<SchemaName>();
 	})
 	.AddEndpointsApiExplorer();
 

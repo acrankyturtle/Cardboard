@@ -71,7 +71,6 @@ public static partial class Services
 
 		api.MapDeviceRepositoryEndpoints();
 		api.MapTagRepositoryEndpoints();
-		api.MapSchemaEndpoints();
 		api.MapLogEndpoints();
 		api.MapInputDeviceEndpoints();
 		api.MapControllerEndpoints();

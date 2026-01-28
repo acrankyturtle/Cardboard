@@ -14,7 +14,6 @@
 		<PackageReference Include="System.Reactive" Version="6.0.1" />
 	</ItemGroup>
 	<ItemGroup>
-		<ProjectReference Include="..\Cardboard.JsonSchema\Cardboard.JsonSchema.csproj" />
 		<ProjectReference Include="..\Cardboard.Utilities\Cardboard.Utilities.csproj" />
 	</ItemGroup>
 </Project>
