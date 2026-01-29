@@ -17,7 +17,7 @@ use crate::context::{ExternalTagsSignalRx, VirtualKeySignalTx};
 use crate::hid::{HidDevice, HidReport, ReportHid};
 use crate::profile::{ConsumerControlEvent, KeyboardEvent, MouseEvent};
 use crate::serial::{SerialDrain, SerialPacketReader, SerialPacketSender};
-use crate::storage::{BlockFlash, FlashPartition, PartitionedFlashMemory};
+use crate::storage::BlockFlash;
 use crate::time::{Clock, Duration};
 use crate::{
 	context::{ExternalTagsSignalTx, UpdateProfileSignalRx, UpdateProfileSignalTx},

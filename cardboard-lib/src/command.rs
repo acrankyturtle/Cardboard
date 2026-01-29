@@ -427,9 +427,9 @@ where
 	async fn execute(&self, ctx: &mut Context) -> Result<(), &'static str> {
 		let result = self.try_execute(ctx).await;
 
-		let (response, should_reboot) = match &result {
-			Ok(reboot_needed) => (0xFF, *reboot_needed),
-			Err((code, _)) => (*code, false),
+		let response = match &result {
+			Ok(_) => 0xFF,
+			Err((code, _)) => *code,
 		};
 
 		// send response BEFORE potential reboot

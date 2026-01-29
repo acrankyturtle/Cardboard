@@ -221,6 +221,7 @@ impl<'a> VirtualKeyState<'a> {
 
 trait KeyState<'a> {
 	fn key(&self) -> MacroSourceKey;
+	#[allow(dead_code)]
 	fn layers(&self) -> &'a DeviceLayers;
 	fn current_layer(&self) -> &'a DeviceKeyLayer;
 	fn update_current_layer(&mut self, tags: &TagList) -> Option<&'a DeviceKeyLayer>;

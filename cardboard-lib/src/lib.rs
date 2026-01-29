@@ -1,6 +1,7 @@
 #![cfg_attr(not(test), no_std)]
 #![feature(generic_const_exprs)]
 #![feature(type_alias_impl_trait)]
+#![allow(async_fn_in_trait)]
 
 extern crate alloc;
 

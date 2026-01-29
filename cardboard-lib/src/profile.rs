@@ -467,6 +467,7 @@ impl Readable for KeyboardEvent {
 
 #[derive(Debug, Clone, Copy, TryFromPrimitive)]
 #[repr(u8)]
+#[allow(non_camel_case_types)]
 pub enum KeyboardKey {
 	A = 0x04,
 	B = 0x05,
@@ -703,6 +704,7 @@ impl Readable for MouseMove {
 
 #[derive(Clone, Debug, TryFromPrimitive)]
 #[repr(u8)]
+#[allow(non_camel_case_types)]
 pub enum ConsumerControlEvent {
 	RECORD = 0xB2,
 	FAST_FORWARD = 0xB3,

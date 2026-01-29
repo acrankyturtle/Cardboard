@@ -462,6 +462,7 @@ pub(crate) fn map_cc(key: &ConsumerControlEvent) -> Consumer {
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Format)]
 #[repr(u16)]
+#[allow(dead_code)]
 pub(crate) enum Consumer {
 	Unassigned = 0x00,
 	ConsumerControl = 0x01,
