@@ -32,15 +32,16 @@ import { InputClassName } from "./Input.tsx";
 import {
   ConsumerControlKeySelector,
   KeyboardKeySelector,
+  LayerTagSelector,
   MouseKeySelector,
 } from "./KeySelector.tsx";
 import { EditIcon } from "../assets/sharedIcons.tsx";
-import { ComboInput } from "./ComboInput.tsx";
 import {
   getTagsInProfile,
   useMaybeEditDeviceContext,
 } from "../lib/editDeviceContext.tsx";
 import { ActionTypeMenu } from "./ActionTypeMenu.tsx";
+import { useAssociations } from "../api/associations.ts";
 
 export const ActionView = forwardRef<
   HTMLDivElement,
@@ -619,16 +620,14 @@ function LayerActionEventView({
     ? (layer: LayerActionEvent) => setAction({ layer })
     : undefined;
   const context = useMaybeEditDeviceContext();
-  const items = useMemo(
-    () =>
-      context
-        ? getTagsInProfile(context.state.profile).map((t) => ({
-            id: t,
-            name: t,
-          }))
-        : [],
-    [context],
-  );
+  const { associations } = useAssociations();
+  const tagItems = useMemo(() => {
+    const profileTags = context
+      ? getTagsInProfile(context.state.profile)
+      : [];
+    const associationTags = associations.flatMap((a) => a.data.tags);
+    return [...new Set([...profileTags, ...associationTags])].sort();
+  }, [context, associations]);
 
   return (
     <>
@@ -645,21 +644,11 @@ function LayerActionEventView({
             keyUp={<ClearLayerIcon />}
             keyDown={<SetLayerIcon />}
           />
-          {setEvent ? (
-            <ComboInput
-              className="w-16 min-w-0"
-              value={{ id: event.clear, name: event.clear }}
-              onChange={(e) => setEvent({ clear: e.id })}
-              items={items}
-              itemFromQuery={(query) => {
-                query = query.trim().toLowerCase();
-                if (query.length < 1 || query.length > 255) return undefined;
-                return { id: query, name: query };
-              }}
-            />
-          ) : (
-            <div>{event.clear}</div>
-          )}
+          <LayerTagSelector
+            value={event.clear}
+            items={tagItems}
+            onChange={setEvent ? (v) => setEvent({ clear: v }) : undefined}
+          />
         </>
       ) : isLayerSetEvent(event) ? (
         <>
@@ -671,17 +660,11 @@ function LayerActionEventView({
             keyUp={<ClearLayerIcon />}
             keyDown={<SetLayerIcon />}
           />
-          {setEvent ? (
-            <Input
-              type="text"
-              className={clsx("min-w-0", InputClassName)}
-              maxLength={255}
-              value={event.set}
-              onChange={(e) => setEvent({ set: e.target.value })}
-            />
-          ) : (
-            <div>{event.set}</div>
-          )}
+          <LayerTagSelector
+            value={event.set}
+            items={tagItems}
+            onChange={setEvent ? (v) => setEvent({ set: v }) : undefined}
+          />
         </>
       ) : (
         <UnknownActionEventView event={event} />

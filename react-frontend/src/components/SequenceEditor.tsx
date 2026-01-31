@@ -90,6 +90,8 @@ export function SequenceEditor({
       if (target.closest("[data-editing='true']")) return;
       // don't exit if clicking inside an action type menu
       if (target.closest("[data-action-type-menu]")) return;
+      // don't exit if clicking inside a combobox dropdown
+      if (target.closest("[data-combobox-options]")) return;
       setEditIndex(null);
     };
 

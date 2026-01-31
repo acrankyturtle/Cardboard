@@ -82,6 +82,7 @@ export function ComboInput<TItem extends ComboInputItem>({
             key={x.id}
             value={x}
             className="bg-stone-800 data-selected:bg-amber-600"
+            data-combobox-options
           >
             {renderOption ? renderOption(x) : x.name}
           </ComboboxOption>
