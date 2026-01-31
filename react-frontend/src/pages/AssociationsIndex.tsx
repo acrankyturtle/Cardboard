@@ -1,4 +1,4 @@
-import { ReactNode, useCallback, useEffect, useId, useState } from "react";
+import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import Header from "../components/Header.tsx";
 import clsx from "clsx";
 import { Button, getButtonClassName } from "../components/Button.tsx";
@@ -34,6 +34,7 @@ import {
 import { Field, Fieldset, Input, Label, Textarea } from "@headlessui/react";
 import { InputKeySelector } from "../components/InputKeySelector.tsx";
 import { InputClassName } from "../components/Input.tsx";
+import { ComboInput, ComboInputItem } from "../components/ComboInput.tsx";
 import {
   AddIcon,
   DeleteIcon,
@@ -445,19 +446,20 @@ function VirtualKeyEditor({
 }) {
   const [vk, setVk] = useState(virtualKey.virtualKey.toString());
   const max = 32;
-  const datalistId = useId();
 
-  // Device ID input with smart display (name when blurred, GUID when focused)
-  const [deviceIdInput, setDeviceIdInput] = useState(virtualKey.deviceId);
-  const [isDeviceInputFocused, setIsDeviceInputFocused] = useState(false);
+  // Convert devices to ComboInputItem format
+  const deviceItems: ComboInputItem[] = useMemo(
+    () => devices.map((d) => ({ id: d.id, name: d.name })),
+    [devices],
+  );
 
-  // Find device by ID to display name
-  const matchedDevice = devices.find((d) => d.id === virtualKey.deviceId);
-
-  // Determine what to display in the input
-  const deviceDisplayValue = isDeviceInputFocused
-    ? deviceIdInput
-    : (matchedDevice?.name ?? virtualKey.deviceId);
+  // Find current device or create fallback item for unknown device ID
+  const currentDeviceItem: ComboInputItem = useMemo(() => {
+    const device = devices.find((d) => d.id === virtualKey.deviceId);
+    return device
+      ? { id: device.id, name: device.name }
+      : { id: virtualKey.deviceId, name: virtualKey.deviceId };
+  }, [devices, virtualKey.deviceId]);
 
   const updateDeviceMatching = (
     updates: Partial<typeof virtualKey.deviceMatching>,
@@ -475,50 +477,12 @@ function VirtualKeyEditor({
     <div className="flex gap-2 rounded border border-stone-800 bg-stone-600 p-2">
       <div className="flex grow flex-col gap-2">
         <div className="flex items-center gap-3">
-          <Input
-            className={clsx("grow text-sm", InputClassName)}
-            type="text"
-            list={datalistId}
-            placeholder="Device ID or name"
-            value={deviceDisplayValue}
-            onChange={(e) => {
-              const value = e.target.value;
-              setDeviceIdInput(value);
-              // Check if user selected a device name from the list
-              const deviceByName = devices.find((d) => d.name === value);
-              if (deviceByName) {
-                onChange({ ...virtualKey, deviceId: deviceByName.id });
-                setDeviceIdInput(deviceByName.id);
-                // Show friendly name immediately after selection
-                setIsDeviceInputFocused(false);
-                e.target.blur();
-              }
-            }}
-            onFocus={() => {
-              setIsDeviceInputFocused(true);
-              setDeviceIdInput(virtualKey.deviceId);
-            }}
-            onBlur={() => {
-              setIsDeviceInputFocused(false);
-              // Update the device ID if changed
-              if (deviceIdInput !== virtualKey.deviceId) {
-                // Check if user entered a device name
-                const deviceByName = devices.find(
-                  (d) => d.name === deviceIdInput,
-                );
-                const newDeviceId = deviceByName?.id ?? deviceIdInput;
-                onChange({ ...virtualKey, deviceId: newDeviceId });
-                setDeviceIdInput(newDeviceId);
-              }
-            }}
+          <ComboInput
+            className={clsx("min-w-72 grow text-sm", InputClassName)}
+            value={currentDeviceItem}
+            onChange={(item) => onChange({ ...virtualKey, deviceId: item.id })}
+            items={deviceItems}
           />
-          <datalist id={datalistId}>
-            {devices.map((device) => (
-              <option key={device.id} value={device.name}>
-                {device.id}
-              </option>
-            ))}
-          </datalist>
           <div className="flex items-center gap-1.5 text-sm">
             <span>VK</span>
             <Input
