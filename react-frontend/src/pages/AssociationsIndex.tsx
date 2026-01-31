@@ -444,7 +444,7 @@ function VirtualKeyEditor({
   onChange: (vk: VirtualKeyAssociation) => void;
   onRemove: () => void;
 }) {
-  const [vk, setVk] = useState(virtualKey.virtualKey.toString());
+  const [vk, setVk] = useState((virtualKey.virtualKey + 1).toString());
   const max = 32;
 
   // Convert devices to ComboInputItem format
@@ -488,7 +488,7 @@ function VirtualKeyEditor({
             <Input
               className={clsx("w-14 text-center text-sm", InputClassName)}
               type="number"
-              min={0}
+              min={1}
               max={max}
               value={vk}
               onChange={(e) => setVk(e.target.value)}
@@ -498,7 +498,7 @@ function VirtualKeyEditor({
                   ...virtualKey,
                   virtualKey: newVk,
                 });
-                setVk(newVk.toString());
+                setVk((newVk + 1).toString());
               }}
             />
           </div>
@@ -592,7 +592,9 @@ const parseVirtualKeyId = (
   if (isNaN(parsed)) {
     return current;
   }
-  return Math.min(parsed, max);
+  // Input is 1-indexed (VK1, VK2, ...), convert to 0-indexed internal value
+  const clamped = Math.max(1, Math.min(parsed, max));
+  return clamped - 1;
 };
 
 function InputDevicesDialog({
@@ -798,7 +800,7 @@ function VirtualKeyList({ association }: { association: Association }) {
               >
                 <div>
                   {getInputKeyLabel(vk.deviceMatching.inputKey)} → VK
-                  {vk.virtualKey}
+                  {vk.virtualKey + 1}
                 </div>
                 {hasFilters && (
                   <div className="text-cyan-300">
