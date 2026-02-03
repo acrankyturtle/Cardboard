@@ -6,6 +6,7 @@
 	</PropertyGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\Cardboard.Device\Cardboard.Device.csproj" />
+		<ProjectReference Include="..\Cardboard.Metadata\Cardboard.Metadata.csproj" />
 		<ProjectReference Include="..\Cardboard.Update\Cardboard.Update.csproj" />
 		<ProjectReference Include="..\Cardboard.Utilities\Cardboard.Utilities.csproj" />
 	</ItemGroup>
