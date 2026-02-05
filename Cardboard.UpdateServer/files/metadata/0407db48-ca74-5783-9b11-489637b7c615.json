@@ -1,0 +1,205 @@
+{
+  "deviceTypeId": "0407db48-ca74-5783-9b11-489637b7c615",
+  "baseIdentity": {
+    "model": "CK1-30",
+    "iconUrl": "/device-icons/ck1-30.svg"
+  },
+  "variants": {
+    "BLK": {
+      "identity": {
+        "model": "CK1-30 BLK"
+      },
+      "additionalKeys": {},
+      "keyOverrides": {}
+    },
+    "WHT": {
+      "identity": {
+        "model": "CK1-30 WHT"
+      },
+      "additionalKeys": {},
+      "keyOverrides": {}
+    }
+  },
+  "keyMap": {
+    "0661ee85-348b-5d93-b5e2-ac11cfa5344b": {
+      "name": "K-1",
+      "offset": { "x": -200, "y": -100 },
+      "size": { "width": 100, "height": 100 },
+      "defaultColor": "Accent1"
+    },
+    "87c4fd79-143b-576b-afa2-bea59e4cd02c": {
+      "name": "K-2",
+      "offset": { "x": -100, "y": -100 },
+      "size": { "width": 100, "height": 100 },
+      "defaultColor": "Regular"
+    },
+    "1d652794-96a4-5c59-9948-afd441289317": {
+      "name": "K-3",
+      "offset": { "x": 0, "y": -100 },
+      "size": { "width": 100, "height": 100 },
+      "defaultColor": "Regular"
+    },
+    "de57737c-e6c1-5818-bf94-d126ff5304a3": {
+      "name": "K-4",
+      "offset": { "x": 100, "y": -100 },
+      "size": { "width": 100, "height": 100 },
+      "defaultColor": "Regular"
+    },
+    "85c20588-8148-5785-9e9f-44976e8dfef8": {
+      "name": "K-5",
+      "offset": { "x": 200, "y": -100 },
+      "size": { "width": 100, "height": 100 },
+      "defaultColor": "Regular"
+    },
+    "b6ee974a-b405-5367-8c9f-e70a75045c37": {
+      "name": "K-6",
+      "offset": { "x": 300, "y": -100 },
+      "size": { "width": 100, "height": 100 },
+      "defaultColor": "Accent2"
+    },
+    "8a1052be-8165-5976-849b-511ce92f9956": {
+      "name": "K-7",
+      "offset": { "x": -200, "y": 0 },
+      "size": { "width": 100, "height": 100 },
+      "defaultColor": "Regular"
+    },
+    "91206d06-70d4-5b75-9fdf-aad7f367fff5": {
+      "name": "K-8",
+      "offset": { "x": -100, "y": 0 },
+      "size": { "width": 100, "height": 100 },
+      "defaultColor": "Regular"
+    },
+    "7abd3edf-f94c-522e-b2be-06a88bdb1cc9": {
+      "name": "K-9",
+      "offset": { "x": 0, "y": 0 },
+      "size": { "width": 100, "height": 100 },
+      "defaultColor": "Accent1"
+    },
+    "a32da69a-7f91-5f5a-87d2-dd5e4776b1c4": {
+      "name": "K-10",
+      "offset": { "x": 100, "y": 0 },
+      "size": { "width": 100, "height": 100 },
+      "defaultColor": "Regular"
+    },
+    "3a801a21-1ef7-5803-bf42-ecd1e8444656": {
+      "name": "K-11",
+      "offset": { "x": 200, "y": 0 },
+      "size": { "width": 100, "height": 100 },
+      "defaultColor": "Regular"
+    },
+    "c54ec31f-2381-5636-b0a5-edd448294b88": {
+      "name": "K-12",
+      "offset": { "x": 300, "y": 0 },
+      "size": { "width": 100, "height": 100 },
+      "defaultColor": "Accent2"
+    },
+    "16ad3daf-bd00-5168-885a-74008ce8de35": {
+      "name": "K-13",
+      "offset": { "x": -200, "y": 100 },
+      "size": { "width": 100, "height": 100 },
+      "defaultColor": "Regular"
+    },
+    "da390fc5-5361-5af9-9398-d3823b81ecba": {
+      "name": "K-14",
+      "offset": { "x": -100, "y": 100 },
+      "size": { "width": 100, "height": 100 },
+      "defaultColor": "Accent1"
+    },
+    "1a549b65-43d5-5068-a3f5-59429946e404": {
+      "name": "K-15",
+      "offset": { "x": 0, "y": 100 },
+      "size": { "width": 100, "height": 100 },
+      "defaultColor": "Accent1"
+    },
+    "ec06b9a0-0713-5db1-862c-20fafd2b0764": {
+      "name": "K-16",
+      "offset": { "x": 100, "y": 100 },
+      "size": { "width": 100, "height": 100 },
+      "defaultColor": "Accent1"
+    },
+    "cbfef260-a498-599f-a6c0-8a6a51002b76": {
+      "name": "K-17",
+      "offset": { "x": 200, "y": 100 },
+      "size": { "width": 100, "height": 100 },
+      "defaultColor": "Regular"
+    },
+    "852caff2-9ef9-59a3-ae41-e5eec3fa0d21": {
+      "name": "K-18",
+      "offset": { "x": 300, "y": 100 },
+      "size": { "width": 100, "height": 100 },
+      "defaultColor": "Accent2"
+    },
+    "96148043-9890-5767-a464-1b12f126da14": {
+      "name": "K-19",
+      "offset": { "x": -200, "y": 200 },
+      "size": { "width": 100, "height": 100 },
+      "defaultColor": "Regular"
+    },
+    "7a30b4b5-f6b1-5aae-8cf5-f28bca7c1c13": {
+      "name": "K-20",
+      "offset": { "x": -100, "y": 200 },
+      "size": { "width": 100, "height": 100 },
+      "defaultColor": "Regular"
+    },
+    "ab6039e8-38dc-5f91-b15c-6678def87cea": {
+      "name": "K-21",
+      "offset": { "x": 0, "y": 200 },
+      "size": { "width": 100, "height": 100 },
+      "defaultColor": "Regular"
+    },
+    "0ef29fa7-07fb-5495-bb6f-33d164eda994": {
+      "name": "K-22",
+      "offset": { "x": 100, "y": 200 },
+      "size": { "width": 100, "height": 100 },
+      "defaultColor": "Regular"
+    },
+    "e18caa6c-d922-558e-b146-0262173a28bd": {
+      "name": "K-23",
+      "offset": { "x": 200, "y": 200 },
+      "size": { "width": 100, "height": 100 },
+      "defaultColor": "Regular"
+    },
+    "7b3285ea-4be6-5eae-9125-cec547fa3fb1": {
+      "name": "K-24",
+      "offset": { "x": 300, "y": 200 },
+      "size": { "width": 100, "height": 100 },
+      "defaultColor": "Accent2"
+    },
+    "4ade2cba-18d3-5fd0-a6d4-ba928bb47009": {
+      "name": "K-25",
+      "offset": { "x": -200, "y": 300 },
+      "size": { "width": 100, "height": 100 },
+      "defaultColor": "Regular"
+    },
+    "474d0b39-6165-58e0-9745-2ca79493a9e8": {
+      "name": "K-26",
+      "offset": { "x": -100, "y": 300 },
+      "size": { "width": 100, "height": 100 },
+      "defaultColor": "Regular"
+    },
+    "67fbbc39-8540-571c-a8e7-0a8bffbdc4c0": {
+      "name": "K-27",
+      "offset": { "x": 0, "y": 300 },
+      "size": { "width": 100, "height": 100 },
+      "defaultColor": "Regular"
+    },
+    "00a68179-7585-5f08-89fd-c63464760575": {
+      "name": "K-28",
+      "offset": { "x": 100, "y": 300 },
+      "size": { "width": 100, "height": 100 },
+      "defaultColor": "Regular"
+    },
+    "7b743c81-7260-5ae3-8c7e-fc451751a2c7": {
+      "name": "K-29",
+      "offset": { "x": 200, "y": 300 },
+      "size": { "width": 100, "height": 100 },
+      "defaultColor": "Regular"
+    },
+    "15c56a3d-0f31-5ebd-bcf1-63aa968be49a": {
+      "name": "K-30",
+      "offset": { "x": 300, "y": 350 },
+      "size": { "width": 100, "height": 200 },
+      "defaultColor": "Accent1"
+    }
+  }
+}

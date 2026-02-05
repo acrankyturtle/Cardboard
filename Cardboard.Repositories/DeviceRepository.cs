@@ -168,6 +168,7 @@ public sealed class DeviceStatusError
 file sealed class DeviceRepository(
 	IDeviceService deviceService,
 	IFirmwareSource firmwareSource,
+	IMetadataSource metadataSource,
 	IDeviceUpdater deviceUpdater,
 	ILogger<DeviceRepository> _logger,
 	JsonSerializerOptions serializerOptions
@@ -198,9 +199,8 @@ file sealed class DeviceRepository(
 				continue;
 			}
 
-			summaries.Add(
-				DeviceSummary.From(device, GetDeviceTypeInfo(device.Type, device.Variant), profile)
-			);
+			var deviceTypeInfo = await GetDeviceTypeInfo(device.Type, device.Variant, cancellationToken);
+			summaries.Add(DeviceSummary.From(device, deviceTypeInfo, profile));
 		}
 
 		return summaries;
@@ -259,7 +259,7 @@ file sealed class DeviceRepository(
 			return null;
 		}
 
-		var deviceTypeInfo = GetDeviceTypeInfo(deviceInfo.Type, deviceInfo.Variant);
+		var deviceTypeInfo = await GetDeviceTypeInfo(deviceInfo.Type, deviceInfo.Variant, cancellationToken);
 		var latestVersion = await latestVersionTask;
 		return DeviceDetails.From(
 			deviceInfo,
@@ -460,10 +460,14 @@ file sealed class DeviceRepository(
 		}
 	}
 
-	private static DeviceTypeInfo GetDeviceTypeInfo(DeviceTypeId deviceTypeId, string? variant) =>
-		// TODO: fetch metadata for device -- use hardcoded for now
-		Hardcoded.GetDeviceMetadata(deviceTypeId)
-			is { } metadata
+	private async Task<DeviceTypeInfo> GetDeviceTypeInfo(
+		DeviceTypeId deviceTypeId,
+		string? variant,
+		CancellationToken cancellationToken
+	)
+	{
+		var metadata = await metadataSource.GetMetadata(deviceTypeId, cancellationToken);
+		return metadata is not null
 			? DeviceTypeInfo.From(metadata, variant)
 			: new()
 			{
@@ -473,6 +477,7 @@ file sealed class DeviceRepository(
 				IconUrl = null,
 				KeyMap = [],
 			};
+	}
 }
 
 partial class Services

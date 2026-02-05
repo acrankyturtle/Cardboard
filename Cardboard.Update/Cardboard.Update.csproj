@@ -12,5 +12,6 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\Cardboard.Device\Cardboard.Device.csproj" />
+		<ProjectReference Include="..\Cardboard.Metadata\Cardboard.Metadata.csproj" />
 	</ItemGroup>
 </Project>

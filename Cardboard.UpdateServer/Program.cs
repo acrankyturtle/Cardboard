@@ -1,5 +1,8 @@
 using System.Security.Cryptography;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Cardboard.Api;
+using Cardboard.Metadata;
 using Cardboard.Update.Api;
 using Cardboard.Update.Api.Abstractions;
 using Cardboard.Utilities;
@@ -59,6 +62,14 @@ var controllerPath = Path.GetFullPath(
 	config.Controller ?? Path.Combine(Environment.CurrentDirectory, "files", "controller")
 );
 Directory.CreateDirectory(controllerPath);
+
+var metadataPath = Path.GetFullPath(
+	config.Metadata ?? Path.Combine(Environment.CurrentDirectory, "files", "metadata")
+);
+Directory.CreateDirectory(metadataPath);
+
+var fileJsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+fileJsonOptions.Converters.Add(new JsonStringEnumConverter());
 
 var apiRoot = builder.Configuration.GetValue<string?>("ApiPath")?.Trim('/');
 
@@ -201,6 +212,67 @@ group.MapGet(
 			"application/octet-stream",
 			$"CardboardSetup-{release.Version.ToSemanticString()}.exe"
 		);
+	}
+);
+
+// Metadata endpoints
+group.MapGet(
+	"/metadata",
+	(ILogger<Program> logger) =>
+	{
+		var entries = Directory
+			.EnumerateFiles(metadataPath, "*.json")
+			.SelectNotNull(path =>
+			{
+				try
+				{
+					var json = File.ReadAllText(path);
+					var metadata = JsonSerializer.Deserialize<DeviceMetadata>(json, fileJsonOptions);
+					if (metadata is null)
+						return null;
+
+					return new MetadataListEntry
+					{
+						DeviceTypeId = metadata.DeviceTypeId,
+						Model = metadata.BaseIdentity.Model,
+						Variants = metadata.Variants.Keys.ToList(),
+					};
+				}
+				catch (Exception ex)
+				{
+					logger.LogWarning(ex, "Failed to read or parse metadata file {Path}", path);
+					return null;
+				}
+			})
+			.ToList();
+
+		return new MetadataListResponse { Entries = entries };
+	}
+);
+
+group.MapGet(
+	"/metadata/{deviceTypeId}",
+	async (string deviceTypeId) =>
+	{
+		// Validate deviceTypeId is a valid GUID
+		if (!Guid.TryParse(deviceTypeId, out _))
+			return Results.BadRequest("Invalid device type ID format");
+
+		var filePath = Path.Combine(metadataPath, $"{deviceTypeId}.json");
+
+		string json;
+
+		try
+		{
+			json = await File.ReadAllTextAsync(filePath);
+		}
+		catch (FileNotFoundException)
+		{
+			return Results.NotFound();
+		}
+
+		var metadata = JsonSerializer.Deserialize<DeviceMetadata>(json, fileJsonOptions);
+		return Results.Ok(new DeviceMetadataResponse { Metadata = metadata ?? throw new JsonException() });
 	}
 );
 
@@ -384,4 +456,5 @@ file class UpdateServerPathConfiguration
 {
 	public string? Firmware { get; init; }
 	public string? Controller { get; init; }
+	public string? Metadata { get; init; }
 }
