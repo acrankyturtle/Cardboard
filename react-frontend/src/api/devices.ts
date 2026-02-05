@@ -212,6 +212,25 @@ export const updateDeviceSettings = async (
   }
 };
 
+export const useFirmwareList = () => {
+  const { data, isLoading, error } = useSWR<{
+    firmware: readonly FirmwareListEntry[];
+  }>("devices/firmware");
+
+  return {
+    firmware: data?.firmware ?? [],
+    isLoading,
+    error,
+  };
+};
+
+export interface FirmwareListEntry {
+  deviceTypeId: string;
+  name: string;
+  variant?: string;
+  latestVersion: string;
+}
+
 export interface DeviceSummary {
   id: string;
   name: string;

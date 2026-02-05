@@ -129,6 +129,37 @@ file class ApiFirmwareSource(
 		};
 	}
 
+	public async Task<IReadOnlyCollection<DeviceFirmwareListEntry>> GetFirmwareList(
+		CancellationToken cancellationToken = default
+	)
+	{
+		logger.LogInformation("Fetching complete firmware list");
+
+		var baseUrl = $"{options.Value.Url}/firmware";
+		var queryParams = new Dictionary<string, string?>
+		{
+			["channel"] = options.Value.Channel.HasFlag(UpdateChannel.Preview) ? "preview" : "stable",
+		};
+		var url = QueryHelpers.AddQueryString(baseUrl, queryParams);
+
+		logger.LogDebug("Fetching firmware list from {Url}", url);
+
+		var response = await httpClient.GetFromJsonAsync<FirmwareListResponse>(url, cancellationToken);
+		if (response is null)
+		{
+			return [];
+		}
+
+		return response
+			.Entries.Select(e => new DeviceFirmwareListEntry
+			{
+				DeviceTypeId = DeviceTypeId.Parse(e.DeviceTypeId),
+				Variant = e.Variant,
+				LatestVersion = Version.Parse(e.LatestVersion),
+			})
+			.ToList();
+	}
+
 	private string GetFirmwareUrl(
 		string? action,
 		DeviceTypeId deviceType,
@@ -138,7 +169,7 @@ file class ApiFirmwareSource(
 	)
 	{
 		var url =
-			$"{options.Value.Url}/firmware/{deviceType}/{(version is { } v ? v.ToString() : "latest")}/{action}";
+			$"{options.Value.Url}/firmware/{deviceType}/{(version != null ? version.ToString() : "latest")}/{action}";
 		var queryParams = new Dictionary<string, string?>
 		{
 			["variant"] = variant,

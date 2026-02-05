@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Cardboard.Api;
+using Cardboard.Device;
 using Cardboard.Metadata;
 using Cardboard.Update.Api;
 using Cardboard.Update.Api.Abstractions;
@@ -74,6 +75,23 @@ fileJsonOptions.Converters.Add(new JsonStringEnumConverter());
 var apiRoot = builder.Configuration.GetValue<string?>("ApiPath")?.Trim('/');
 
 IEndpointRouteBuilder group = apiRoot is not null ? app.MapGroup(apiRoot) : app;
+
+group.MapGet(
+	"/firmware",
+	([FromQuery] string channel = "stable") =>
+		new FirmwareListResponse
+		{
+			Entries = GetLatest(ParseChannelQueryParam(channel))
+				.Select(x => new FirmwareListEntry
+				{
+					DeviceTypeId = x.DeviceTypeId.ToString(),
+					Variant = x.Variant,
+					LatestVersion = x.LatestVersion.ToSemanticString(),
+				})
+				.ToList(),
+		}
+);
+
 group.MapGet(
 	"/firmware/{deviceTypeId}/latest",
 	(string deviceTypeId, [FromQuery] string? variant = null, [FromQuery] string channel = "stable") =>
@@ -294,6 +312,27 @@ UpdateChannel ParseChannelQueryParam(string channel) =>
 // Builds a redirect path, handling the case where apiRoot may be null.
 // Note: apiRoot is already trimmed of slashes and path should start with '/'.
 string BuildRedirectPath(string path) => string.IsNullOrEmpty(apiRoot) ? path : $"/{apiRoot}{path}";
+
+IEnumerable<(DeviceTypeId DeviceTypeId, string? Variant, Version LatestVersion)> GetLatest(
+	UpdateChannel channel
+)
+{
+	return Directory
+		.EnumerateDirectories(firmwarePath)
+		.SelectNotNull(
+			(DeviceTypeId Id, string Path)? (path) =>
+				DeviceTypeId.TryParse(Path.GetFileName(path), null, out var id) ? (id, path) : null
+		)
+		.SelectMany(x =>
+			Directory
+				.EnumerateFiles(x.Path)
+				.SelectNotNull(p => ParseFirmwareFileName(Path.GetFileNameWithoutExtension(p)))
+				.Where(f => channel.HasFlag(f.Channel))
+				.Select(f => (x.Id, f.Variant, f.Version))
+		)
+		.GroupBy(x => (x.Id, x.Variant))
+		.Select(g => g.MaxBy(x => x.Version));
+}
 
 FirmwareFileInfo? FindFirmware(string deviceTypeId, string? variant, string? version, UpdateChannel channel)
 {

@@ -65,6 +65,11 @@ public static class Devices
 			.WithName("Device Events Stream")
 			.Produces(StatusCodes.Status200OK, contentType: "text/event-stream")
 			.WithOpenApi();
+		group
+			.MapGet("/firmware", GetFirmwareList)
+			.WithName("Get Firmware List")
+			.Produces<FirmwareListResponse>()
+			.WithOpenApi();
 	}
 
 	private static async Task<Ok<DeviceListResponse>> GetDevices(
@@ -309,6 +314,59 @@ public static class Devices
 			// Expected when client disconnects or server shuts down
 		}
 	}
+
+	private static async Task<Ok<FirmwareListResponse>> GetFirmwareList(
+		[FromServices] IFirmwareSource firmwareSource,
+		[FromServices] IMetadataSource metadataSource,
+		CancellationToken cancellationToken
+	)
+	{
+		var entries = await firmwareSource.GetFirmwareList(cancellationToken);
+		var metadataList = await metadataSource.GetMetadataList(cancellationToken);
+
+		var metadataLookup = metadataList.ToDictionary(m => m.DeviceTypeId);
+
+		var firmwareWithNames = entries
+			.Select(e =>
+			{
+				var name = metadataLookup.TryGetValue(e.DeviceTypeId, out var metadata)
+					? FormatFirmwareName(metadata.Model, e.Variant)
+					: FormatFirmwareName(e.DeviceTypeId.ToString(), e.Variant);
+
+				return new FirmwareListEntryWithName
+				{
+					DeviceTypeId = e.DeviceTypeId,
+					Name = name,
+					Variant = e.Variant,
+					LatestVersion = e.LatestVersion,
+				};
+			})
+			.ToList();
+
+		return TypedResults.Ok(new FirmwareListResponse { Firmware = firmwareWithNames });
+	}
+
+	private static string FormatFirmwareName(string baseName, string? variant) =>
+		variant?.ToUpperInvariant() switch
+		{
+			null => baseName,
+			"BLK" => $"{baseName} (black)",
+			"WHT" => $"{baseName} (white)",
+			_ => $"{baseName} ({variant})",
+		};
+}
+
+public sealed class FirmwareListResponse
+{
+	public required IReadOnlyCollection<FirmwareListEntryWithName> Firmware { get; init; }
+}
+
+public sealed class FirmwareListEntryWithName
+{
+	public required DeviceTypeId DeviceTypeId { get; init; }
+	public required string Name { get; init; }
+	public required string? Variant { get; init; }
+	public required Version LatestVersion { get; init; }
 }
 
 public sealed class DevicesChangedEventData
