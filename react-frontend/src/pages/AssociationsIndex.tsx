@@ -15,7 +15,7 @@ import {
   useAssociations,
   VirtualKeyAssociation,
 } from "../api/associations.ts";
-import { DeviceSummary, useDeviceList } from "../api/devices.ts";
+import { useDeviceList } from "../api/devices.ts";
 import {
   DelayedLoadingIndicator,
   LargeLoadingIndicator,
@@ -247,7 +247,35 @@ function EditAssociationDialog({
   error: string | null;
 }) {
   const { devices } = useDeviceList();
+  const { associations } = useAssociations();
   const [showInputDevices, setShowInputDevices] = useState(false);
+
+  // Build combined device list: connected devices by name + unconnected device IDs from associations
+  const allDeviceItems: ComboInputItem[] = useMemo(() => {
+    // Start with connected devices (these have names)
+    const connectedDeviceIds = new Set(devices.map((d) => d.id));
+    const items: ComboInputItem[] = devices.map((d) => ({
+      id: d.id,
+      name: d.name,
+    }));
+
+    // Collect all device IDs from all associations' virtual keys
+    const associationDeviceIds = new Set<string>();
+    for (const association of associations) {
+      for (const vk of association.data.virtualKeys) {
+        if (vk.deviceId && !connectedDeviceIds.has(vk.deviceId)) {
+          associationDeviceIds.add(vk.deviceId);
+        }
+      }
+    }
+
+    // Add unconnected device IDs (using ID as name since we don't know the name)
+    for (const deviceId of associationDeviceIds) {
+      items.push({ id: deviceId, name: deviceId });
+    }
+
+    return items;
+  }, [devices, associations]);
 
   // Local state for input fields to allow typing without immediate filtering
   const [tagsInput, setTagsInput] = useState(() => data.tags.join(", "));
@@ -281,7 +309,7 @@ function EditAssociationDialog({
   }, [data, setData, pathsInput]);
 
   const handleAddVirtualKey = useCallback(() => {
-    const deviceId = devices[0]?.id ?? "";
+    const deviceId = allDeviceItems[0]?.id ?? "";
     setData({
       ...data,
       virtualKeys: [
@@ -289,7 +317,7 @@ function EditAssociationDialog({
         createEmptyVirtualKeyAssociation(deviceId),
       ],
     });
-  }, [data, setData, devices]);
+  }, [data, setData, allDeviceItems]);
 
   const handleUpdateVirtualKey = useCallback(
     (index: number, vk: VirtualKeyAssociation) => {
@@ -380,7 +408,7 @@ function EditAssociationDialog({
                 className="gap-1 px-3 py-1 text-sm"
                 buttonStyle={{ variant: "ghost" }}
                 onClick={handleAddVirtualKey}
-                disabled={devices.length === 0}
+                disabled={allDeviceItems.length === 0}
               >
                 <div className="-my-2 -ml-1.5 size-5">
                   <AddIcon />
@@ -394,7 +422,7 @@ function EditAssociationDialog({
                   <VirtualKeyEditor
                     key={index}
                     virtualKey={vk}
-                    devices={devices}
+                    deviceItems={allDeviceItems}
                     onChange={(updated) =>
                       handleUpdateVirtualKey(index, updated)
                     }
@@ -435,31 +463,23 @@ function EditAssociationDialog({
 
 function VirtualKeyEditor({
   virtualKey,
-  devices,
+  deviceItems,
   onChange,
   onRemove,
 }: {
   virtualKey: VirtualKeyAssociation;
-  devices: readonly DeviceSummary[];
+  deviceItems: readonly ComboInputItem[];
   onChange: (vk: VirtualKeyAssociation) => void;
   onRemove: () => void;
 }) {
   const [vk, setVk] = useState((virtualKey.virtualKey + 1).toString());
   const max = 32;
 
-  // Convert devices to ComboInputItem format
-  const deviceItems: ComboInputItem[] = useMemo(
-    () => devices.map((d) => ({ id: d.id, name: d.name })),
-    [devices],
-  );
-
   // Find current device or create fallback item for unknown device ID
   const currentDeviceItem: ComboInputItem = useMemo(() => {
-    const device = devices.find((d) => d.id === virtualKey.deviceId);
-    return device
-      ? { id: device.id, name: device.name }
-      : { id: virtualKey.deviceId, name: virtualKey.deviceId };
-  }, [devices, virtualKey.deviceId]);
+    const item = deviceItems.find((d) => d.id === virtualKey.deviceId);
+    return item ?? { id: virtualKey.deviceId, name: virtualKey.deviceId };
+  }, [deviceItems, virtualKey.deviceId]);
 
   const updateDeviceMatching = (
     updates: Partial<typeof virtualKey.deviceMatching>,
@@ -481,7 +501,7 @@ function VirtualKeyEditor({
             className={clsx("min-w-72 grow text-sm", InputClassName)}
             value={currentDeviceItem}
             onChange={(item) => onChange({ ...virtualKey, deviceId: item.id })}
-            items={deviceItems}
+            items={deviceItems as ComboInputItem[]}
           />
           <div className="flex items-center gap-1.5 text-sm">
             <span>VK</span>
