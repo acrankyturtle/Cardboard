@@ -29,6 +29,11 @@ public interface IDeviceUpdater
 		bool migrateData,
 		CancellationToken cancellationToken = default
 	);
+
+	/// <summary>
+	/// Update a device that is already in bootloader mode.
+	/// </summary>
+	IAsyncEnumerable<FirmwareUpdateReport> UpdateDevice(DeviceFirmware firmware);
 }
 
 public abstract class FirmwareUpdateReport;
@@ -170,6 +175,7 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 					};
 					yield break;
 				}
+
 				logger.LogDebug("Device profile backed up successfully");
 
 				// get settings
@@ -188,6 +194,7 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 					};
 					yield break;
 				}
+
 				logger.LogDebug("Device settings backed up successfully");
 			}
 
@@ -214,35 +221,14 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 				yield break;
 			}
 
-			// wait for device to present itself as USB device
-			yield return new FirmwareUpdateProgress { Stage = FirmwareUpdateStage.WaitingForBootloader };
-			logger.LogDebug("Waiting for device to appear in bootloader mode");
-			var picoResult = await PicoWatcher.WaitForBootloaderDrive(
-				TimeSpan.FromSeconds(3),
-				CancellationToken.None
-			);
-			if (!picoResult.TryGet(out var picoDrive, out var error))
+			// use explicitly non-cancelable token because we are past the point of no return
+			await foreach (var update in UpdateDevice(firmware).WithCancellation(CancellationToken.None))
 			{
-				logger.LogError("Failed to find device in bootloader mode: {Error}", error);
-				yield return new FirmwareUpdateComplete
-				{
-					Result = UpdateFirmwareResult.FailedToFindBootloader,
-				};
-				yield break;
+				yield return update;
+
+				if (update is FirmwareUpdateComplete)
+					yield break;
 			}
-
-			logger.LogDebug("Found bootloader drive at {Path}", picoDrive.RootDirectory.FullName);
-
-			// copy firmware to device
-			yield return new FirmwareUpdateProgress { Stage = FirmwareUpdateStage.WritingFirmware };
-			var targetPath = Path.Combine(picoDrive.RootDirectory.FullName, "firmware.uf2");
-			logger.LogDebug(
-				"Writing {Size} bytes of firmware to {Path}",
-				firmware.Firmware.Length,
-				targetPath
-			);
-			await File.WriteAllBytesAsync(targetPath, firmware.Firmware.ToArray(), CancellationToken.None);
-			logger.LogDebug("Firmware written successfully, device will reboot");
 
 			// Wait for device to reconnect after firmware update with a timeout
 			yield return new FirmwareUpdateProgress { Stage = FirmwareUpdateStage.WaitingForReconnect };
@@ -298,6 +284,7 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 					};
 					yield break;
 				}
+
 				logger.LogDebug("Device profile restored successfully");
 
 				if (deviceSettings is not null)
@@ -317,6 +304,7 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 						};
 						yield break;
 					}
+
 					logger.LogDebug("Device settings restored successfully");
 				}
 			}
@@ -329,6 +317,32 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 			_lock.Release();
 			logger.LogDebug("Released update lock for device {DeviceId}", deviceId);
 		}
+	}
+
+	public async IAsyncEnumerable<FirmwareUpdateReport> UpdateDevice(DeviceFirmware firmware)
+	{
+		// wait for device to present itself as USB device
+		yield return new FirmwareUpdateProgress { Stage = FirmwareUpdateStage.WaitingForBootloader };
+		logger.LogDebug("Waiting for device to appear in bootloader mode");
+		var picoResult = await PicoWatcher.WaitForBootloaderDrive(
+			TimeSpan.FromSeconds(3),
+			CancellationToken.None
+		);
+		if (!picoResult.TryGet(out var picoDrive, out var error))
+		{
+			logger.LogError("Failed to find device in bootloader mode: {Error}", error);
+			yield return new FirmwareUpdateComplete { Result = UpdateFirmwareResult.FailedToFindBootloader };
+			yield break;
+		}
+
+		logger.LogDebug("Found bootloader drive at {Path}", picoDrive.RootDirectory.FullName);
+
+		// copy firmware to device
+		yield return new FirmwareUpdateProgress { Stage = FirmwareUpdateStage.WritingFirmware };
+		var targetPath = Path.Combine(picoDrive.RootDirectory.FullName, "firmware.uf2");
+		logger.LogDebug("Writing {Size} bytes of firmware to {Path}", firmware.Firmware.Length, targetPath);
+		await File.WriteAllBytesAsync(targetPath, firmware.Firmware.ToArray(), CancellationToken.None);
+		logger.LogDebug("Firmware written successfully, device will reboot");
 	}
 }
 

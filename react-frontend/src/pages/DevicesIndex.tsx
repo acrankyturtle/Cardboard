@@ -33,6 +33,7 @@ import {
 } from "../lib/editDeviceContext.tsx";
 import { NavigationBlocker } from "../components/NavigationBlocker.tsx";
 import { EditableProfileName } from "../components/EditableProfileName.tsx";
+import { BootloaderFirmwareUpdateDialog } from "../components/BootloaderFirmwareUpdateDialog.tsx";
 
 export function DevicesIndex({
   deviceId,
@@ -77,16 +78,28 @@ export function DevicesIndex({
 }
 
 function DeviceIndexView() {
+  const [showBootloaderDialog, setShowBootloaderDialog] = useState(false);
+
   return (
     <>
       <DevicesHeader>
-        <div>Devices</div>
+        <div className="grow">Devices</div>
+        <Button
+          buttonStyle={{ variant: "ghost" }}
+          onClick={() => setShowBootloaderDialog(true)}
+        >
+          Flash Bootloader Device
+        </Button>
       </DevicesHeader>
       <div className="grow overflow-y-auto p-4">
         <div className="flex size-full flex-col items-center">
           <DeviceList showEdit />
         </div>
       </div>
+      <BootloaderFirmwareUpdateDialog
+        open={showBootloaderDialog}
+        onClose={() => setShowBootloaderDialog(false)}
+      />
     </>
   );
 }

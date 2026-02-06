@@ -61,6 +61,11 @@ public static class Devices
 			.Produces(StatusCodes.Status200OK, contentType: "text/event-stream")
 			.WithOpenApi();
 		group
+			.MapPost("/update", UpdateBootloaderDevice)
+			.WithName("Update Bootloader Device")
+			.Produces(StatusCodes.Status200OK, contentType: "text/event-stream")
+			.WithOpenApi();
+		group
 			.MapGet("/events", StreamDeviceEvents)
 			.WithName("Device Events Stream")
 			.Produces(StatusCodes.Status200OK, contentType: "text/event-stream")
@@ -172,6 +177,89 @@ public static class Devices
 					migrateData,
 					cancellationToken
 				)
+			)
+			{
+				var evt = ToEvent(report);
+				var json = JsonSerializer.Serialize(evt, jsonOptions);
+				await context.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
+				await context.Response.Body.FlushAsync(cancellationToken);
+			}
+		}
+		catch (Exception ex)
+		{
+			var evt = new FirmwareUpdateErrorEvent
+			{
+				Result = UpdateFirmwareResult.UnknownError,
+				Message = ex.Message,
+			};
+			var json = JsonSerializer.Serialize<FirmwareUpdateEvent>(evt, jsonOptions);
+			await context.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
+			await context.Response.Body.FlushAsync(cancellationToken);
+		}
+	}
+
+	private static async Task UpdateBootloaderDevice(
+		HttpContext context,
+		[FromServices] IFirmwareSource firmwareSource,
+		[FromServices] IDeviceUpdater deviceUpdater,
+		[FromServices] JsonSerializerOptions jsonOptions,
+		[FromQuery(Name = "deviceType")] DeviceTypeId deviceType,
+		[FromQuery] string? variant,
+		[FromQuery] string? version,
+		CancellationToken cancellationToken
+	)
+	{
+		context.Response.Headers.ContentType = "text/event-stream";
+		context.Response.Headers.CacheControl = "no-cache";
+		context.Response.Headers.Connection = "keep-alive";
+
+		try
+		{
+			// Get firmware from source
+			Version? parsedVersion;
+			if (version is null)
+			{
+				// Get latest version first
+				parsedVersion = await firmwareSource.GetLatestVersion(deviceType, variant, cancellationToken);
+			}
+			else
+				Version.TryParse(version, out parsedVersion);
+
+			if (parsedVersion is null)
+			{
+				var evt = new FirmwareUpdateErrorEvent
+				{
+					Result = UpdateFirmwareResult.FirmwareNotFound,
+					Message = "No firmware available for this device type.",
+				};
+				var json = JsonSerializer.Serialize<FirmwareUpdateEvent>(evt, jsonOptions);
+				await context.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
+				await context.Response.Body.FlushAsync(cancellationToken);
+				return;
+			}
+
+			var firmware = await firmwareSource.GetFirmware(
+				deviceType,
+				variant,
+				parsedVersion,
+				cancellationToken
+			);
+
+			if (firmware is null)
+			{
+				var evt = new FirmwareUpdateErrorEvent
+				{
+					Result = UpdateFirmwareResult.FirmwareNotFound,
+					Message = "The specified firmware version was not found.",
+				};
+				var json = JsonSerializer.Serialize<FirmwareUpdateEvent>(evt, jsonOptions);
+				await context.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
+				await context.Response.Body.FlushAsync(cancellationToken);
+				return;
+			}
+
+			await foreach (
+				var report in deviceUpdater.UpdateDevice(firmware).WithCancellation(CancellationToken.None)
 			)
 			{
 				var evt = ToEvent(report);
