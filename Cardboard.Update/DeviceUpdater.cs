@@ -69,6 +69,7 @@ public enum UpdateFirmwareResult
 	FailedToEnterBootloader,
 	FailedToFindBootloader,
 	DeviceNotReconnected,
+	UnknownError,
 }
 
 internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater> logger) : IDeviceUpdater

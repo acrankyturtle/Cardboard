@@ -184,7 +184,7 @@ public static class Devices
 		{
 			var evt = new FirmwareUpdateErrorEvent
 			{
-				Result = UpdateFirmwareResult.DeviceNotReconnected,
+				Result = UpdateFirmwareResult.UnknownError,
 				Message = ex.Message,
 			};
 			var json = JsonSerializer.Serialize<FirmwareUpdateEvent>(evt, jsonOptions);
