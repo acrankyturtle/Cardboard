@@ -5,14 +5,8 @@ import {
   KeyboardKey,
   MouseButton,
 } from "../api/devices.ts";
-import { ReactNode, useMemo, useState } from "react";
-import {
-  Combobox,
-  ComboboxButton,
-  ComboboxInput,
-  ComboboxOption,
-  ComboboxOptions,
-} from "@headlessui/react";
+import { ReactNode, useMemo } from "react";
+import { ComboInput } from "./ComboInput.tsx";
 
 export function KeyboardKeySelector({
   className,
@@ -97,29 +91,17 @@ export function LayerTagSelector({
   items: readonly string[];
   onChange?: (value: string) => void;
 }) {
-  const [query, setQuery] = useState("");
-
   const comboItems = useMemo(
     () => items.map((t) => ({ id: t, name: t })),
     [items],
   );
 
-  const filteredItems = useMemo(
-    () =>
-      query.length > 0
-        ? comboItems.filter((x) =>
-            x.name.toLowerCase().includes(query.toLowerCase()),
-          )
-        : comboItems,
-    [comboItems, query],
-  );
-
-  const newItem = useMemo(() => {
+  const itemFromQuery = (query: string) => {
     const q = query.trim().toLowerCase();
     if (q.length < 1 || q.length > 255) return undefined;
     if (comboItems.some((i) => i.id === q)) return undefined;
     return { id: q, name: q };
-  }, [query, comboItems]);
+  };
 
   return onChange ? (
     <div
@@ -128,50 +110,13 @@ export function LayerTagSelector({
         className,
       )}
     >
-      <Combobox
-        as="div"
-        className="relative min-w-0 grow"
+      <ComboInput
+        variant="compact"
         value={{ id: value, name: value }}
-        onChange={(v) => v && onChange(v.id)}
-      >
-        <ComboboxInput
-          className="w-full rounded-xl bg-stone-800 py-1 pl-2 pr-6 text-sm text-stone-100 shadow-sm outline-0 focus:border-stone-600 focus:ring-1 focus:ring-stone-500 data-hover:bg-stone-900"
-          displayValue={(item: { id: string; name: string }) => item?.name}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-        <ComboboxButton
-          as="button"
-          className="absolute inset-y-0 right-0 flex w-6 items-center justify-center text-stone-400 hover:text-stone-200"
-        >
-          <svg
-            className="size-4"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M6 9l6 6l6 -6" />
-          </svg>
-        </ComboboxButton>
-        <ComboboxOptions
-          anchor="bottom start"
-          className="z-50 w-[var(--input-width)] rounded border border-stone-600 bg-stone-800 py-1 text-stone-100 shadow-lg [--anchor-gap:--spacing(1)]"
-          data-combobox-options
-        >
-          {[...(newItem ? [newItem] : []), ...filteredItems].map((x) => (
-            <ComboboxOption
-              key={x.id}
-              value={x}
-              className="cursor-pointer px-2 py-1 data-focus:bg-amber-600"
-            >
-              {x.name}
-            </ComboboxOption>
-          ))}
-        </ComboboxOptions>
-      </Combobox>
+        onChange={(v) => onChange(v.id)}
+        items={comboItems}
+        itemFromQuery={itemFromQuery}
+      />
     </div>
   ) : (
     <div className="truncate">{value}</div>

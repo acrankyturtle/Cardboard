@@ -1,21 +1,30 @@
 import { useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import { EditIcon } from "../assets/sharedIcons.tsx";
+import { InputClassName } from "./Input.tsx";
+import { getButtonClassName } from "./Button.tsx";
 
 export function EditableProfileName({
   name,
   fallback,
   onChange,
+  onEditing,
   className,
 }: {
   name: string;
   fallback: string;
   onChange: (newName: string) => void;
+  onEditing?: (isEditing: boolean) => void;
   className?: string;
 }) {
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setStateIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(name);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const setIsEditing = (editing: boolean) => {
+    setStateIsEditing(editing);
+    onEditing?.(editing);
+  };
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -55,7 +64,8 @@ export function EditableProfileName({
         onBlur={handleSave}
         onKeyDown={handleKeyDown}
         className={clsx(
-          "rounded border border-stone-600 bg-stone-800 px-2 py-0.5 text-lg font-normal text-stone-100 outline-none focus:border-violet-500",
+          InputClassName,
+          "py-0.5 text-lg font-normal",
           className,
         )}
         placeholder={fallback}
@@ -72,7 +82,10 @@ export function EditableProfileName({
           setEditValue(name);
           setIsEditing(true);
         }}
-        className="rounded p-1 text-stone-400 hover:bg-stone-700 hover:text-stone-200"
+        className={clsx(
+          getButtonClassName({ variant: "ghost", padding: "none" }),
+          "p-1",
+        )}
         title="Edit profile name"
       >
         <EditIcon className="size-4" />

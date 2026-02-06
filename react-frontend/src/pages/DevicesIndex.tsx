@@ -264,6 +264,7 @@ function EditDeviceView() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [isEditingProfileName, setIsEditingProfileName] = useState(false);
 
   const { state, dispatch } = useEditDeviceContext();
 
@@ -297,7 +298,12 @@ function EditDeviceView() {
         message="You have unsaved profile changes. Are you sure you want to leave?"
       />
       <DevicesHeader>
-        <div className="flex grow items-end gap-3">
+        <div
+          className={clsx("flex grow gap-3", {
+            "items-center": isEditingProfileName,
+            "items-end": !isEditingProfileName,
+          })}
+        >
           <div>Edit</div>
           <EditableProfileName
             name={state.profile.name}
@@ -308,6 +314,7 @@ function EditDeviceView() {
                 profile: { ...state.profile, name: newName },
               })
             }
+            onEditing={(v) => setIsEditingProfileName(v)}
           />
           <div className="text-lg font-normal text-stone-400">
             {state.device.id}

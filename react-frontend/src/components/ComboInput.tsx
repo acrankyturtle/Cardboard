@@ -21,6 +21,7 @@ export function ComboInput<TItem extends ComboInputItem>({
   items,
   itemFromQuery,
   renderOption,
+  variant = "default",
 }: {
   className?: string;
   value: TItem;
@@ -28,6 +29,7 @@ export function ComboInput<TItem extends ComboInputItem>({
   items: readonly TItem[];
   renderOption?: (item: TItem) => ReactNode;
   itemFromQuery?: (query: string) => TItem | undefined;
+  variant?: "default" | "compact";
 }) {
   const [query, setQuery] = useState("");
 
@@ -46,26 +48,35 @@ export function ComboInput<TItem extends ComboInputItem>({
   return (
     <Combobox
       as="div"
-      className="relative flex grow"
+      className={clsx("relative", variant === "default" ? "flex grow" : "min-w-0 grow")}
       value={value}
       onChange={onChange}
     >
       <ComboboxInput
-        className={clsx("", className)}
+        className={clsx(
+          variant === "compact"
+            ? "w-full rounded-xl bg-stone-800 py-1 pl-2 pr-6 text-sm text-stone-100 shadow-sm outline-0 focus:border-stone-600 focus:ring-1 focus:ring-stone-500 data-hover:bg-stone-900"
+            : "",
+          className,
+        )}
         displayValue={(item: TItem) => item?.name}
         onChange={(event) => setQuery(event.target.value)}
       />
       <ComboboxButton
         as="button"
-        className={clsx("-ml-7 size-6 self-center", getButtonClassName({}))}
+        className={
+          variant === "compact"
+            ? "absolute inset-y-0 right-0 flex w-6 items-center justify-center text-stone-400 hover:text-stone-200"
+            : clsx("-ml-7 size-6 self-center", getButtonClassName({}))
+        }
       >
         <svg
-          className="-m-2"
+          className={variant === "compact" ? "size-4" : "-m-2"}
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          strokeWidth="1.25"
+          strokeWidth={variant === "compact" ? "2" : "1.25"}
           strokeLinecap="round"
           strokeLinejoin="round"
         >

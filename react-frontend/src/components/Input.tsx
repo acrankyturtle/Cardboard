@@ -9,4 +9,4 @@ export function Input({
 }
 
 export const InputClassName =
-  "rounded-md border-1 border-stone-900 bg-stone-800 shadow-sm outline-0 focus:ring-1 focus:ring-stone-500 px-2 py-1 data-disabled:opacity-50";
+  "rounded-md border-1 border-stone-900 bg-stone-800 shadow-sm outline-0 focus:ring-1 focus:ring-violet-500 px-2 py-1 data-disabled:opacity-50";
