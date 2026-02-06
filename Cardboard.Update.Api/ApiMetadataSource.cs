@@ -13,13 +13,18 @@ using Microsoft.Extensions.Options;
 
 namespace Cardboard.Update.Api;
 
+public interface IMetadataCache
+{
+	void ClearCache();
+}
+
 file sealed class ApiMetadataSource(
 	HttpClient httpClient,
 	IOptions<UpdateSourceConfiguration> options,
 	IOptions<MetadataCacheConfiguration> cacheOptions,
 	IOptions<JsonOptions> jsonOptions,
 	ILogger<ApiMetadataSource> logger
-) : IMetadataSource
+) : IMetadataSource, IMetadataCache
 {
 	private static readonly TimeSpan CacheTtl = TimeSpan.FromHours(1);
 	private static readonly TimeSpan StaleRefreshThreshold = TimeSpan.FromMinutes(30);
@@ -131,6 +136,15 @@ file sealed class ApiMetadataSource(
 		{
 			logger.LogWarning(ex, "Failed to fetch metadata list from API");
 			return cached is not null ? cached.Value : [];
+		}
+	}
+
+	public void ClearCache()
+	{
+		_metadataCache.Clear();
+		lock (_listCacheLock)
+		{
+			_listCache = null;
 		}
 	}
 
@@ -331,7 +345,13 @@ partial class Services
 		IConfigurationSection configuration
 	)
 	{
-		services.AddSingleton<IMetadataSource, ApiMetadataSource>();
+		services.AddSingleton<ApiMetadataSource>();
+		services.AddSingleton<IMetadataSource, ApiMetadataSource>(sp =>
+			sp.GetRequiredService<ApiMetadataSource>()
+		);
+		services.AddSingleton<IMetadataCache, ApiMetadataSource>(sp =>
+			sp.GetRequiredService<ApiMetadataSource>()
+		);
 		services.AddHttpClient<ApiMetadataSource>(
 			(sp, client) =>
 			{
