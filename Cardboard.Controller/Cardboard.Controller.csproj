@@ -24,6 +24,7 @@
 		<PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="9.0.3" />
 	</ItemGroup>
 	<ItemGroup>
+		<ProjectReference Include="..\Cardboard.Api\Cardboard.Api.csproj" />
 		<ProjectReference Include="..\Cardboard.FrontendHost\Cardboard.FrontendHost.csproj" />
 		<ProjectReference Include="..\Cardboard.Services\Cardboard.Services.csproj" />
 		<ProjectReference Include="..\Cardboard.Update.Api\Cardboard.Update.Api.csproj" />

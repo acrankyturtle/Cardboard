@@ -15,6 +15,7 @@
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.3" />
 	</ItemGroup>
 	<ItemGroup>
+		<ProjectReference Include="..\Cardboard.Api\Cardboard.Api.csproj" />
 		<ProjectReference Include="..\Cardboard.Update.Api\Cardboard.Update.Api.csproj" />
 		<ProjectReference Include="..\Cardboard.Utilities\Cardboard.Utilities.csproj" />
 	</ItemGroup>

@@ -1,5 +1,5 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
+using Cardboard.Api;
 using Cardboard.Controller;
 using Cardboard.Device;
 using Cardboard.Events;
@@ -26,12 +26,7 @@ builder.WebHost.ConfigureKestrel(options =>
 });
 
 // web api json options
-builder.Services.Configure<JsonOptions>(options =>
-{
-	options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
-	options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-	options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
-});
+builder.Services.ConfigureWebJsonOptions();
 
 // register json serializer options as singleton for our schema repository
 builder.Services.AddSingleton<JsonSerializerOptions>(serviceProvider =>

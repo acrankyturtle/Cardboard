@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Cardboard.Api;
 using Cardboard.Update.Api;
 using Cardboard.Update.Api.Abstractions;
 using Cardboard.Utilities;
@@ -35,6 +36,9 @@ builder.Services.AddCors(options =>
 		policy.AllowAnyHeader();
 	});
 });
+
+// web api json options
+builder.Services.ConfigureWebJsonOptions();
 
 builder.Services.Configure<UpdateServerPathConfiguration>(builder.Configuration.GetSection("Paths"));
 
