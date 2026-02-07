@@ -1,4 +1,5 @@
 ﻿using Cardboard.HttpApi;
+using Cardboard.Update;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -63,6 +64,20 @@ public static partial class Services
 
 		var host = uri.Host.ToLowerInvariant();
 		return host is "localhost" or "127.0.0.1";
+	}
+
+	public static IEndpointRouteBuilder MapDeviceIcons(this IEndpointRouteBuilder builder)
+	{
+		builder.MapGet(
+			"/device-icons/{fileName}",
+			async (string fileName, IDeviceIconSource iconSource, CancellationToken cancellationToken) =>
+			{
+				var icon = await iconSource.GetIcon(fileName, cancellationToken);
+				return icon is not null ? Results.Bytes(icon.Data, icon.ContentType) : Results.NotFound();
+			}
+		);
+
+		return builder;
 	}
 
 	public static IEndpointRouteBuilder MapFrontendApi(this IEndpointRouteBuilder builder)

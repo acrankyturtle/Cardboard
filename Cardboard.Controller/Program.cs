@@ -51,6 +51,7 @@ builder
 	.Services.AddInitialization()
 	.AddApiFirmwareSource(updateConfig)
 	.AddApiMetadataSource(pathsConfig)
+	.AddApiDeviceIconSource(pathsConfig)
 	.AddApiControllerSource()
 	.AddDeviceServices()
 	.AddDeviceUpdater()
@@ -113,6 +114,7 @@ else
 	app.UseSpaStaticFiles();
 }
 
+app.MapDeviceIcons();
 app.MapFrontendApi();
 
 app.Run();

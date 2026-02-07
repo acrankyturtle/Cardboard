@@ -61,6 +61,11 @@ var metadataPath = Path.GetFullPath(
 );
 Directory.CreateDirectory(metadataPath);
 
+var deviceIconsPath = Path.GetFullPath(
+	config.DeviceIcons ?? Path.Combine(Environment.CurrentDirectory, "files", "device-icons")
+);
+Directory.CreateDirectory(deviceIconsPath);
+
 var fileJsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 fileJsonOptions.Converters.Add(new JsonStringEnumConverter());
 
@@ -286,6 +291,28 @@ group.MapGet(
 	}
 );
 
+// Device icon endpoints
+group.MapGet(
+	"/device-icons/{fileName}",
+	(string fileName) =>
+	{
+		var sanitized = Path.GetFileName(fileName);
+		var filePath = Path.Combine(deviceIconsPath, sanitized);
+
+		if (!File.Exists(filePath))
+			return Results.NotFound();
+
+		var contentType = Path.GetExtension(sanitized).ToLowerInvariant() switch
+		{
+			".svg" => "image/svg+xml",
+			".png" => "image/png",
+			_ => "application/octet-stream",
+		};
+
+		return Results.File(filePath, contentType);
+	}
+);
+
 if (app.Environment.IsDevelopment())
 {
 	app.UseSwagger();
@@ -488,4 +515,5 @@ file class UpdateServerPathConfiguration
 	public string? Firmware { get; init; }
 	public string? Controller { get; init; }
 	public string? Metadata { get; init; }
+	public string? DeviceIcons { get; init; }
 }
