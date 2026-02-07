@@ -222,7 +222,9 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 			}
 
 			// use explicitly non-cancelable token because we are past the point of no return
-			await foreach (var update in UpdateDevice(firmware).WithCancellation(CancellationToken.None))
+			await foreach (
+				var update in UpdateDeviceInBootloaderMode(firmware).WithCancellation(CancellationToken.None)
+			)
 			{
 				yield return update;
 
@@ -320,6 +322,19 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 	}
 
 	public async IAsyncEnumerable<FirmwareUpdateReport> UpdateDevice(DeviceFirmware firmware)
+	{
+		await foreach (var update in UpdateDeviceInBootloaderMode(firmware))
+		{
+			yield return update;
+
+			if (update is FirmwareUpdateComplete)
+				yield break;
+		}
+
+		yield return new FirmwareUpdateComplete { Result = UpdateFirmwareResult.Success };
+	}
+
+	private async IAsyncEnumerable<FirmwareUpdateReport> UpdateDeviceInBootloaderMode(DeviceFirmware firmware)
 	{
 		// wait for device to present itself as USB device
 		yield return new FirmwareUpdateProgress { Stage = FirmwareUpdateStage.WaitingForBootloader };

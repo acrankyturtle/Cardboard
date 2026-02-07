@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Cardboard.Api;
 using Cardboard.Controller;
 using Cardboard.Device;
@@ -12,8 +11,6 @@ using Cardboard.Utilities;
 using Cardboard.Windows;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http.Json;
-using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,13 +24,6 @@ builder.WebHost.ConfigureKestrel(options =>
 
 // web api json options
 builder.Services.ConfigureWebJsonOptions();
-
-// register json serializer options as singleton for our schema repository
-builder.Services.AddSingleton<JsonSerializerOptions>(serviceProvider =>
-{
-	var jsonOptions = serviceProvider.GetRequiredService<IOptions<JsonOptions>>();
-	return jsonOptions.Value.SerializerOptions;
-});
 
 builder
 	.Services.AddSwaggerGen(options =>

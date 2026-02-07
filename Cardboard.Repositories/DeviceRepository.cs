@@ -170,8 +170,7 @@ file sealed class DeviceRepository(
 	IFirmwareSource firmwareSource,
 	IMetadataSource metadataSource,
 	IDeviceUpdater deviceUpdater,
-	ILogger<DeviceRepository> _logger,
-	JsonSerializerOptions serializerOptions
+	ILogger<DeviceRepository> _logger
 ) : IDeviceRepository
 {
 	public async Task<IReadOnlyCollection<DeviceSummary>> GetDevices(

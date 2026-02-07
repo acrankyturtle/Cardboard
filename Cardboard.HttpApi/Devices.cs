@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Options;
+using JsonOptions = Microsoft.AspNetCore.Http.Json.JsonOptions;
 
 namespace Cardboard.HttpApi;
 
@@ -155,7 +157,7 @@ public static class Devices
 	private static async Task UpdateFirmware(
 		HttpContext context,
 		[FromServices] IDeviceRepository deviceRepository,
-		[FromServices] JsonSerializerOptions jsonOptions,
+		[FromServices] IOptions<JsonOptions> jsonOptions,
 		[FromRoute(Name = "id")] DeviceId deviceId,
 		[FromQuery(Name = "migrate")] bool migrateData,
 		[FromQuery] string? version,
@@ -180,7 +182,7 @@ public static class Devices
 			)
 			{
 				var evt = ToEvent(report);
-				var json = JsonSerializer.Serialize(evt, jsonOptions);
+				var json = JsonSerializer.Serialize(evt, jsonOptions.Value.SerializerOptions);
 				await context.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
 				await context.Response.Body.FlushAsync(cancellationToken);
 			}
@@ -192,7 +194,10 @@ public static class Devices
 				Result = UpdateFirmwareResult.UnknownError,
 				Message = ex.Message,
 			};
-			var json = JsonSerializer.Serialize<FirmwareUpdateEvent>(evt, jsonOptions);
+			var json = JsonSerializer.Serialize<FirmwareUpdateEvent>(
+				evt,
+				jsonOptions.Value.SerializerOptions
+			);
 			await context.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
 			await context.Response.Body.FlushAsync(cancellationToken);
 		}
@@ -202,7 +207,7 @@ public static class Devices
 		HttpContext context,
 		[FromServices] IFirmwareSource firmwareSource,
 		[FromServices] IDeviceUpdater deviceUpdater,
-		[FromServices] JsonSerializerOptions jsonOptions,
+		[FromServices] IOptions<JsonOptions> jsonOptions,
 		[FromQuery(Name = "deviceType")] DeviceTypeId deviceType,
 		[FromQuery] string? variant,
 		[FromQuery] string? version,
@@ -232,7 +237,10 @@ public static class Devices
 					Result = UpdateFirmwareResult.FirmwareNotFound,
 					Message = "No firmware available for this device type.",
 				};
-				var json = JsonSerializer.Serialize<FirmwareUpdateEvent>(evt, jsonOptions);
+				var json = JsonSerializer.Serialize<FirmwareUpdateEvent>(
+					evt,
+					jsonOptions.Value.SerializerOptions
+				);
 				await context.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
 				await context.Response.Body.FlushAsync(cancellationToken);
 				return;
@@ -252,7 +260,10 @@ public static class Devices
 					Result = UpdateFirmwareResult.FirmwareNotFound,
 					Message = "The specified firmware version was not found.",
 				};
-				var json = JsonSerializer.Serialize<FirmwareUpdateEvent>(evt, jsonOptions);
+				var json = JsonSerializer.Serialize<FirmwareUpdateEvent>(
+					evt,
+					jsonOptions.Value.SerializerOptions
+				);
 				await context.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
 				await context.Response.Body.FlushAsync(cancellationToken);
 				return;
@@ -263,7 +274,7 @@ public static class Devices
 			)
 			{
 				var evt = ToEvent(report);
-				var json = JsonSerializer.Serialize(evt, jsonOptions);
+				var json = JsonSerializer.Serialize(evt, jsonOptions.Value.SerializerOptions);
 				await context.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
 				await context.Response.Body.FlushAsync(cancellationToken);
 			}
@@ -275,7 +286,10 @@ public static class Devices
 				Result = UpdateFirmwareResult.UnknownError,
 				Message = ex.Message,
 			};
-			var json = JsonSerializer.Serialize<FirmwareUpdateEvent>(evt, jsonOptions);
+			var json = JsonSerializer.Serialize<FirmwareUpdateEvent>(
+				evt,
+				jsonOptions.Value.SerializerOptions
+			);
 			await context.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
 			await context.Response.Body.FlushAsync(cancellationToken);
 		}
@@ -328,7 +342,7 @@ public static class Devices
 	private static async Task StreamDeviceEvents(
 		HttpContext context,
 		[FromServices] IDeviceService deviceService,
-		[FromServices] JsonSerializerOptions jsonOptions,
+		[FromServices] IOptions<JsonOptions> jsonOptions,
 		CancellationToken cancellationToken
 	)
 	{
@@ -382,7 +396,7 @@ public static class Devices
 					Added = evt.Added.Select(d => d.Id).ToList(),
 					Removed = evt.Removed.Select(d => d.Id).ToList(),
 				};
-				var json = JsonSerializer.Serialize(data, jsonOptions);
+				var json = JsonSerializer.Serialize(data, jsonOptions.Value.SerializerOptions);
 				await context.Response.WriteAsync($"event: devicesChanged\ndata: {json}\n\n", linkedToken);
 				await context.Response.Body.FlushAsync(linkedToken);
 			}
