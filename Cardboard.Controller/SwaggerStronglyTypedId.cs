@@ -1,4 +1,4 @@
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace Cardboard.Controller;
@@ -43,24 +43,22 @@ public static class SwaggerStronglyTypedId
 		{
 			return new()
 			{
-				Type = "string",
+				Type = JsonSchemaType.String | (nullable ? JsonSchemaType.Null : 0),
 				Format = "uuid",
-				Nullable = nullable,
 			};
 		}
 
 		if (propertyType == typeof(string))
 		{
-			return new() { Type = "string", Nullable = nullable };
+			return new() { Type = JsonSchemaType.String | (nullable ? JsonSchemaType.Null : 0) };
 		}
 
 		if (propertyType == typeof(long))
 		{
 			return new()
 			{
-				Type = "integer",
+				Type = JsonSchemaType.Integer | (nullable ? JsonSchemaType.Null : 0),
 				Format = "int64",
-				Nullable = nullable,
 			};
 		}
 
@@ -68,9 +66,8 @@ public static class SwaggerStronglyTypedId
 		{
 			return new()
 			{
-				Type = "integer",
+				Type = JsonSchemaType.Integer | (nullable ? JsonSchemaType.Null : 0),
 				Format = "int32",
-				Nullable = nullable,
 			};
 		}
 
@@ -78,11 +75,10 @@ public static class SwaggerStronglyTypedId
 		{
 			return new()
 			{
-				Type = "integer",
+				Type = JsonSchemaType.Integer | (nullable ? JsonSchemaType.Null : 0),
 				Format = "int64",
-				Minimum = 0,
-				Maximum = uint.MaxValue,
-				Nullable = nullable,
+				Minimum = "0",
+				Maximum = uint.MaxValue.ToString(),
 			};
 		}
 
@@ -90,11 +86,10 @@ public static class SwaggerStronglyTypedId
 		{
 			return new()
 			{
-				Type = "integer",
+				Type = JsonSchemaType.Integer | (nullable ? JsonSchemaType.Null : 0),
 				Format = "int32",
-				Minimum = 0,
-				Maximum = ushort.MaxValue,
-				Nullable = nullable,
+				Minimum = "0",
+				Maximum = ushort.MaxValue.ToString(),
 			};
 		}
 
