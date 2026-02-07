@@ -30,12 +30,6 @@ public sealed record DeviceVariantMetadata
 		new Dictionary<DeviceKeyId, KeyOverride>();
 }
 
-public sealed record VariantKeyColor
-{
-	[JsonConverter(typeof(ColorToHexStringConverter))]
-	public required Color Color { get; init; }
-}
-
 public sealed record KeyMetadata
 {
 	public required string Name { get; init; }
