@@ -13,11 +13,7 @@ public static class InputDevices
 	{
 		var group = builder.MapGroup("input-devices").WithTags("Input Devices");
 
-		group
-			.MapGet("/", GetInputDevices)
-			.WithName("Get Input Devices")
-			.Produces<GetInputDevicesResponse>()
-			.WithOpenApi();
+		group.MapGet("/", GetInputDevices).WithName("Get Input Devices").Produces<GetInputDevicesResponse>();
 	}
 
 	private static async Task<Ok<GetInputDevicesResponse>> GetInputDevices(

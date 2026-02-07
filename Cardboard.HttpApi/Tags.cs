@@ -17,31 +17,26 @@ public static class Tags
 		group
 			.MapGet("/", GetTagAssociations)
 			.WithName("Get Tag Associations")
-			.Produces<GetTagAssociationsResponse>()
-			.WithOpenApi();
+			.Produces<GetTagAssociationsResponse>();
 		group
 			.MapPost("/", CreateTagAssociation)
 			.WithName("Create Tag Association")
-			.Produces<CreateTagAssociationResponse>()
-			.WithOpenApi();
+			.Produces<CreateTagAssociationResponse>();
 		group
 			.MapGet("/{id}", GetTagAssociation)
 			.WithName("Get Tag Association")
 			.Produces<GetTagAssociationResponse>()
-			.Produces(StatusCodes.Status404NotFound)
-			.WithOpenApi();
+			.Produces(StatusCodes.Status404NotFound);
 		group
 			.MapPut("/{id}", UpdateTagAssociation)
 			.WithName("Update Tag Association")
 			.Produces(StatusCodes.Status204NoContent)
-			.Produces(StatusCodes.Status404NotFound)
-			.WithOpenApi();
+			.Produces(StatusCodes.Status404NotFound);
 		group
 			.MapDelete("/{id}", DeleteTagAssociation)
 			.WithName("Delete Tag Association")
 			.Produces(StatusCodes.Status204NoContent)
-			.Produces(StatusCodes.Status404NotFound)
-			.WithOpenApi();
+			.Produces(StatusCodes.Status404NotFound);
 	}
 
 	private static async Task<Ok<GetTagAssociationsResponse>> GetTagAssociations(

@@ -13,12 +13,8 @@ public static class Logs
 	{
 		var group = builder.MapGroup("logs").WithTags("Logs");
 
-		group.MapGet("/", GetLogs).WithName("Get Logs").Produces<GetLogsResponse>().WithOpenApi();
-		group
-			.MapDelete("/", ClearLogs)
-			.WithName("Clear Logs")
-			.Produces(StatusCodes.Status204NoContent)
-			.WithOpenApi();
+		group.MapGet("/", GetLogs).WithName("Get Logs").Produces<GetLogsResponse>();
+		group.MapDelete("/", ClearLogs).WithName("Clear Logs").Produces(StatusCodes.Status204NoContent);
 	}
 
 	private static Ok<GetLogsResponse> GetLogs(

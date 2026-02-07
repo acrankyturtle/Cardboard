@@ -17,13 +17,11 @@ public static class UpdateController
 		group
 			.MapGet("/version", GetVersion)
 			.WithName("Get Controller Version")
-			.Produces<ControllerVersionResponse>()
-			.WithOpenApi();
+			.Produces<ControllerVersionResponse>();
 		group
 			.MapGet("/update", CheckForUpdate)
 			.WithName("Check For Update")
-			.Produces<ControllerUpdateResponse>()
-			.WithOpenApi();
+			.Produces<ControllerUpdateResponse>();
 	}
 
 	private static Ok<ControllerVersionResponse> GetVersion() =>

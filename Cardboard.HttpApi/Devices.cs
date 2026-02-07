@@ -19,64 +19,54 @@ public static class Devices
 	{
 		var group = builder.MapGroup("devices").WithTags("Devices");
 
-		group.MapGet("/", GetDevices).WithName("Get Devices").Produces<DeviceListResponse>().WithOpenApi();
+		group.MapGet("/", GetDevices).WithName("Get Devices").Produces<DeviceListResponse>();
 		group
 			.MapGet("/{id}", GetDeviceDetails)
 			.WithName("Get Device Details")
 			.Produces<DeviceDetailsResponse>()
-			.Produces(StatusCodes.Status404NotFound)
-			.WithOpenApi();
+			.Produces(StatusCodes.Status404NotFound);
 		group
 			.MapGet("/{id}/profile", GetDeviceProfile)
 			.WithName("Get Device Profile")
 			.Produces<GetDeviceProfileResponse>()
-			.Produces(StatusCodes.Status404NotFound)
-			.WithOpenApi();
+			.Produces(StatusCodes.Status404NotFound);
 		group
 			.MapPut("/{id}/profile", UpdateDeviceProfile)
 			.WithName("Update Device Profile")
 			.Produces(StatusCodes.Status204NoContent)
 			.Produces(StatusCodes.Status400BadRequest)
-			.Produces(StatusCodes.Status404NotFound)
-			.WithOpenApi();
+			.Produces(StatusCodes.Status404NotFound);
 		group
 			.MapPost("/{id}/bootloader", EnterBootloader)
 			.WithName("Enter Bootloader")
 			.Produces(StatusCodes.Status204NoContent)
-			.Produces(StatusCodes.Status404NotFound)
-			.WithOpenApi();
+			.Produces(StatusCodes.Status404NotFound);
 		group
 			.MapGet("/{id}/settings", GetDeviceSettings)
 			.WithName("Get Device Settings")
 			.Produces<GetDeviceSettingsResponse>()
-			.Produces(StatusCodes.Status404NotFound)
-			.WithOpenApi();
+			.Produces(StatusCodes.Status404NotFound);
 		group
 			.MapPut("/{id}/settings", UpdateDeviceSettings)
 			.WithName("Update Settings")
 			.Produces(StatusCodes.Status204NoContent)
-			.Produces(StatusCodes.Status404NotFound)
-			.WithOpenApi();
+			.Produces(StatusCodes.Status404NotFound);
 		group
 			.MapPost("/{id}/update", UpdateFirmware)
 			.WithName("Update Firmware")
-			.Produces(StatusCodes.Status200OK, contentType: "text/event-stream")
-			.WithOpenApi();
+			.Produces(StatusCodes.Status200OK, contentType: "text/event-stream");
 		group
 			.MapPost("/update", UpdateBootloaderDevice)
 			.WithName("Update Bootloader Device")
-			.Produces(StatusCodes.Status200OK, contentType: "text/event-stream")
-			.WithOpenApi();
+			.Produces(StatusCodes.Status200OK, contentType: "text/event-stream");
 		group
 			.MapGet("/events", StreamDeviceEvents)
 			.WithName("Device Events Stream")
-			.Produces(StatusCodes.Status200OK, contentType: "text/event-stream")
-			.WithOpenApi();
+			.Produces(StatusCodes.Status200OK, contentType: "text/event-stream");
 		group
 			.MapGet("/firmware", GetFirmwareList)
 			.WithName("Get Firmware List")
-			.Produces<FirmwareListResponse>()
-			.WithOpenApi();
+			.Produces<FirmwareListResponse>();
 	}
 
 	private static async Task<Ok<DeviceListResponse>> GetDevices(
