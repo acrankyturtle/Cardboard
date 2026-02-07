@@ -5,7 +5,7 @@ using Cardboard.Device;
 
 namespace Cardboard.Metadata;
 
-public sealed class DeviceMetadata
+public sealed record DeviceMetadata
 {
 	public required DeviceTypeId DeviceTypeId { get; init; }
 	public required DeviceIdentityMetadata BaseIdentity { get; init; }
@@ -13,13 +13,13 @@ public sealed class DeviceMetadata
 	public required IReadOnlyDictionary<DeviceKeyId, KeyMetadata> KeyMap { get; init; }
 }
 
-public sealed class DeviceIdentityMetadata
+public sealed record DeviceIdentityMetadata
 {
 	public required string Model { get; init; }
 	public string? IconUrl { get; init; }
 }
 
-public sealed class DeviceVariantMetadata
+public sealed record DeviceVariantMetadata
 {
 	public required DeviceIdentityMetadata Identity { get; init; }
 
@@ -30,13 +30,13 @@ public sealed class DeviceVariantMetadata
 		new Dictionary<DeviceKeyId, KeyOverride>();
 }
 
-public sealed class VariantKeyColor
+public sealed record VariantKeyColor
 {
 	[JsonConverter(typeof(ColorToHexStringConverter))]
 	public required Color Color { get; init; }
 }
 
-public sealed class KeyMetadata
+public sealed record KeyMetadata
 {
 	public required string Name { get; init; }
 
@@ -53,7 +53,7 @@ public sealed class KeyMetadata
 	public required KeyColor DefaultColor { get; init; }
 }
 
-public sealed class KeyOverride
+public sealed record KeyOverride
 {
 	/// <summary>
 	/// 100 units = 1.0u key size
@@ -68,7 +68,7 @@ public sealed class KeyOverride
 	public KeyColor? DefaultColor { get; init; }
 }
 
-public sealed class KeyOffset
+public sealed record KeyOffset
 {
 	[JsonIgnore(Condition = JsonIgnoreCondition.Never)]
 	public required int X { get; init; }
@@ -77,7 +77,7 @@ public sealed class KeyOffset
 	public required int Y { get; init; }
 }
 
-public sealed class KeySize
+public sealed record KeySize
 {
 	[JsonIgnore(Condition = JsonIgnoreCondition.Never)]
 	public required int Width { get; init; }
