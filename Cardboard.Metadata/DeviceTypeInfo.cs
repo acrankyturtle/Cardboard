@@ -45,6 +45,15 @@ public sealed record DeviceTypeInfo
 
 		var identity = variantMetadata?.Identity ?? metadata.BaseIdentity;
 
+		if (identity.IconUrl is null && metadata.BaseIdentity.IconUrl is not null)
+		{
+			// override icon url with base identity if variant doesn't specify one to ensure the device has an icon
+			identity = identity with
+			{
+				IconUrl = metadata.BaseIdentity.IconUrl,
+			};
+		}
+
 		return new()
 		{
 			Id = metadata.DeviceTypeId,
