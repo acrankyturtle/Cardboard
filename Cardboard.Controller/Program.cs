@@ -46,9 +46,11 @@ builder.Services.AddHttpClient();
 var updateConfig = builder.Configuration.GetSection("Update");
 var frontendConfig = builder.Configuration.GetSection("Frontend");
 var pathsConfig = builder.Configuration.GetSection("Paths");
+var cacheConfig = builder.Configuration.GetSection("Cache");
 
 builder
 	.Services.AddInitialization()
+	.ConfigureCacheTimings(cacheConfig)
 	.AddApiFirmwareSource(updateConfig)
 	.AddApiMetadataSource(pathsConfig)
 	.AddApiDeviceIconSource(pathsConfig)

@@ -6,101 +6,66 @@ using Microsoft.Extensions.Options;
 namespace Cardboard.Update.Api;
 
 file sealed class ApiDeviceIconSource(
-	HttpClient httpClient,
+	IHttpClientFactory httpClientFactory,
 	IOptions<UpdateSourceConfiguration> options,
 	IOptions<DeviceIconCacheConfiguration> cacheOptions,
+	IOptions<CacheTimings> cacheTimingOptions,
 	ILogger<ApiDeviceIconSource> logger
-) : IDeviceIconSource
+) : IDeviceIconSource, IClearMemoryCache, IClearDiskCache
 {
+	private readonly IApiCache<string, DeviceIcon> _cache = DiskBasedApiCache.Create<string, DeviceIcon>(
+		cacheTimingOptions.Value,
+		async (fileName, ct) =>
+		{
+			var client = httpClientFactory.CreateClient(nameof(ApiDeviceIconSource));
+			var url = $"{options.Value.Url}/device-icons/{fileName}";
+			logger.LogDebug("Fetching device icon from {Url}", url);
+
+			var response = await client.GetAsync(url, ct);
+			response.EnsureSuccessStatusCode();
+
+			var data = await response.Content.ReadAsByteArrayAsync(ct);
+			return new(data, GetContentType(fileName));
+		},
+		cacheOptions.Value.IconCache,
+		cacheOptions.Value.IconCacheManifest,
+		k =>
+		{
+			// hash full file path to avoid using subdirectories and ensure consistent file names
+			const int hashSize = 32;
+			const int base64Size = 44; // Base64-encoded 32 bytes is always 44 characters
+
+			var byteCount = System.Text.Encoding.UTF8.GetByteCount(k);
+			Span<byte> buffer = stackalloc byte[byteCount];
+			System.Text.Encoding.UTF8.GetBytes(k, buffer);
+			Span<byte> hash = stackalloc byte[hashSize];
+			System.Security.Cryptography.SHA256.HashData(buffer, hash);
+			Span<char> base64Hash = stackalloc char[base64Size];
+			Convert.TryToBase64Chars(hash, base64Hash, out _);
+			base64Hash.Replace('/', '_');
+
+			// omit padding character
+			var fileName = new string(base64Hash[..^1]);
+			return fileName;
+		},
+		async (_, v, stream) =>
+		{
+			await stream.WriteAsync(v.Data);
+		},
+		async (k, stream, ct) =>
+		{
+			var data = new byte[stream.Length];
+			await stream.ReadExactlyAsync(data, ct);
+			return new(data, GetContentType(k));
+		},
+		logger
+	);
+
 	public async Task<DeviceIcon?> GetIcon(string fileName, CancellationToken cancellationToken)
 	{
 		var sanitized = Path.GetFileName(fileName);
-
-		// try disk cache first
-		var cached = LoadFromDiskCache(sanitized);
-		if (cached is not null)
-			return cached;
-
-		// fetch from API
-		try
-		{
-			var url = $"{options.Value.Url}/device-icons/{sanitized}";
-			logger.LogDebug("Fetching device icon from {Url}", url);
-
-			var response = await httpClient.GetAsync(url, cancellationToken);
-
-			if (!response.IsSuccessStatusCode)
-			{
-				logger.LogWarning(
-					"Failed to fetch device icon {FileName}: {StatusCode}",
-					sanitized,
-					response.StatusCode
-				);
-				return null;
-			}
-
-			var data = await response.Content.ReadAsByteArrayAsync(cancellationToken);
-			var contentType = GetContentType(sanitized);
-			var icon = new DeviceIcon(data, contentType);
-
-			SaveToDiskCache(sanitized, data);
-
-			return icon;
-		}
-		catch (Exception ex) when (ex is not OperationCanceledException)
-		{
-			logger.LogWarning(ex, "Failed to fetch device icon {FileName}", sanitized);
-			return null;
-		}
+		return await _cache.GetAsync(sanitized, cancellationToken);
 	}
-
-	private DeviceIcon? LoadFromDiskCache(string fileName)
-	{
-		var cachePath = GetCachePath();
-		if (cachePath is null)
-			return null;
-
-		var filePath = Path.Combine(cachePath, fileName);
-
-		if (!File.Exists(filePath))
-			return null;
-
-		try
-		{
-			var data = File.ReadAllBytes(filePath);
-			logger.LogDebug("Loaded device icon {FileName} from disk cache", fileName);
-			return new DeviceIcon(data, GetContentType(fileName));
-		}
-		catch (Exception ex)
-		{
-			logger.LogWarning(ex, "Failed to load device icon {FileName} from disk cache", fileName);
-			return null;
-		}
-	}
-
-	private void SaveToDiskCache(string fileName, byte[] data)
-	{
-		var cachePath = GetCachePath();
-		if (cachePath is null)
-			return;
-
-		try
-		{
-			Directory.CreateDirectory(cachePath);
-			var filePath = Path.Combine(cachePath, fileName);
-			File.WriteAllBytes(filePath, data);
-			logger.LogDebug("Saved device icon {FileName} to disk cache at {Path}", fileName, filePath);
-		}
-		catch (Exception ex)
-		{
-			logger.LogWarning(ex, "Failed to save device icon {FileName} to disk cache", fileName);
-		}
-	}
-
-	private string? GetCachePath() =>
-		!string.IsNullOrEmpty(cacheOptions.Value.IconCache)
-			? Environment.ExpandEnvironmentVariables(cacheOptions.Value.IconCache)
-			: null;
 
 	private static string GetContentType(string fileName) =>
 		Path.GetExtension(fileName).ToLowerInvariant() switch
@@ -109,11 +74,22 @@ file sealed class ApiDeviceIconSource(
 			".png" => "image/png",
 			_ => "application/octet-stream",
 		};
+
+	public void ClearMemoryCache()
+	{
+		_cache.Clear();
+	}
+
+	public async Task ClearDiskCache()
+	{
+		await _cache.ClearFallback();
+	}
 }
 
 public class DeviceIconCacheConfiguration
 {
 	public string? IconCache { get; init; }
+	public string? IconCacheManifest { get; init; }
 }
 
 partial class Services
@@ -123,8 +99,12 @@ partial class Services
 		IConfigurationSection configuration
 	)
 	{
-		services.AddSingleton<IDeviceIconSource, ApiDeviceIconSource>();
-		services.AddHttpClient<ApiDeviceIconSource>(
+		services.AddSingleton<ApiDeviceIconSource>();
+		services.AddSingleton<IDeviceIconSource>(sp => sp.GetRequiredService<ApiDeviceIconSource>());
+		services.AddSingleton<IClearMemoryCache>(sp => sp.GetRequiredService<ApiDeviceIconSource>());
+		services.AddSingleton<IClearDiskCache>(sp => sp.GetRequiredService<ApiDeviceIconSource>());
+		services.AddHttpClient(
+			nameof(ApiDeviceIconSource),
 			(sp, client) =>
 			{
 				var config = sp.GetRequiredService<IOptions<UpdateSourceConfiguration>>();
