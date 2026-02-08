@@ -10,7 +10,7 @@ namespace Cardboard.Update.Api;
 file class ApiControllerSource(HttpClient httpClient, IOptions<UpdateSourceConfiguration> options)
 	: IControllerUpdateSource
 {
-	public async Task<string?> GetLatestVersion(CancellationToken cancellationToken = default)
+	public async Task<Version?> GetLatestVersion(CancellationToken cancellationToken = default)
 	{
 		var url = GetControllerUrl(null, null, options.Value.Channel);
 		var response = await httpClient.GetAsync(url, cancellationToken);
@@ -26,14 +26,14 @@ file class ApiControllerSource(HttpClient httpClient, IOptions<UpdateSourceConfi
 		).Version;
 	}
 
-	public string GetDownloadUrl(string? version)
+	public string GetDownloadUrl(Version? version)
 	{
 		return GetControllerUrl("download", version, options.Value.Channel);
 	}
 
-	private string GetControllerUrl(string? action, string? version, UpdateChannel channel)
+	private string GetControllerUrl(string? action, Version? version, UpdateChannel channel)
 	{
-		var url = $"{options.Value.Url}/controller/{version ?? "latest"}/{action}";
+		var url = $"{options.Value.Url}/controller/{version?.ToString() ?? "latest"}/{action}";
 		var queryParams = new Dictionary<string, string?>
 		{
 			["channel"] = channel.HasFlag(UpdateChannel.Preview) ? "preview" : "stable",

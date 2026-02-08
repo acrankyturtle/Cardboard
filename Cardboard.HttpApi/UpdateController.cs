@@ -25,7 +25,7 @@ public static class UpdateController
 	}
 
 	private static Ok<ControllerVersionResponse> GetVersion() =>
-		TypedResults.Ok(new ControllerVersionResponse { Version = GetCurrentVersion().ToVersionString() });
+		TypedResults.Ok(new ControllerVersionResponse { Version = GetCurrentVersion() });
 
 	private static async Task<Ok<ControllerUpdateResponse>> CheckForUpdate(
 		[FromServices] IControllerUpdateSource updateSource,
@@ -33,19 +33,16 @@ public static class UpdateController
 	)
 	{
 		var currentVersion = GetCurrentVersion();
-		var latestVersionStr = await updateSource.GetLatestVersion(cancellationToken);
+		var latestVersion = await updateSource.GetLatestVersion(cancellationToken);
 
-		var updateAvailable =
-			latestVersionStr is not null
-			&& ParseVersion(latestVersionStr) is { } latestVersion
-			&& latestVersion > currentVersion;
-		var downloadUrl = updateAvailable ? updateSource.GetDownloadUrl(latestVersionStr!) : null;
+		var updateAvailable = latestVersion is not null && latestVersion > currentVersion;
+		var downloadUrl = updateAvailable ? updateSource.GetDownloadUrl(latestVersion) : null;
 
 		return TypedResults.Ok(
 			new ControllerUpdateResponse
 			{
-				CurrentVersion = currentVersion.ToVersionString(),
-				LatestVersion = latestVersionStr,
+				CurrentVersion = currentVersion,
+				LatestVersion = latestVersion,
 				UpdateAvailable = updateAvailable,
 				DownloadUrl = downloadUrl,
 			}
@@ -68,8 +65,6 @@ public static class UpdateController
 			?? throw new InvalidOperationException("Unable to determine current version.");
 	}
 
-	private static string ToVersionString(this Version version) => version.ToString(3);
-
 	private static Version? ParseVersion(string versionStr)
 	{
 		var splitIndex = versionStr.IndexOf('+');
@@ -85,13 +80,13 @@ public static class UpdateController
 /// </summary>
 public sealed class ControllerVersionResponse
 {
-	public required string Version { get; init; }
+	public required Version Version { get; init; }
 }
 
 public sealed class ControllerUpdateResponse
 {
-	public required string CurrentVersion { get; init; }
-	public string? LatestVersion { get; init; }
+	public required Version CurrentVersion { get; init; }
+	public Version? LatestVersion { get; init; }
 	public required bool UpdateAvailable { get; init; }
 	public string? DownloadUrl { get; init; }
 }

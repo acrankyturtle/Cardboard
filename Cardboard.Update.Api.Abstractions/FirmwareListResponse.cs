@@ -9,5 +9,5 @@ public sealed class FirmwareListEntry
 {
 	public required string DeviceTypeId { get; init; }
 	public string? Variant { get; init; }
-	public required string LatestVersion { get; init; }
+	public required Version LatestVersion { get; init; }
 }

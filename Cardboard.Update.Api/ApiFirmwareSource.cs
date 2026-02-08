@@ -36,12 +36,11 @@ file class ApiFirmwareSource(
 
 		response.EnsureSuccessStatusCode();
 
-		var versionStr = (
+		var version = (
 			await response.Content.ReadFromJsonAsync<FirmwareVersionResponse>(cancellationToken)
 			?? throw new JsonException()
 		).Version;
 
-		var version = Version.Parse(versionStr);
 		logger.LogInformation("Latest firmware version for {DeviceType}: {Version}", deviceType, version);
 		return version;
 	}
@@ -155,7 +154,7 @@ file class ApiFirmwareSource(
 			{
 				DeviceTypeId = DeviceTypeId.Parse(e.DeviceTypeId),
 				Variant = e.Variant,
-				LatestVersion = Version.Parse(e.LatestVersion),
+				LatestVersion = e.LatestVersion,
 			})
 			.ToList();
 	}

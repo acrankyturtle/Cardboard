@@ -83,7 +83,7 @@ group.MapGet(
 				{
 					DeviceTypeId = x.DeviceTypeId.ToString(),
 					Variant = x.Variant,
-					LatestVersion = x.LatestVersion.ToSemanticString(),
+					LatestVersion = x.LatestVersion,
 				})
 				.ToList(),
 		}
@@ -95,7 +95,7 @@ group.MapGet(
 		FindFirmware(deviceTypeId, variant, null, ParseChannelQueryParam(channel)) is { } latest
 			? Results.Redirect(
 				QueryHelpers.AddQueryString(
-					BuildRedirectPath($"/firmware/{deviceTypeId}/{latest.Version.ToSemanticString()}"),
+					BuildRedirectPath($"/firmware/{deviceTypeId}/{latest.Version.ToString()}"),
 					new Dictionary<string, string?> { { "variant", variant }, { "channel", channel } }
 				)
 			)
@@ -119,7 +119,7 @@ group.MapGet(
 			? Results.Ok(
 				new FirmwareVersionResponse
 				{
-					Version = firmware.Version.ToSemanticString(),
+					Version = firmware.Version,
 					IsPreview = firmware.Channel.HasFlag(UpdateChannel.Preview),
 					Sha256 = firmware.Sha256,
 				}
@@ -160,7 +160,7 @@ group.MapGet(
 		return Results.File(
 			firmware.LocalPath,
 			"application/octet-stream",
-			$"cardboard_{deviceTypeId}_{firmware.Version.ToSemanticString()}.uf2"
+			$"cardboard_{deviceTypeId}_{firmware.Version.ToString()}.uf2"
 		);
 	}
 );
@@ -172,7 +172,7 @@ group.MapGet(
 		FindControllerRelease(null, ParseChannelQueryParam(channel)) is { } latest
 			? Results.Redirect(
 				QueryHelpers.AddQueryString(
-					BuildRedirectPath($"/controller/{latest.Version.ToSemanticString()}"),
+					BuildRedirectPath($"/controller/{latest.Version.ToString()}"),
 					new Dictionary<string, string?> { { "channel", channel } }
 				)
 			)
@@ -191,7 +191,7 @@ group.MapGet(
 			? Results.Ok(
 				new ControllerVersionResponse
 				{
-					Version = release.Version.ToSemanticString(),
+					Version = release.Version,
 					IsPreview = release.Channel.HasFlag(UpdateChannel.Preview),
 					Sha256 = release.Sha256,
 				}
@@ -225,7 +225,7 @@ group.MapGet(
 		return Results.File(
 			release.LocalPath,
 			"application/octet-stream",
-			$"CardboardSetup-{release.Version.ToSemanticString()}.exe"
+			$"CardboardSetup-{release.Version.ToString()}.exe"
 		);
 	}
 );
@@ -500,14 +500,6 @@ file static class FileHasher
 		var hashBytes = SHA256.HashData(stream);
 		return Convert.ToHexString(hashBytes).ToLowerInvariant();
 	}
-}
-
-file static class VersionExtensions
-{
-	/// <summary>
-	/// Formats a Version as "major.minor.build" (3 components).
-	/// </summary>
-	public static string ToSemanticString(this Version version) => version.ToString(3);
 }
 
 file class UpdateServerPathConfiguration
