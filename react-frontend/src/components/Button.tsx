@@ -98,7 +98,7 @@ const SubmitVariant = (isActive: boolean): ClassValue =>
   clsx(
     "bg-violet-900 hover:bg-violet-800 hover:text-white active:text-white active:bg-violet-950",
     {
-      "test-stone-50": isActive,
+      "text-stone-50": isActive,
       "text-stone-200": !isActive,
     },
     Base,
