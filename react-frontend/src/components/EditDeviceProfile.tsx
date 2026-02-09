@@ -70,7 +70,17 @@ import {
   createEndSequenceActionEvent,
   createStartSequenceActionEvent,
 } from "../lib/actionEventUtils.ts";
-import { AddIcon, RemoveIcon } from "../assets/sharedIcons.tsx";
+import {
+  AddIcon,
+  ExportIcon,
+  ImportIcon,
+  PasteIcon,
+  RemoveIcon,
+} from "../assets/sharedIcons.tsx";
+import {
+  downloadJsonFile,
+  pickAndReadJsonFile,
+} from "../lib/jsonFileUtils.ts";
 import { TemplatePanel } from "./MacroTemplates.tsx";
 
 export function EditDeviceProfile({ className }: { className?: string }) {
@@ -809,6 +819,18 @@ const shiftLayer = (
   return { ...layers, layers: updated };
 };
 
+function isValidMacro(data: unknown): data is DeviceMacro {
+  if (!data || typeof data !== "object") return false;
+  const d = data as Record<string, unknown>;
+  return (
+    typeof d.name === "string" &&
+    Array.isArray(d.cutChannels) &&
+    d.startSequence != null &&
+    d.loopSequence != null &&
+    d.endSequence != null
+  );
+}
+
 function MacrosPanel({ className }: { className?: string }) {
   const { state, dispatch } = useEditDeviceContext();
 
@@ -866,25 +888,66 @@ function MacrosPanel({ className }: { className?: string }) {
             if (!state.selectedMacro) return;
             const macro = findMacroById(state.selectedMacro, state.profile);
             if (!macro) return;
-
-            const newMacro = {
-              ...macro,
-              id: crypto.randomUUID(),
-              name: macro.name + " (Copy)",
-            };
-
+            const { id: _, ...macroWithoutId } = macro;
+            navigator.clipboard.writeText(
+              JSON.stringify(macroWithoutId, null, 2),
+            );
+          }}
+          disabled={state.selectedMacro === null}
+        >
+          <CopyIcon />
+        </button>
+        <button
+          className={headerBarButtonClass}
+          onClick={async () => {
+            try {
+              const text = await navigator.clipboard.readText();
+              const data = JSON.parse(text);
+              if (!isValidMacro(data)) return;
+              dispatch({
+                type: "setModal",
+                modal: {
+                  type: "editMacro",
+                  show: true,
+                  macro: { ...data, id: crypto.randomUUID() },
+                },
+              });
+            } catch {
+              // invalid clipboard content — silently ignore
+            }
+          }}
+        >
+          <PasteIcon />
+        </button>
+        <button
+          className={headerBarButtonClass}
+          onClick={async () => {
+            const data = await pickAndReadJsonFile<DeviceMacro>();
+            if (!data || !isValidMacro(data)) return;
             dispatch({
               type: "setModal",
               modal: {
                 type: "editMacro",
                 show: true,
-                macro: newMacro,
+                macro: { ...data, id: crypto.randomUUID() },
               },
             });
           }}
+        >
+          <ImportIcon />
+        </button>
+        <button
+          className={headerBarButtonClass}
+          onClick={() => {
+            if (!state.selectedMacro) return;
+            const macro = findMacroById(state.selectedMacro, state.profile);
+            if (!macro) return;
+            const { id: _, ...macroWithoutId } = macro;
+            downloadJsonFile(macroWithoutId, `${macro.name}-macro.json`);
+          }}
           disabled={state.selectedMacro === null}
         >
-          <CopyIcon />
+          <ExportIcon />
         </button>
         <button
           className={headerBarButtonClass}
