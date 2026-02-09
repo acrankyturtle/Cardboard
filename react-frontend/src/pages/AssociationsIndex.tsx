@@ -408,7 +408,6 @@ function EditAssociationDialog({
                 className="gap-1 px-3 py-1 text-sm"
                 buttonStyle={{ variant: "ghost" }}
                 onClick={handleAddVirtualKey}
-                disabled={allDeviceItems.length === 0}
               >
                 <div className="-my-2 -ml-1.5 size-5">
                   <AddIcon />
