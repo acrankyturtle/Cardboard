@@ -20,6 +20,7 @@ export function ComboInput<TItem extends ComboInputItem>({
   onChange,
   items,
   itemFromQuery,
+  noItemsMessage,
   renderOption,
   variant = "default",
 }: {
@@ -29,6 +30,7 @@ export function ComboInput<TItem extends ComboInputItem>({
   items: readonly TItem[];
   renderOption?: (item: TItem) => ReactNode;
   itemFromQuery?: (query: string) => TItem | undefined;
+  noItemsMessage?: string;
   variant?: "default" | "compact";
 }) {
   const [query, setQuery] = useState("");
@@ -87,16 +89,25 @@ export function ComboInput<TItem extends ComboInputItem>({
         anchor="bottom start"
         className="z-50 w-[var(--input-width)] rounded border border-stone-600 bg-stone-800 py-1 text-stone-100 shadow-lg [--anchor-gap:--spacing(1)]"
       >
-        {[...(newItem ? [newItem] : []), ...filteredItems].map((x) => (
-          <ComboboxOption
-            key={x.id}
-            value={x}
-            className="cursor-pointer px-2 py-1 data-focus:bg-amber-600"
-            data-combobox-options
-          >
-            {renderOption ? renderOption(x) : x.name}
-          </ComboboxOption>
-        ))}
+        {(() => {
+          const allItems = [...(newItem ? [newItem] : []), ...filteredItems];
+          return allItems.length === 0 && noItemsMessage ? (
+            <div className="px-2 py-1 text-stone-400 italic">
+              {noItemsMessage}
+            </div>
+          ) : (
+            allItems.map((x) => (
+              <ComboboxOption
+                key={x.id}
+                value={x}
+                className="cursor-pointer px-2 py-1 data-focus:bg-amber-600"
+                data-combobox-options
+              >
+                {renderOption ? renderOption(x) : x.name}
+              </ComboboxOption>
+            ))
+          );
+        })()}
       </ComboboxOptions>
     </Combobox>
   );

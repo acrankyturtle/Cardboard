@@ -502,6 +502,7 @@ function VirtualKeyEditor({
             value={currentDeviceItem}
             onChange={(item) => onChange({ ...virtualKey, deviceId: item.id })}
             items={deviceItems as ComboInputItem[]}
+            noItemsMessage="(no devices found)"
           />
           <div className="flex items-center gap-1.5 text-sm">
             <span>VK</span>
