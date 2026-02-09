@@ -806,7 +806,7 @@ const shiftLayer = (
   offset: number,
 ): DeviceLayers => {
   const index = layers.layers.findIndex((l) => l.layer.id === target);
-  if (index == -1) return layers;
+  if (index === -1) return layers;
 
   const newOffset = index + offset;
   if (newOffset < 0 || newOffset >= layers.layers.length) return layers;

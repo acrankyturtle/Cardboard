@@ -21,7 +21,7 @@ export function DeviceList({ showEdit }: { showEdit?: boolean }) {
     );
   }
 
-  return devices.length == 0 ? (
+  return devices.length === 0 ? (
     <div>No devices found</div>
   ) : (
     <ul className="w-5xl shrink-1 space-y-4">

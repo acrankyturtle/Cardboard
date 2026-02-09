@@ -122,7 +122,7 @@ export function ListBox<TItem extends ListBoxItem>({
       >
         {items.map((item, index) => {
           const isSelected = isMultiSelect
-            ? selected?.some((x) => x.value == item.value)
+            ? selected?.some((x) => x.value === item.value)
             : selected?.value === item.value;
           return (
             <li
