@@ -250,11 +250,7 @@ function SmallInsertButton({
 }) {
   return (
     <InsertButton
-      className={clsx(
-        "z-10 w-10",
-        //getButtonClassName({ variant: "no-color" }),
-        className,
-      )}
+      className={clsx("z-10 w-10", className)}
       iconClassName="-m-2 size-5"
       index={index}
       sequence={sequence}

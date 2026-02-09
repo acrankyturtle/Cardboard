@@ -50,7 +50,6 @@ import {
   updateLayerBindings,
   useEditDeviceContext,
 } from "../lib/editDeviceContext.tsx";
-import { DndContext } from "@dnd-kit/core";
 import { KeyRenderer } from "./KeyRenderer.tsx";
 import {
   Field,
@@ -86,23 +85,21 @@ import { TemplatePanel } from "./MacroTemplates.tsx";
 export function EditDeviceProfile({ className }: { className?: string }) {
   return (
     <>
-      <DndContext>
-        <div className={clsx("flex gap-0.5 bg-stone-950", className)}>
-          <div className="grid min-w-56 grid-rows-2 flex-col gap-0.5">
-            <TagsPanel />
-            <KeysPanel showPhysicalKeys showVirtualKeys />
-          </div>
-          <div className="flex grow flex-col">
-            <KeyViewPanel className="m-4 grow" />
-            <VirtualKeyPanel className="mx-10 mb-4" />
-          </div>
-          <div className="grid min-w-96 grid-rows-2 gap-0.5">
-            <LayersPanel />
-            <BindingsPanel className="min-w-96" />
-          </div>
-          <MacrosPanel className="min-w-96" />
+      <div className={clsx("flex gap-0.5 bg-stone-950", className)}>
+        <div className="grid min-w-56 grid-rows-2 flex-col gap-0.5">
+          <TagsPanel />
+          <KeysPanel showPhysicalKeys showVirtualKeys />
         </div>
-      </DndContext>
+        <div className="flex grow flex-col">
+          <KeyViewPanel className="m-4 grow" />
+          <VirtualKeyPanel className="mx-10 mb-4" />
+        </div>
+        <div className="grid min-w-96 grid-rows-2 gap-0.5">
+          <LayersPanel />
+          <BindingsPanel className="min-w-96" />
+        </div>
+        <MacrosPanel className="min-w-96" />
+      </div>
       <EditTaggedLayerDialog />
       <EditMacroDialog />
     </>
@@ -487,13 +484,8 @@ function BindingsPanel({ className }: { className?: string }) {
         : { label: "(unknown)", value: m, index: i };
     }) ?? [];
 
-  // TODO: implement drag-and-drop for macros
-  // const { isOver, setNodeRef } = useDroppable({
-  //   id: "macro",
-  // });
-
   return (
-    <PanelContainer /*ref={setNodeRef}*/ className={className}>
+    <PanelContainer className={className}>
       <HeaderBar>
         <div className={headerBarIconClass}>
           <BindingsPanelIcon />
@@ -1020,11 +1012,7 @@ function MacroListItem({ item }: { item: ListBoxItem }) {
         {item.label}
       </div>
       <div className="text-stone-400 italic">
-        {usageCount < 1
-          ? "(no usages)"
-          : // usageCount > 1
-            //   ? `${usageCount} usages` :
-            null}
+        {usageCount < 1 ? "(no usages)" : null}
       </div>
     </div>
   );

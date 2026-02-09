@@ -1,5 +1,4 @@
 import { NavBar } from "./NavBar.tsx";
-import { useWarnOnNavigate } from "./hooks/useWarnOnNavigate.ts";
 import { SWRConfig } from "swr";
 import { fetcher } from "./api/cardboardApi.ts";
 import { Outlet, Route, Routes, useSearchParams } from "react-router";
@@ -12,9 +11,6 @@ import { useDeviceEvents } from "./api/devices.ts";
 // note: all icons from https://tablericons.com/
 
 function App() {
-  // TODO: set to true when editing stuff
-  useWarnOnNavigate(false);
-
   // Subscribe to real-time device connection events
   useDeviceEvents();
 
