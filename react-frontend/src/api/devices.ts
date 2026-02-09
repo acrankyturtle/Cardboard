@@ -224,6 +224,16 @@ export const useFirmwareList = () => {
   };
 };
 
+export const useBootloaderStatus = () => {
+  const { data } = useSWR<{ available: boolean }>("devices/bootloader", {
+    refreshInterval: 2000,
+  });
+
+  return {
+    available: data?.available ?? false,
+  };
+};
+
 export interface FirmwareListEntry {
   deviceTypeId: string;
   name: string;

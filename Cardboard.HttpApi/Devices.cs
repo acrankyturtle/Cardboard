@@ -67,6 +67,10 @@ public static class Devices
 			.MapGet("/firmware", GetFirmwareList)
 			.WithName("Get Firmware List")
 			.Produces<FirmwareListResponse>();
+		group
+			.MapGet("/bootloader", GetBootloaderStatus)
+			.WithName("Get Bootloader Status")
+			.Produces<BootloaderStatusResponse>();
 	}
 
 	private static async Task<Ok<DeviceListResponse>> GetDevices(
@@ -438,6 +442,11 @@ public static class Devices
 		return TypedResults.Ok(new FirmwareListResponse { Firmware = firmwareWithNames });
 	}
 
+	private static Ok<BootloaderStatusResponse> GetBootloaderStatus() =>
+		TypedResults.Ok(
+			new BootloaderStatusResponse { Available = PicoWatcher.FindBootloaderDrive().IsSuccess }
+		);
+
 	private static string FormatFirmwareName(string baseName, string? variant) =>
 		variant?.ToUpperInvariant() switch
 		{
@@ -507,4 +516,9 @@ public sealed class FirmwareUpdateErrorEvent : FirmwareUpdateEvent
 {
 	public required UpdateFirmwareResult Result { get; init; }
 	public required string Message { get; init; }
+}
+
+public sealed class BootloaderStatusResponse
+{
+	public required bool Available { get; init; }
 }

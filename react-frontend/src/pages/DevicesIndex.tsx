@@ -9,6 +9,7 @@ import {
   getDeviceDetails,
   getDeviceProfile,
   updateDeviceProfile,
+  useBootloaderStatus,
 } from "../api/devices.ts";
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
@@ -79,17 +80,20 @@ export function DevicesIndex({
 
 function DeviceIndexView() {
   const [showBootloaderDialog, setShowBootloaderDialog] = useState(false);
+  const { available: bootloaderAvailable } = useBootloaderStatus();
 
   return (
     <>
       <DevicesHeader>
         <div className="grow">Devices</div>
-        <Button
-          buttonStyle={{ variant: "ghost" }}
-          onClick={() => setShowBootloaderDialog(true)}
-        >
-          Flash Bootloader Device
-        </Button>
+        {bootloaderAvailable && (
+          <Button
+            buttonStyle={{ variant: "ghost" }}
+            onClick={() => setShowBootloaderDialog(true)}
+          >
+            Flash Bootloader Device
+          </Button>
+        )}
       </DevicesHeader>
       <div className="grow overflow-y-auto p-4">
         <div className="flex size-full flex-col items-center">
