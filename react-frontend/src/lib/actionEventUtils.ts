@@ -138,228 +138,94 @@ export function convertSequenceUpToDown(sequence: Sequence): Sequence {
 }
 
 /**
- * Gets all keyboard keys that are down in the start sequence
+ * Extracts values from a sequence's actions that match a filter, using an extractor function.
  */
-function getKeyDowns(sequence: Sequence): KeyboardKey[] {
-  return sequence.actions
-    .filter(
-      (a) =>
-        isKeyboardActionEvent(a.actionEvent) &&
-        isKeyDownEvent(a.actionEvent.keyboard),
-    )
-    .map((a) => (a.actionEvent as { keyboard: { keyDown: KeyboardKey } }).keyboard.keyDown);
+function getEventsOfType<T>(
+  sequence: Sequence,
+  filterFn: (action: Action) => boolean,
+  extractFn: (action: Action) => T,
+): T[] {
+  return sequence.actions.filter(filterFn).map(extractFn);
 }
 
-/**
- * Gets all keyboard keys that are up in the end sequence
- */
-function getKeyUps(sequence: Sequence): KeyboardKey[] {
-  return sequence.actions
-    .filter(
-      (a) =>
-        isKeyboardActionEvent(a.actionEvent) &&
-        isKeyUpEvent(a.actionEvent.keyboard),
-    )
-    .map((a) => (a.actionEvent as { keyboard: { keyUp: KeyboardKey } }).keyboard.keyUp);
-}
+const getKeyDowns = (sequence: Sequence): KeyboardKey[] =>
+  getEventsOfType(
+    sequence,
+    (a) => isKeyboardActionEvent(a.actionEvent) && isKeyDownEvent(a.actionEvent.keyboard),
+    (a) => (a.actionEvent as { keyboard: { keyDown: KeyboardKey } }).keyboard.keyDown,
+  );
+
+const getKeyUps = (sequence: Sequence): KeyboardKey[] =>
+  getEventsOfType(
+    sequence,
+    (a) => isKeyboardActionEvent(a.actionEvent) && isKeyUpEvent(a.actionEvent.keyboard),
+    (a) => (a.actionEvent as { keyboard: { keyUp: KeyboardKey } }).keyboard.keyUp,
+  );
+
+const getButtonDowns = (sequence: Sequence): MouseButton[] =>
+  getEventsOfType(
+    sequence,
+    (a) => isMouseActionEvent(a.actionEvent) && isMouseDownEvent(a.actionEvent.mouse),
+    (a) => (a.actionEvent as { mouse: { buttonDown: MouseButton } }).mouse.buttonDown,
+  );
+
+const getButtonUps = (sequence: Sequence): MouseButton[] =>
+  getEventsOfType(
+    sequence,
+    (a) => isMouseActionEvent(a.actionEvent) && isMouseUpEvent(a.actionEvent.mouse),
+    (a) => (a.actionEvent as { mouse: { buttonUp: MouseButton } }).mouse.buttonUp,
+  );
+
+const getLayerSets = (sequence: Sequence): string[] =>
+  getEventsOfType(
+    sequence,
+    (a) => isLayerActionEvent(a.actionEvent) && isLayerSetEvent(a.actionEvent.layer),
+    (a) => (a.actionEvent as { layer: { set: string } }).layer.set,
+  );
+
+const getLayerClears = (sequence: Sequence): string[] =>
+  getEventsOfType(
+    sequence,
+    (a) => isLayerActionEvent(a.actionEvent) && isLayerClearEvent(a.actionEvent.layer),
+    (a) => (a.actionEvent as { layer: { clear: string } }).layer.clear,
+  );
 
 /**
- * Gets all mouse buttons that are down in the start sequence
+ * Finds the first item in `primary` that has no unused match in `paired`.
  */
-function getButtonDowns(sequence: Sequence): MouseButton[] {
-  return sequence.actions
-    .filter(
-      (a) =>
-        isMouseActionEvent(a.actionEvent) &&
-        isMouseDownEvent(a.actionEvent.mouse),
-    )
-    .map((a) => (a.actionEvent as { mouse: { buttonDown: MouseButton } }).mouse.buttonDown);
-}
+function findUnpaired<T>(primary: T[], paired: T[]): T | undefined {
+  const usedIndices = new Set<number>();
 
-/**
- * Gets all mouse buttons that are up in the end sequence
- */
-function getButtonUps(sequence: Sequence): MouseButton[] {
-  return sequence.actions
-    .filter(
-      (a) =>
-        isMouseActionEvent(a.actionEvent) &&
-        isMouseUpEvent(a.actionEvent.mouse),
-    )
-    .map((a) => (a.actionEvent as { mouse: { buttonUp: MouseButton } }).mouse.buttonUp);
-}
-
-/**
- * Gets all layers that are set in the start sequence
- */
-function getLayerSets(sequence: Sequence): string[] {
-  return sequence.actions
-    .filter(
-      (a) =>
-        isLayerActionEvent(a.actionEvent) &&
-        isLayerSetEvent(a.actionEvent.layer),
-    )
-    .map((a) => (a.actionEvent as { layer: { set: string } }).layer.set);
-}
-
-/**
- * Gets all layers that are cleared in the end sequence
- */
-function getLayerClears(sequence: Sequence): string[] {
-  return sequence.actions
-    .filter(
-      (a) =>
-        isLayerActionEvent(a.actionEvent) &&
-        isLayerClearEvent(a.actionEvent.layer),
-    )
-    .map((a) => (a.actionEvent as { layer: { clear: string } }).layer.clear);
-}
-
-/**
- * Finds the first unpaired keyboard key from start sequence for a keyUp event.
- * A key is "paired" if there's already a matching keyUp in the end sequence.
- */
-function findUnpairedKeyDown(
-  startSequence: Sequence,
-  endSequence: Sequence,
-): KeyboardKey | undefined {
-  const downs = getKeyDowns(startSequence);
-  const ups = getKeyUps(endSequence);
-
-  // Track which ups have been used to pair with downs
-  const usedUps = new Set<number>();
-
-  for (const down of downs) {
-    // Find if there's an unused up that matches this down
-    const upIndex = ups.findIndex((up, i) => up === down && !usedUps.has(i));
-    if (upIndex !== -1) {
-      usedUps.add(upIndex);
+  for (const item of primary) {
+    const matchIndex = paired.findIndex(
+      (p, i) => p === item && !usedIndices.has(i),
+    );
+    if (matchIndex !== -1) {
+      usedIndices.add(matchIndex);
     } else {
-      // This down has no matching up - it's unpaired
-      return down;
+      return item;
     }
   }
   return undefined;
 }
 
-/**
- * Finds the first unpaired keyboard key from end sequence for a keyDown event.
- * A key is "paired" if there's already a matching keyDown in the start sequence.
- */
-function findUnpairedKeyUp(
-  endSequence: Sequence,
-  startSequence: Sequence,
-): KeyboardKey | undefined {
-  const ups = getKeyUps(endSequence);
-  const downs = getKeyDowns(startSequence);
+const findUnpairedKeyDown = (startSeq: Sequence, endSeq: Sequence) =>
+  findUnpaired(getKeyDowns(startSeq), getKeyUps(endSeq));
 
-  // Track which downs have been used to pair with ups
-  const usedDowns = new Set<number>();
+const findUnpairedKeyUp = (endSeq: Sequence, startSeq: Sequence) =>
+  findUnpaired(getKeyUps(endSeq), getKeyDowns(startSeq));
 
-  for (const up of ups) {
-    // Find if there's an unused down that matches this up
-    const downIndex = downs.findIndex((down, i) => down === up && !usedDowns.has(i));
-    if (downIndex !== -1) {
-      usedDowns.add(downIndex);
-    } else {
-      // This up has no matching down - it's unpaired
-      return up;
-    }
-  }
-  return undefined;
-}
+const findUnpairedButtonDown = (startSeq: Sequence, endSeq: Sequence) =>
+  findUnpaired(getButtonDowns(startSeq), getButtonUps(endSeq));
 
-/**
- * Finds the first unpaired mouse button from start sequence for a buttonUp event.
- */
-function findUnpairedButtonDown(
-  startSequence: Sequence,
-  endSequence: Sequence,
-): MouseButton | undefined {
-  const downs = getButtonDowns(startSequence);
-  const ups = getButtonUps(endSequence);
+const findUnpairedButtonUp = (endSeq: Sequence, startSeq: Sequence) =>
+  findUnpaired(getButtonUps(endSeq), getButtonDowns(startSeq));
 
-  const usedUps = new Set<number>();
+const findUnpairedLayerSet = (startSeq: Sequence, endSeq: Sequence) =>
+  findUnpaired(getLayerSets(startSeq), getLayerClears(endSeq));
 
-  for (const down of downs) {
-    const upIndex = ups.findIndex((up, i) => up === down && !usedUps.has(i));
-    if (upIndex !== -1) {
-      usedUps.add(upIndex);
-    } else {
-      return down;
-    }
-  }
-  return undefined;
-}
-
-/**
- * Finds the first unpaired mouse button from end sequence for a buttonDown event.
- */
-function findUnpairedButtonUp(
-  endSequence: Sequence,
-  startSequence: Sequence,
-): MouseButton | undefined {
-  const ups = getButtonUps(endSequence);
-  const downs = getButtonDowns(startSequence);
-
-  const usedDowns = new Set<number>();
-
-  for (const up of ups) {
-    const downIndex = downs.findIndex((down, i) => down === up && !usedDowns.has(i));
-    if (downIndex !== -1) {
-      usedDowns.add(downIndex);
-    } else {
-      return up;
-    }
-  }
-  return undefined;
-}
-
-/**
- * Finds the first unpaired layer from start sequence for a clear layer event.
- */
-function findUnpairedLayerSet(
-  startSequence: Sequence,
-  endSequence: Sequence,
-): string | undefined {
-  const sets = getLayerSets(startSequence);
-  const clears = getLayerClears(endSequence);
-
-  const usedClears = new Set<number>();
-
-  for (const set of sets) {
-    const clearIndex = clears.findIndex((clear, i) => clear === set && !usedClears.has(i));
-    if (clearIndex !== -1) {
-      usedClears.add(clearIndex);
-    } else {
-      return set;
-    }
-  }
-  return undefined;
-}
-
-/**
- * Finds the first unpaired layer from end sequence for a set layer event.
- */
-function findUnpairedLayerClear(
-  endSequence: Sequence,
-  startSequence: Sequence,
-): string | undefined {
-  const clears = getLayerClears(endSequence);
-  const sets = getLayerSets(startSequence);
-
-  const usedSets = new Set<number>();
-
-  for (const clear of clears) {
-    const setIndex = sets.findIndex((set, i) => set === clear && !usedSets.has(i));
-    if (setIndex !== -1) {
-      usedSets.add(setIndex);
-    } else {
-      return clear;
-    }
-  }
-  return undefined;
-}
+const findUnpairedLayerClear = (endSeq: Sequence, startSeq: Sequence) =>
+  findUnpaired(getLayerClears(endSeq), getLayerSets(startSeq));
 
 /**
  * Creates a default action event for a start sequence, matching unpaired up events from end sequence.
