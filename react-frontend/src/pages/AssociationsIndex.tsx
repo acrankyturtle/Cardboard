@@ -39,9 +39,12 @@ import {
   AddIcon,
   DeleteIcon,
   EditIcon,
+  ExportIcon,
+  ImportIcon,
   RemoveIcon,
 } from "../assets/sharedIcons.tsx";
 import { getInputDevices, InputDeviceInfo } from "../api/inputDevices.ts";
+import { downloadJsonFile, pickAndReadJsonFile } from "../lib/jsonFileUtils.ts";
 
 export function AssociationsIndex() {
   const { associations, isLoading, error, mutate } = useAssociations();
@@ -53,6 +56,58 @@ export function AssociationsIndex() {
     useState<Association | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+
+  const handleExport = useCallback(() => {
+    downloadJsonFile(
+      { associations: associations.map((a) => a.data) },
+      "associations.json",
+    );
+  }, [associations]);
+
+  const handleImport = useCallback(async () => {
+    const file = await pickAndReadJsonFile<{
+      associations: AssociationData[];
+    }>();
+    if (!file) return;
+
+    if (
+      !file.associations ||
+      !Array.isArray(file.associations) ||
+      !file.associations.every(
+        (a) =>
+          Array.isArray(a.tags) &&
+          Array.isArray(a.virtualKeys) &&
+          Array.isArray(a.matchOnPath),
+      )
+    ) {
+      setImportError(
+        "Invalid file: expected { associations: [{ tags, virtualKeys, matchOnPath }] }",
+      );
+      return;
+    }
+
+    setImportError(null);
+    setImporting(true);
+    let errorCount = 0;
+
+    for (const data of file.associations) {
+      const result = await createAssociation(data);
+      if ("error" in result) {
+        errorCount++;
+      }
+    }
+
+    setImporting(false);
+    mutate();
+
+    if (errorCount > 0) {
+      setImportError(
+        `Failed to import ${errorCount} of ${file.associations.length} associations`,
+      );
+    }
+  }, [mutate]);
 
   const handleAdd = () => {
     setSaveError(null);
@@ -109,6 +164,31 @@ export function AssociationsIndex() {
     <div className="flex size-full flex-col">
       <AssociationsHeader>
         <div className="grow">Associations</div>
+        {importError && (
+          <div className="text-lg text-red-500">{importError}</div>
+        )}
+        <Button
+          className="gap-1 px-4"
+          buttonStyle={{ variant: "ghost" }}
+          onClick={handleImport}
+          disabled={importing}
+        >
+          <div className="-my-2 -ml-1 size-5">
+            <ImportIcon />
+          </div>
+          <div>{importing ? "Importing..." : "Import"}</div>
+        </Button>
+        <Button
+          className="gap-1 px-4"
+          buttonStyle={{ variant: "ghost" }}
+          onClick={handleExport}
+          disabled={associations.length === 0}
+        >
+          <div className="-my-2 -ml-1 size-5">
+            <ExportIcon />
+          </div>
+          <div>Export</div>
+        </Button>
         <Button className="gap-1 px-4" onClick={handleAdd}>
           <div className="-my-2 -ml-2 size-7">
             <AddIcon />

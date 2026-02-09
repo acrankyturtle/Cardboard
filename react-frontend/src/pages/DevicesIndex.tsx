@@ -15,6 +15,7 @@ import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
 import { Button, getButtonClassName } from "../components/Button.tsx";
 import { Link, useNavigate } from "react-router";
+import { downloadJsonFile, pickAndReadJsonFile } from "../lib/jsonFileUtils.ts";
 import {
   Dialog,
   DialogBody,
@@ -35,6 +36,7 @@ import {
 import { NavigationBlocker } from "../components/NavigationBlocker.tsx";
 import { EditableProfileName } from "../components/EditableProfileName.tsx";
 import { BootloaderFirmwareUpdateDialog } from "../components/BootloaderFirmwareUpdateDialog.tsx";
+import { ExportIcon, ImportIcon } from "../assets/sharedIcons.tsx";
 
 export function DevicesIndex({
   deviceId,
@@ -289,6 +291,31 @@ function EditDeviceView() {
     });
   }, [saving, state.device.id, state.profile]);
 
+  const handleExportProfile = useCallback(() => {
+    const filename = `${state.profile.name || state.device.model}-profile.json`;
+    downloadJsonFile(state.profile, filename);
+  }, [state.profile, state.device.model]);
+
+  const handleImportProfile = useCallback(async () => {
+    const data = await pickAndReadJsonFile<DeviceProfile>();
+    if (!data) return;
+
+    if (
+      typeof data.name !== "string" ||
+      !Array.isArray(data.keys) ||
+      !Array.isArray(data.virtualKeys) ||
+      !Array.isArray(data.macros)
+    ) {
+      setSaveError(
+        "Invalid profile file: missing name, keys, virtualKeys, or macros",
+      );
+      return;
+    }
+
+    setSaveError(null);
+    dispatch({ type: "setProfile", profile: data });
+  }, [dispatch]);
+
   const hasChanges = useMemo(
     () =>
       JSON.stringify(state.profile) !== JSON.stringify(state.originalProfile),
@@ -333,6 +360,22 @@ function EditDeviceView() {
           Profile saved successfully
         </div>
         {saveError && <div className="text-lg text-red-500">{saveError}</div>}
+        <Button
+          className="gap-1 px-4"
+          buttonStyle={{ variant: "ghost" }}
+          onClick={handleImportProfile}
+        >
+          <ImportIcon className="-my-2 -ml-1 size-5" />
+          <div>Import</div>
+        </Button>
+        <Button
+          className="gap-1 px-4"
+          buttonStyle={{ variant: "ghost" }}
+          onClick={handleExportProfile}
+        >
+          <ExportIcon className="-my-2 -ml-1 size-5" />
+          <div>Export</div>
+        </Button>
         <Link
           className={clsx("min-w-18 px-3", getButtonClassName({}))}
           to="/devices"
