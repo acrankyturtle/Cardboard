@@ -502,6 +502,10 @@ function VirtualKeyEditor({
             onChange={(item) => onChange({ ...virtualKey, deviceId: item.id })}
             items={deviceItems as ComboInputItem[]}
             noItemsMessage="(no devices found)"
+            itemFromQuery={(query) => {
+              const guid = parseGuid(query);
+              return guid ? { id: guid, name: guid } : undefined;
+            }}
           />
           <div className="flex items-center gap-1.5 text-sm">
             <span>VK</span>
@@ -601,6 +605,15 @@ function VirtualKeyEditor({
       </button>
     </div>
   );
+}
+
+function parseGuid(input: string): string | undefined {
+  const stripped = input.replace(/[{}\-\s]/g, "");
+  if (stripped.length !== 32 || !/^[0-9a-fA-F]{32}$/.test(stripped)) {
+    return undefined;
+  }
+  const s = stripped.toLowerCase();
+  return `${s.slice(0, 8)}-${s.slice(8, 12)}-${s.slice(12, 16)}-${s.slice(16, 20)}-${s.slice(20)}`;
 }
 
 const parseVirtualKeyId = (

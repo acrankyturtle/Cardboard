@@ -63,6 +63,12 @@ export function ComboInput<TItem extends ComboInputItem>({
         )}
         displayValue={(item: TItem) => item?.name}
         onChange={(event) => setQuery(event.target.value)}
+        onBlur={() => {
+          if (newItem) {
+            onChange(newItem);
+            setQuery("");
+          }
+        }}
       />
       <ComboboxButton
         as="button"
