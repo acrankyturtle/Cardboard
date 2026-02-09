@@ -52,7 +52,6 @@ export function DialogHeader({
 }: {
   className?: string;
   children?: ReactNode;
-  description?: ReactNode;
 }) {
   return (
     <div className={clsx("flex flex-col gap-1", className)}>{children}</div>
