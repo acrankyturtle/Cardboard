@@ -1,7 +1,7 @@
 using System.Management;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using Cranky;
+using Cardboard.Utilities;
 
 namespace Cardboard.Windows;
 

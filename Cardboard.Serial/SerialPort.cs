@@ -1,7 +1,7 @@
 using System.IO.Ports;
 using System.Text;
 using Cardboard.Device;
-using Cranky;
+using Cardboard.Utilities;
 using Microsoft.Extensions.Logging;
 
 namespace Cardboard.Serial;

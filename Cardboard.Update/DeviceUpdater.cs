@@ -1,6 +1,5 @@
 using Cardboard.Device;
 using Cardboard.Utilities;
-using Cranky;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 

@@ -1,5 +1,4 @@
 using Cardboard.Utilities;
-using Cranky;
 
 namespace Cardboard.Update;
 

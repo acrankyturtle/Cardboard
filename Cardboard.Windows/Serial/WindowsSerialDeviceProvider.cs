@@ -4,7 +4,6 @@ using Cardboard.Device;
 using Cardboard.Serial;
 using Cardboard.Services;
 using Cardboard.Utilities;
-using Cranky;
 using Microsoft.Extensions.Logging;
 using IDeviceProvider = Cardboard.Device.IDeviceProvider;
 

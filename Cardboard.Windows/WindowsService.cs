@@ -1,6 +1,6 @@
 ﻿using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using Cranky;
+using Cardboard.Utilities;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Cardboard.Windows;

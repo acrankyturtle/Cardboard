@@ -1,5 +1,4 @@
 using Cardboard.Utilities;
-using Cranky;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Cardboard.Device;

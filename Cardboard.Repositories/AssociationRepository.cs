@@ -1,5 +1,4 @@
 using System.Drawing;
-using System.Reactive;
 using System.Reactive.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -8,6 +7,7 @@ using Cardboard.Utilities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using StronglyTypedIds;
+using Unit = Cardboard.Utilities.Unit;
 
 namespace Cardboard.Repositories;
 
@@ -129,7 +129,7 @@ file class JsonAssociationRepository(
 	};
 
 	private readonly FileWatcher _fileWatcher = new(configuration.Value.Path);
-	public IObservable<Unit> OnAssociationsChanged => _fileWatcher.OnChanged.Select(_ => Unit.Default);
+	public IObservable<Unit> OnAssociationsChanged => _fileWatcher.OnChanged.Select(_ => Unit.Value);
 
 	public async Task<IReadOnlyCollection<ApplicationAssociation>> GetAssociations(
 		ApplicationAssociationFilter filter,

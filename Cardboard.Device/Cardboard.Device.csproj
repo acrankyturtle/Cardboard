@@ -6,8 +6,6 @@
 	</PropertyGroup>
 	<ItemGroup>
 		<PackageReference Include="CommunityToolkit.HighPerformance" Version="8.4.0" />
-		<PackageReference Include="ggbim.Cranky" Version="1.0.1" />
-		<PackageReference Include="ggbim.Cranky.Events" Version="2.0.0" />
 		<PackageReference Include="JetBrains.Annotations" Version="2025.2.4" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.2" />
 		<PackageReference Include="StronglyTypedId" Version="1.0.0-beta08" />
