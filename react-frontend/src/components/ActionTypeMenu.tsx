@@ -11,7 +11,7 @@ import {
   KeyboardIcon,
   LayerIcon,
   MouseIcon,
-} from "./ActionView.tsx";
+} from "../assets/sharedIcons.tsx";
 import { getButtonClassName } from "./Button.tsx";
 import {
   Menu,

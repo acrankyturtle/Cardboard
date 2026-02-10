@@ -73,6 +73,8 @@ import {
   AddIcon,
   ExportIcon,
   ImportIcon,
+  KeyboardIcon,
+  MacroIcon,
   PasteIcon,
   RemoveIcon,
 } from "../assets/sharedIcons.tsx";
@@ -435,7 +437,7 @@ function KeysPanel({
     <PanelContainer className={className}>
       <HeaderBar>
         <div className={headerBarIconClass}>
-          <KeysIcon />
+          <KeyboardIcon />
         </div>
         <div className="grow">
           {showPhysicalKeys ? "Keys" : showVirtualKeys ? "Virtual Keys" : "???"}
@@ -488,7 +490,7 @@ function BindingsPanel({ className }: { className?: string }) {
     <PanelContainer className={className}>
       <HeaderBar>
         <div className={headerBarIconClass}>
-          <BindingsPanelIcon />
+          <MacroIcon />
         </div>
         <div className="grow">Bindings</div>
         <button
@@ -1304,60 +1306,6 @@ function TagsIcon() {
   );
 }
 
-function KeysIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M2 6m0 2a2 2 0 0 1 2 -2h16a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2z" />
-      <path d="M6 10l0 .01" />
-      <path d="M10 10l0 .01" />
-      <path d="M14 10l0 .01" />
-      <path d="M18 10l0 .01" />
-      <path d="M6 14l0 .01" />
-      <path d="M18 14l0 .01" />
-      <path d="M10 14l4 .01" />
-    </svg>
-  );
-}
-
-function MacroIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M17 20h-11a3 3 0 0 1 0 -6h11a3 3 0 0 0 0 6h1a3 3 0 0 0 3 -3v-11a2 2 0 0 0 -2 -2h-10a2 2 0 0 0 -2 2v8" />
-    </svg>
-  );
-}
-
-function BindingsPanelIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M17 20h-11a3 3 0 0 1 0 -6h11a3 3 0 0 0 0 6h1a3 3 0 0 0 3 -3v-11a2 2 0 0 0 -2 -2h-10a2 2 0 0 0 -2 2v8" />
-    </svg>
-  );
-}
 
 function CopyIcon() {
   return (
