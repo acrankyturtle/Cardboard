@@ -12,8 +12,9 @@ import clsx from "clsx";
 import { Button } from "./Button.tsx";
 import { Input } from "@headlessui/react";
 import { InputClassName } from "./Input.tsx";
-import { DeleteIcon, EditIcon } from "../assets/sharedIcons.tsx";
+import { DeleteIcon, EditIcon, WarningIcon } from "../assets/sharedIcons.tsx";
 import { Tooltip } from "./Tooltip.tsx";
+import { useMaybeEditDeviceContext } from "../lib/editDeviceContext.tsx";
 import { UnknownActionEventView } from "./actionViews/shared.tsx";
 import { KeyboardActionEventView } from "./actionViews/KeyboardActionEventView.tsx";
 import { MouseActionEventView } from "./actionViews/MouseActionEventView.tsx";
@@ -37,15 +38,23 @@ export const ActionView = forwardRef<
   { className, action, setAction, onEdit, onDelete, compact },
   ref,
 ) {
+  const editDevice = useMaybeEditDeviceContext();
+  const isMouseDisabledWarning =
+    editDevice &&
+    !editDevice.state.device.settings.isMouseEnabled &&
+    isMouseActionEvent(action.actionEvent);
+
   if (compact) {
     return (
       <div
         ref={ref}
         className={clsx(
           "flex items-center gap-1 rounded bg-stone-800 px-2 py-1 text-xs shadow shadow-black/25",
+          isMouseDisabledWarning && "outline-2 outline-orange-600",
           className,
         )}
       >
+        {isMouseDisabledWarning && <MouseDisabledWarning compact />}
         <ActionEventView event={action.actionEvent} />
         {onDelete && (
           <Tooltip content="Delete action">
@@ -68,6 +77,7 @@ export const ActionView = forwardRef<
         "rounded bg-stone-800 shadow shadow-black/25",
         {
           "outline-3 outline-blue-700": setAction,
+          "outline-2 outline-orange-600": isMouseDisabledWarning && !setAction,
         },
         className,
       )}
@@ -132,6 +142,7 @@ export const ActionView = forwardRef<
       )}
       <div className="flex w-full items-center justify-between gap-2 px-2 py-1">
         <div className="flex grow items-center gap-1 overflow-hidden p-[1px]">
+          {isMouseDisabledWarning && <MouseDisabledWarning />}
           <ActionEventView
             event={action.actionEvent}
             setAction={
@@ -167,6 +178,18 @@ export const ActionView = forwardRef<
     </div>
   );
 });
+
+function MouseDisabledWarning({ compact }: { compact?: boolean }) {
+  return (
+    <Tooltip content="Mouse input is disabled for this device. This action will not work until mouse input is enabled.">
+      <span className="flex shrink-0">
+        <WarningIcon
+          className={clsx("text-orange-500", compact ? "size-4" : "size-5")}
+        />
+      </span>
+    </Tooltip>
+  );
+}
 
 function ActionEventView({
   event,
