@@ -43,6 +43,7 @@ import {
   ImportIcon,
   RemoveIcon,
 } from "../assets/sharedIcons.tsx";
+import { Tooltip } from "../components/Tooltip.tsx";
 import { getInputDevices, InputDeviceInfo } from "../api/inputDevices.ts";
 import { downloadJsonFile, pickAndReadJsonFile } from "../lib/jsonFileUtils.ts";
 
@@ -281,29 +282,31 @@ function AssociationCard({
     <div className="flex items-start gap-4 rounded-lg border border-stone-700 bg-stone-800 p-4 shadow">
       <AssociationDetails className="grow" association={association} />
       <div className="flex gap-2">
-        <button
-          className={clsx(
-            getButtonClassName({ variant: "ghost", padding: "none" }),
-          )}
-          onClick={onEdit}
-          title="Edit"
-        >
-          <div className="size-8 p-1.5">
-            <EditIcon />
-          </div>
-        </button>
-        <button
-          className={clsx(
-            getButtonClassName({ variant: "ghost", padding: "none" }),
-            "text-red-400 hover:text-red-300",
-          )}
-          onClick={onDelete}
-          title="Delete"
-        >
-          <div className="size-8 p-1.5">
-            <DeleteIcon />
-          </div>
-        </button>
+        <Tooltip content="Edit">
+          <button
+            className={clsx(
+              getButtonClassName({ variant: "ghost", padding: "none" }),
+            )}
+            onClick={onEdit}
+          >
+            <div className="size-8 p-1.5">
+              <EditIcon />
+            </div>
+          </button>
+        </Tooltip>
+        <Tooltip content="Delete">
+          <button
+            className={clsx(
+              getButtonClassName({ variant: "ghost", padding: "none" }),
+              "text-red-400 hover:text-red-300",
+            )}
+            onClick={onDelete}
+          >
+            <div className="size-8 p-1.5">
+              <DeleteIcon />
+            </div>
+          </button>
+        </Tooltip>
       </div>
     </div>
   );
@@ -673,16 +676,17 @@ function VirtualKeyEditor({
           />
         </div>
       </div>
-      <button
-        className={clsx(
-          getButtonClassName({ variant: "ghost", padding: "none" }),
-          "size-6 self-center p-1 text-red-400 hover:text-red-300",
-        )}
-        onClick={onRemove}
-        title="Remove"
-      >
-        <RemoveIcon />
-      </button>
+      <Tooltip content="Remove">
+        <button
+          className={clsx(
+            getButtonClassName({ variant: "ghost", padding: "none" }),
+            "size-6 self-center p-1 text-red-400 hover:text-red-300",
+          )}
+          onClick={onRemove}
+        >
+          <RemoveIcon />
+        </button>
+      </Tooltip>
     </div>
   );
 }

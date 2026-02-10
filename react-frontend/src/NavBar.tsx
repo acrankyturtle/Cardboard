@@ -1,9 +1,10 @@
 import { getButtonClassName } from "./components/Button.tsx";
 import clsx from "clsx";
-import { ReactElement, ReactNode } from "react";
+import { forwardRef, ReactElement, ReactNode } from "react";
 import { NavLink, To } from "react-router";
 import logo from "./assets/key.png";
 import { useControllerUpdate } from "./api/controller.ts";
+import { Tooltip } from "./components/Tooltip.tsx";
 
 export function NavBar({ className }: { className?: string }) {
   return (
@@ -13,19 +14,27 @@ export function NavBar({ className }: { className?: string }) {
           <Logo />
         </NavLink>
         <div className="flex h-full flex-col items-center space-y-2 py-3">
-          <NavBarButton className="flex items-center" to="/">
-            {(selected) => <DashboardIcon selected={selected} />}
-          </NavBarButton>
-          <NavBarButton to="/devices">
-            {(selected) => <DeviceIcon selected={selected} />}
-          </NavBarButton>
-          <NavBarButton to="/associations">
-            {(selected) => <AssociationsIcon selected={selected} />}
-          </NavBarButton>
+          <Tooltip content="Dashboard" side="right">
+            <NavBarButton className="flex items-center" to="/">
+              {(selected) => <DashboardIcon selected={selected} />}
+            </NavBarButton>
+          </Tooltip>
+          <Tooltip content="Devices" side="right">
+            <NavBarButton to="/devices">
+              {(selected) => <DeviceIcon selected={selected} />}
+            </NavBarButton>
+          </Tooltip>
+          <Tooltip content="Associations" side="right">
+            <NavBarButton to="/associations">
+              {(selected) => <AssociationsIcon selected={selected} />}
+            </NavBarButton>
+          </Tooltip>
           <div className="grow" />
-          <NavBarButton to="/logs">
-            {(selected) => <LogIcon selected={selected} />}
-          </NavBarButton>
+          <Tooltip content="Logs" side="right">
+            <NavBarButton to="/logs">
+              {(selected) => <LogIcon selected={selected} />}
+            </NavBarButton>
+          </Tooltip>
         </div>
         <VersionInfo />
       </div>
@@ -33,17 +42,17 @@ export function NavBar({ className }: { className?: string }) {
   );
 }
 
-function NavBarButton({
-  className,
-  children,
-  to,
-}: {
-  className?: string;
-  children?: ReactNode | ((selected: boolean) => ReactElement);
-  to: To;
-}) {
+const NavBarButton = forwardRef<
+  HTMLAnchorElement,
+  {
+    className?: string;
+    children?: ReactNode | ((selected: boolean) => ReactElement);
+    to: To;
+  }
+>(function NavBarButton({ className, children, to, ...props }, ref) {
   return (
     <NavLink
+      ref={ref}
       className={({ isActive }) =>
         clsx(
           "size-11",
@@ -56,13 +65,14 @@ function NavBarButton({
         )
       }
       to={to}
+      {...props}
     >
       {({ isActive }) =>
         typeof children === "function" ? children(isActive) : children
       }
     </NavLink>
   );
-}
+});
 
 function Logo() {
   return (
@@ -83,15 +93,16 @@ function VersionInfo() {
     <div className="flex flex-col items-center pb-3 text-center text-xs text-stone-500">
       <span className="font-mono">v{updateInfo?.currentVersion ?? "..."}</span>
       {updateInfo?.updateAvailable && updateInfo.downloadUrl && (
-        <a
-          href={updateInfo.downloadUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-1 text-amber-400 hover:text-amber-300"
-          title={`Update to v${updateInfo.latestVersion}`}
-        >
-          Update
-        </a>
+        <Tooltip content={`Update to v${updateInfo.latestVersion}`}>
+          <a
+            href={updateInfo.downloadUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-1 text-amber-400 hover:text-amber-300"
+          >
+            Update
+          </a>
+        </Tooltip>
       )}
     </div>
   );

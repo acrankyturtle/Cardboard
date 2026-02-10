@@ -12,6 +12,7 @@ import {
 } from "../lib/actionEventUtils.ts";
 import { ActionEvent } from "../api/devices.ts";
 import { AddIcon } from "../assets/sharedIcons.tsx";
+import { Tooltip } from "./Tooltip.tsx";
 
 export function SequenceEditor({
   className,
@@ -115,52 +116,56 @@ export function SequenceEditor({
       >
         <div className="grow">{name}</div>
         {type === "start" && canCopy && onCopyToOther && (
-          <button
-            className={clsx(
-              getButtonClassName({ variant: "ghost", padding: "none" }),
-              "size-6 p-0.5",
-            )}
-            onClick={handleCopy}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          <Tooltip content="Copy to end sequence">
+            <button
+              className={clsx(
+                getButtonClassName({ variant: "ghost", padding: "none" }),
+                "size-6 p-0.5",
+              )}
+              onClick={handleCopy}
             >
-              <path d="M21 17l-18 0" />
-              <path d="M18 4l3 3l-3 3" />
-              <path d="M18 20l3 -3l-3 -3" />
-              <path d="M21 7l-18 0" />
-            </svg>
-          </button>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M21 17l-18 0" />
+                <path d="M18 4l3 3l-3 3" />
+                <path d="M18 20l3 -3l-3 -3" />
+                <path d="M21 7l-18 0" />
+              </svg>
+            </button>
+          </Tooltip>
         )}
         {type === "end" && canCopy && onCopyToOther && (
-          <button
-            className={clsx(
-              getButtonClassName({ variant: "ghost", padding: "none" }),
-              "size-6 p-0.5",
-            )}
-            onClick={handleCopy}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          <Tooltip content="Copy to start sequence">
+            <button
+              className={clsx(
+                getButtonClassName({ variant: "ghost", padding: "none" }),
+                "size-6 p-0.5",
+              )}
+              onClick={handleCopy}
             >
-              <path d="M3 7l18 0" />
-              <path d="M6 20l-3 -3l3 -3" />
-              <path d="M6 4l-3 3l3 3" />
-              <path d="M3 17l18 0" />
-            </svg>
-          </button>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 7l18 0" />
+                <path d="M6 20l-3 -3l3 -3" />
+                <path d="M6 4l-3 3l3 3" />
+                <path d="M3 17l18 0" />
+              </svg>
+            </button>
+          </Tooltip>
         )}
       </div>
       {value.actions.length > 0 ? (

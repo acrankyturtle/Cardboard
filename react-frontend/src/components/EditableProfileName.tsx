@@ -3,6 +3,7 @@ import clsx from "clsx";
 import { EditIcon } from "../assets/sharedIcons.tsx";
 import { InputClassName } from "./Input.tsx";
 import { getButtonClassName } from "./Button.tsx";
+import { Tooltip } from "./Tooltip.tsx";
 
 export function EditableProfileName({
   name,
@@ -76,20 +77,21 @@ export function EditableProfileName({
   return (
     <div className={clsx("flex items-center gap-1", className)}>
       <span className="text-lg font-normal">{displayName}</span>
-      <button
-        type="button"
-        onClick={() => {
-          setEditValue(name);
-          setIsEditing(true);
-        }}
-        className={clsx(
-          getButtonClassName({ variant: "ghost", padding: "none" }),
-          "p-1",
-        )}
-        title="Edit profile name"
-      >
-        <EditIcon className="size-4" />
-      </button>
+      <Tooltip content="Edit profile name">
+        <button
+          type="button"
+          onClick={() => {
+            setEditValue(name);
+            setIsEditing(true);
+          }}
+          className={clsx(
+            getButtonClassName({ variant: "ghost", padding: "none" }),
+            "p-1",
+          )}
+        >
+          <EditIcon className="size-4" />
+        </button>
+      </Tooltip>
     </div>
   );
 }

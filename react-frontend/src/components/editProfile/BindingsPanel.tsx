@@ -9,6 +9,7 @@ import {
 import { AddIcon, MacroIcon, RemoveIcon } from "../../assets/sharedIcons.tsx";
 import { PanelContainer, HeaderBar, headerBarIconClass, headerBarButtonClass } from "./panelShared.tsx";
 import { SelectAllIcon, DeselectIcon } from "./TagsPanel.tsx";
+import { Tooltip } from "../Tooltip.tsx";
 
 export function BindingsPanel({ className }: { className?: string }) {
   const { state, dispatch } = useEditDeviceContext();
@@ -35,82 +36,90 @@ export function BindingsPanel({ className }: { className?: string }) {
           <MacroIcon />
         </div>
         <div className="grow">Bindings</div>
-        <button
-          className={headerBarButtonClass}
-          onClick={() => {
-            dispatch({
-              type: "setSelectedBindings",
-              index: macros.map((m) => m.index),
-            });
-          }}
-        >
-          <SelectAllIcon />
-        </button>
-        <button
-          className={headerBarButtonClass}
-          onClick={() => {
-            dispatch({ type: "setSelectedBindings", index: [] });
-          }}
-        >
-          <DeselectIcon />
-        </button>
-        <button
-          className={headerBarButtonClass}
-          onClick={() => {
-            if (
-              !state.selectedKey ||
-              !state.selectedLayer ||
-              !state.selectedMacro ||
-              !bindings
-            )
-              return;
+        <Tooltip content="Select all">
+          <button
+            className={headerBarButtonClass}
+            onClick={() => {
+              dispatch({
+                type: "setSelectedBindings",
+                index: macros.map((m) => m.index),
+              });
+            }}
+          >
+            <SelectAllIcon />
+          </button>
+        </Tooltip>
+        <Tooltip content="Deselect all">
+          <button
+            className={headerBarButtonClass}
+            onClick={() => {
+              dispatch({ type: "setSelectedBindings", index: [] });
+            }}
+          >
+            <DeselectIcon />
+          </button>
+        </Tooltip>
+        <Tooltip content="Add binding">
+          <button
+            className={headerBarButtonClass}
+            onClick={() => {
+              if (
+                !state.selectedKey ||
+                !state.selectedLayer ||
+                !state.selectedMacro ||
+                !bindings
+              )
+                return;
 
-            if (bindings.some((m) => m === state.selectedMacro)) return;
+              if (bindings.some((m) => m === state.selectedMacro)) return;
 
-            dispatch({
-              type: "setProfile",
-              profile: updateLayerBindings(
-                state.selectedKey,
-                state.selectedLayer,
-                state.profile,
-                [...bindings, state.selectedMacro],
-              ),
-            });
-
-            dispatch({ type: "setSelectedBindings", index: [bindings.length] });
-          }}
-        >
-          <AddIcon />
-        </button>
-        <button
-          className={headerBarButtonClass}
-          onClick={() => {
-            if (
-              !state.selectedKey ||
-              !state.selectedLayer ||
-              state.selectedBinding === null ||
-              !bindings
-            )
-              return;
-            dispatch({
-              type: "setProfile",
-              profile: updateLayerBindings(
-                state.selectedKey,
-                state.selectedLayer,
-                state.profile,
-                bindings.filter(
-                  (_, i) => !state.selectedBinding.some((b) => b === i),
+              dispatch({
+                type: "setProfile",
+                profile: updateLayerBindings(
+                  state.selectedKey,
+                  state.selectedLayer,
+                  state.profile,
+                  [...bindings, state.selectedMacro],
                 ),
-              ),
-            });
-            dispatch({
-              type: "setSelectedBindings",
-              index: [],
-            });
-          }}
-        >
-          <RemoveIcon />
-        </button>
+              });
+
+              dispatch({ type: "setSelectedBindings", index: [bindings.length] });
+            }}
+          >
+            <AddIcon />
+          </button>
+        </Tooltip>
+        <Tooltip content="Remove binding">
+          <button
+            className={headerBarButtonClass}
+            onClick={() => {
+              if (
+                !state.selectedKey ||
+                !state.selectedLayer ||
+                state.selectedBinding === null ||
+                !bindings
+              )
+                return;
+              dispatch({
+                type: "setProfile",
+                profile: updateLayerBindings(
+                  state.selectedKey,
+                  state.selectedLayer,
+                  state.profile,
+                  bindings.filter(
+                    (_, i) => !state.selectedBinding.some((b) => b === i),
+                  ),
+                ),
+              });
+              dispatch({
+                type: "setSelectedBindings",
+                index: [],
+              });
+            }}
+          >
+            <RemoveIcon />
+          </button>
+        </Tooltip>
       </HeaderBar>
       <ListBox
         className="grow"

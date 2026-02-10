@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { ListBox } from "../ListBox.tsx";
 import { useEditDeviceContext, getTagsInProfile } from "../../lib/editDeviceContext.tsx";
 import { PanelContainer, HeaderBar, headerBarIconClass, headerBarButtonClass } from "./panelShared.tsx";
+import { Tooltip } from "../Tooltip.tsx";
 
 export function TagsPanel({ className }: { className?: string }) {
   const { state, dispatch } = useEditDeviceContext();
@@ -22,22 +23,26 @@ export function TagsPanel({ className }: { className?: string }) {
           <TagsIcon />
         </div>
         <div className="grow">Tags</div>
-        <button
-          className={headerBarButtonClass}
-          onClick={() => {
-            dispatch({ type: "setSelectedTags", tags });
-          }}
-        >
-          <SelectAllIcon />
-        </button>
-        <button
-          className={headerBarButtonClass}
-          onClick={() => {
-            dispatch({ type: "setSelectedTags", tags: [] });
-          }}
-        >
-          <DeselectIcon />
-        </button>
+        <Tooltip content="Select all">
+          <button
+            className={headerBarButtonClass}
+            onClick={() => {
+              dispatch({ type: "setSelectedTags", tags });
+            }}
+          >
+            <SelectAllIcon />
+          </button>
+        </Tooltip>
+        <Tooltip content="Deselect all">
+          <button
+            className={headerBarButtonClass}
+            onClick={() => {
+              dispatch({ type: "setSelectedTags", tags: [] });
+            }}
+          >
+            <DeselectIcon />
+          </button>
+        </Tooltip>
       </HeaderBar>
       <ListBox
         items={tagItems}

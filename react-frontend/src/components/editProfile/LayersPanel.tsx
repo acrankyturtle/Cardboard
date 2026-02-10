@@ -20,6 +20,7 @@ import {
 } from "../../lib/editDeviceContext.tsx";
 import { AddIcon, RemoveIcon } from "../../assets/sharedIcons.tsx";
 import { PanelContainer, HeaderBar, headerBarIconClass, headerBarButtonClass } from "./panelShared.tsx";
+import { Tooltip } from "../Tooltip.tsx";
 
 interface LayerListBoxItem extends ListBoxItem {
   layer: TaggedDeviceLayer | DeviceKeyLayer;
@@ -85,97 +86,105 @@ export function LayersPanel({ className }: { className?: string }) {
           <LayersIcon />
         </div>
         <div className="grow">Layers</div>
-        <button
-          className={headerBarButtonClass}
-          onClick={() => {
-            if (!state.selectedKey) return;
-            const newLayer = newTaggedLayer();
-            const updated = insertLayer(
-              state.selectedKey,
-              state.profile,
-              state.selectedLayer,
-              newLayer,
-            );
-            dispatch({ type: "setProfile", profile: updated });
-            dispatch({ type: "setSelectedLayer", layerId: newLayer.layer.id });
-          }}
-        >
-          <AddIcon />
-        </button>
-        <button
-          className={headerBarButtonClass}
-          onClick={() => {
-            if (
-              !state.selectedKey ||
-              !state.selectedLayer ||
-              !selectedLayer ||
-              isSelectedLayerDefaultLayer === undefined
-            )
-              return;
+        <Tooltip content="Add layer">
+          <button
+            className={headerBarButtonClass}
+            onClick={() => {
+              if (!state.selectedKey) return;
+              const newLayer = newTaggedLayer();
+              const updated = insertLayer(
+                state.selectedKey,
+                state.profile,
+                state.selectedLayer,
+                newLayer,
+              );
+              dispatch({ type: "setProfile", profile: updated });
+              dispatch({ type: "setSelectedLayer", layerId: newLayer.layer.id });
+            }}
+          >
+            <AddIcon />
+          </button>
+        </Tooltip>
+        <Tooltip content="Delete layer">
+          <button
+            className={headerBarButtonClass}
+            onClick={() => {
+              if (
+                !state.selectedKey ||
+                !state.selectedLayer ||
+                !selectedLayer ||
+                isSelectedLayerDefaultLayer === undefined
+              )
+                return;
 
-            if (isSelectedLayerDefaultLayer) return;
+              if (isSelectedLayerDefaultLayer) return;
 
-            const newSelectedIndex = Math.min(
-              Math.max(
-                layers.findIndex((l) => l.value === state.selectedLayer) + 1,
-                0,
-              ),
-              layers.length - 1,
-            );
-            const newSelected = layers[newSelectedIndex];
-            const updated = removeLayer(
-              state.selectedKey,
-              state.profile,
-              state.selectedLayer,
-            );
-            dispatch({ type: "setProfile", profile: updated });
-            dispatch({
-              type: "setSelectedLayer",
-              layerId: newSelected.value,
-            });
-          }}
-          disabled={isSelectedLayerDefaultLayer}
-        >
-          <RemoveIcon />
-        </button>
-        <button
-          className={headerBarButtonClass}
-          onClick={() => {
-            const selectedLayer = state.selectedLayer;
-            if (!state.selectedKey || !selectedLayer) return;
-            const updatedProfile = updateKeyLayers(
-              state.selectedKey,
-              state.profile,
-              (layers) => shiftLayer(selectedLayer, layers, -1),
-            );
-            dispatch({ type: "setProfile", profile: updatedProfile });
-            dispatch({
-              type: "setSelectedLayer",
-              layerId: state.selectedLayer,
-            });
-          }}
-        >
-          <MoveUpIcon />
-        </button>
-        <button
-          className={headerBarButtonClass}
-          onClick={() => {
-            const selectedLayer = state.selectedLayer;
-            if (!state.selectedKey || !selectedLayer) return;
-            const updatedProfile = updateKeyLayers(
-              state.selectedKey,
-              state.profile,
-              (layers) => shiftLayer(selectedLayer, layers, 1),
-            );
-            dispatch({ type: "setProfile", profile: updatedProfile });
-            dispatch({
-              type: "setSelectedLayer",
-              layerId: state.selectedLayer,
-            });
-          }}
-        >
-          <MoveDownIcon />
-        </button>
+              const newSelectedIndex = Math.min(
+                Math.max(
+                  layers.findIndex((l) => l.value === state.selectedLayer) + 1,
+                  0,
+                ),
+                layers.length - 1,
+              );
+              const newSelected = layers[newSelectedIndex];
+              const updated = removeLayer(
+                state.selectedKey,
+                state.profile,
+                state.selectedLayer,
+              );
+              dispatch({ type: "setProfile", profile: updated });
+              dispatch({
+                type: "setSelectedLayer",
+                layerId: newSelected.value,
+              });
+            }}
+            disabled={isSelectedLayerDefaultLayer}
+          >
+            <RemoveIcon />
+          </button>
+        </Tooltip>
+        <Tooltip content="Move up">
+          <button
+            className={headerBarButtonClass}
+            onClick={() => {
+              const selectedLayer = state.selectedLayer;
+              if (!state.selectedKey || !selectedLayer) return;
+              const updatedProfile = updateKeyLayers(
+                state.selectedKey,
+                state.profile,
+                (layers) => shiftLayer(selectedLayer, layers, -1),
+              );
+              dispatch({ type: "setProfile", profile: updatedProfile });
+              dispatch({
+                type: "setSelectedLayer",
+                layerId: state.selectedLayer,
+              });
+            }}
+          >
+            <MoveUpIcon />
+          </button>
+        </Tooltip>
+        <Tooltip content="Move down">
+          <button
+            className={headerBarButtonClass}
+            onClick={() => {
+              const selectedLayer = state.selectedLayer;
+              if (!state.selectedKey || !selectedLayer) return;
+              const updatedProfile = updateKeyLayers(
+                state.selectedKey,
+                state.profile,
+                (layers) => shiftLayer(selectedLayer, layers, 1),
+              );
+              dispatch({ type: "setProfile", profile: updatedProfile });
+              dispatch({
+                type: "setSelectedLayer",
+                layerId: state.selectedLayer,
+              });
+            }}
+          >
+            <MoveDownIcon />
+          </button>
+        </Tooltip>
       </HeaderBar>
       <ListBox
         variant="red"

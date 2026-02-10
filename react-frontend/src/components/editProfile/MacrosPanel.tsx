@@ -18,6 +18,7 @@ import {
 } from "../../assets/sharedIcons.tsx";
 import { downloadJsonFile, pickAndReadJsonFile } from "../../lib/jsonFileUtils.ts";
 import { PanelContainer, HeaderBar, headerBarButtonClass } from "./panelShared.tsx";
+import { Tooltip } from "../Tooltip.tsx";
 
 export function isValidMacro(data: unknown): data is DeviceMacro {
   if (!data || typeof data !== "object") return false;
@@ -60,50 +61,77 @@ export function MacrosPanel({ className }: { className?: string }) {
           <MacroIcon />
         </div>
         <div className="grow">Macros</div>
-        <button
-          className={headerBarButtonClass}
-          onClick={() => {
-            dispatch({
-              type: "setModal",
-              modal: {
-                type: "editMacro",
-                show: true,
-                macro: {
-                  id: crypto.randomUUID(),
-                  name: "New Macro",
-                  cutChannels: [],
-                  startSequence: { actions: [] },
-                  loopSequence: { actions: [] },
-                  endSequence: { actions: [] },
+        <Tooltip content="New macro">
+          <button
+            className={headerBarButtonClass}
+            onClick={() => {
+              dispatch({
+                type: "setModal",
+                modal: {
+                  type: "editMacro",
+                  show: true,
+                  macro: {
+                    id: crypto.randomUUID(),
+                    name: "New Macro",
+                    cutChannels: [],
+                    startSequence: { actions: [] },
+                    loopSequence: { actions: [] },
+                    endSequence: { actions: [] },
+                  },
                 },
-              },
-            });
-          }}
-        >
-          <AddIcon />
-        </button>
-        <button
-          className={headerBarButtonClass}
-          onClick={() => {
-            if (!state.selectedMacro) return;
-            const macro = findMacroById(state.selectedMacro, state.profile);
-            if (!macro) return;
-            const { id: _, ...macroWithoutId } = macro;
-            navigator.clipboard.writeText(
-              JSON.stringify(macroWithoutId, null, 2),
-            );
-          }}
-          disabled={state.selectedMacro === null}
-        >
-          <CopyIcon />
-        </button>
-        <button
-          className={headerBarButtonClass}
-          onClick={async () => {
-            try {
-              const text = await navigator.clipboard.readText();
-              const data = JSON.parse(text);
-              if (!isValidMacro(data)) return;
+              });
+            }}
+          >
+            <AddIcon />
+          </button>
+        </Tooltip>
+        <Tooltip content="Copy">
+          <button
+            className={headerBarButtonClass}
+            onClick={() => {
+              if (!state.selectedMacro) return;
+              const macro = findMacroById(state.selectedMacro, state.profile);
+              if (!macro) return;
+              const { id: _, ...macroWithoutId } = macro;
+              navigator.clipboard.writeText(
+                JSON.stringify(macroWithoutId, null, 2),
+              );
+            }}
+            disabled={state.selectedMacro === null}
+          >
+            <CopyIcon />
+          </button>
+        </Tooltip>
+        <Tooltip content="Paste">
+          <button
+            className={headerBarButtonClass}
+            onClick={async () => {
+              try {
+                const text = await navigator.clipboard.readText();
+                const data = JSON.parse(text);
+                if (!isValidMacro(data)) return;
+                dispatch({
+                  type: "setModal",
+                  modal: {
+                    type: "editMacro",
+                    show: true,
+                    macro: { ...data, id: crypto.randomUUID() },
+                  },
+                });
+              } catch {
+                // invalid clipboard content — silently ignore
+              }
+            }}
+          >
+            <PasteIcon />
+          </button>
+        </Tooltip>
+        <Tooltip content="Import">
+          <button
+            className={headerBarButtonClass}
+            onClick={async () => {
+              const data = await pickAndReadJsonFile<DeviceMacro>();
+              if (!data || !isValidMacro(data)) return;
               dispatch({
                 type: "setModal",
                 modal: {
@@ -112,72 +140,57 @@ export function MacrosPanel({ className }: { className?: string }) {
                   macro: { ...data, id: crypto.randomUUID() },
                 },
               });
-            } catch {
-              // invalid clipboard content — silently ignore
-            }
-          }}
-        >
-          <PasteIcon />
-        </button>
-        <button
-          className={headerBarButtonClass}
-          onClick={async () => {
-            const data = await pickAndReadJsonFile<DeviceMacro>();
-            if (!data || !isValidMacro(data)) return;
-            dispatch({
-              type: "setModal",
-              modal: {
-                type: "editMacro",
-                show: true,
-                macro: { ...data, id: crypto.randomUUID() },
-              },
-            });
-          }}
-        >
-          <ImportIcon />
-        </button>
-        <button
-          className={headerBarButtonClass}
-          onClick={() => {
-            if (!state.selectedMacro) return;
-            const macro = findMacroById(state.selectedMacro, state.profile);
-            if (!macro) return;
-            const { id: _, ...macroWithoutId } = macro;
-            downloadJsonFile(macroWithoutId, `${macro.name}-macro.json`);
-          }}
-          disabled={state.selectedMacro === null}
-        >
-          <ExportIcon />
-        </button>
-        <button
-          className={headerBarButtonClass}
-          onClick={() => {
-            if (!state.selectedMacro) return;
-            const result = deleteMacro(state.selectedMacro, state.profile);
-            if (result === "in use") return;
+            }}
+          >
+            <ImportIcon />
+          </button>
+        </Tooltip>
+        <Tooltip content="Export">
+          <button
+            className={headerBarButtonClass}
+            onClick={() => {
+              if (!state.selectedMacro) return;
+              const macro = findMacroById(state.selectedMacro, state.profile);
+              if (!macro) return;
+              const { id: _, ...macroWithoutId } = macro;
+              downloadJsonFile(macroWithoutId, `${macro.name}-macro.json`);
+            }}
+            disabled={state.selectedMacro === null}
+          >
+            <ExportIcon />
+          </button>
+        </Tooltip>
+        <Tooltip content="Delete macro">
+          <button
+            className={headerBarButtonClass}
+            onClick={() => {
+              if (!state.selectedMacro) return;
+              const result = deleteMacro(state.selectedMacro, state.profile);
+              if (result === "in use") return;
 
-            // get macro id i+1 where i is the index of the deleted macro
-            const index = state.profile.macros.findIndex(
-              (m) => m.id === state.selectedMacro,
-            );
+              // get macro id i+1 where i is the index of the deleted macro
+              const index = state.profile.macros.findIndex(
+                (m) => m.id === state.selectedMacro,
+              );
 
-            const newSelectedMacro =
-              index < 0 || state.profile.macros.length === 1
-                ? null
-                : index + 1 < state.profile.macros.length
-                  ? state.profile.macros[index + 1].id
-                  : state.profile.macros[index - 1].id;
+              const newSelectedMacro =
+                index < 0 || state.profile.macros.length === 1
+                  ? null
+                  : index + 1 < state.profile.macros.length
+                    ? state.profile.macros[index + 1].id
+                    : state.profile.macros[index - 1].id;
 
-            dispatch({ type: "setProfile", profile: result });
+              dispatch({ type: "setProfile", profile: result });
 
-            if (newSelectedMacro !== null) {
-              dispatch({ type: "setSelectedMacro", macroId: newSelectedMacro });
-            }
-          }}
-          disabled={selectedMacroUsages !== 0}
-        >
-          <RemoveIcon />
-        </button>
+              if (newSelectedMacro !== null) {
+                dispatch({ type: "setSelectedMacro", macroId: newSelectedMacro });
+              }
+            }}
+            disabled={selectedMacroUsages !== 0}
+          >
+            <RemoveIcon />
+          </button>
+        </Tooltip>
       </HeaderBar>
       <ListBox
         className="grow"

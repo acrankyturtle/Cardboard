@@ -13,6 +13,7 @@ import { Button } from "./Button.tsx";
 import { Input } from "@headlessui/react";
 import { InputClassName } from "./Input.tsx";
 import { DeleteIcon, EditIcon } from "../assets/sharedIcons.tsx";
+import { Tooltip } from "./Tooltip.tsx";
 import { UnknownActionEventView } from "./actionViews/shared.tsx";
 import { KeyboardActionEventView } from "./actionViews/KeyboardActionEventView.tsx";
 import { MouseActionEventView } from "./actionViews/MouseActionEventView.tsx";
@@ -47,12 +48,14 @@ export const ActionView = forwardRef<
       >
         <ActionEventView event={action.actionEvent} />
         {onDelete && (
-          <button
-            className="ml-1 text-stone-400 hover:text-stone-200"
-            onClick={onDelete}
-          >
-            ×
-          </button>
+          <Tooltip content="Delete action">
+            <button
+              className="ml-1 text-stone-400 hover:text-stone-200"
+              onClick={onDelete}
+            >
+              ×
+            </button>
+          </Tooltip>
         )}
       </div>
     );
@@ -141,20 +144,24 @@ export const ActionView = forwardRef<
           />
         </div>
         <div className="flex items-center gap-1">
-          <Button
-            className={clsx("size-8 shrink-0 justify-self-end", {
-              "!text-blue-600 outline-1 outline-blue-700": setAction,
-            })}
-            onClick={onEdit}
-          >
-            <EditIcon className="-m-0.5" />
-          </Button>
-          <Button
-            className="size-8 shrink-0 justify-self-end"
-            onClick={onDelete}
-          >
-            <DeleteIcon className="-m-0.5" />
-          </Button>
+          <Tooltip content="Edit action">
+            <Button
+              className={clsx("size-8 shrink-0 justify-self-end", {
+                "!text-blue-600 outline-1 outline-blue-700": setAction,
+              })}
+              onClick={onEdit}
+            >
+              <EditIcon className="-m-0.5" />
+            </Button>
+          </Tooltip>
+          <Tooltip content="Delete action">
+            <Button
+              className="size-8 shrink-0 justify-self-end"
+              onClick={onDelete}
+            >
+              <DeleteIcon className="-m-0.5" />
+            </Button>
+          </Tooltip>
         </div>
       </div>
     </div>
