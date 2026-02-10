@@ -6,7 +6,6 @@ import {
   updateTaggedLayer,
   useEditDeviceContext,
 } from "../lib/editDeviceContext.tsx";
-import { useEdit } from "../hooks/useEdit.ts";
 import { useCallback, useEffect, useState } from "react";
 import {
   Dialog,
@@ -23,7 +22,7 @@ import { TagListEditor } from "./TagListEditor.tsx";
 
 export function EditTaggedLayerDialog() {
   const { state, dispatch } = useEditDeviceContext();
-  const [layerToEdit, setLayerToEdit] = useEdit<TaggedDeviceLayer>(undefined);
+  const [layerToEdit, setLayerToEdit] = useState<TaggedDeviceLayer>();
 
   const [info, setInfo] = useState<
     { keyId: string; layerId: string } | undefined
@@ -39,8 +38,11 @@ export function EditTaggedLayerDialog() {
       !state.modal ||
       state.modal.type !== "editTaggedLayer" ||
       !state.modal.show
-    )
+    ) {
+      setInfo(undefined);
+      setLayerToEdit(undefined);
       return;
+    }
 
     if (
       info &&
