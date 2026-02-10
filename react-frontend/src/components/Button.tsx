@@ -54,23 +54,7 @@ export const getButtonClassName = ({
     rounded === "full" ? "rounded-full" : undefined,
     padding === "normal" ? Padding : undefined,
     disabled === "half-opacity" ? "data-disabled:opacity-50" : undefined,
-    variant === "normal"
-      ? NormalVariant(isActive)
-      : variant === "submit"
-        ? SubmitVariant(isActive)
-        : variant === "danger"
-          ? DangerVariant(isActive)
-          : variant === "ghost"
-            ? GhostVariant(isActive)
-            : variant === "panelGhost"
-              ? PanelGhostVariant(isActive)
-              : variant === "navbar"
-                ? NavBarVariant(isActive)
-                : variant === "toolbar"
-                  ? ToolbarVariant(isActive)
-                  : variant === "no-color"
-                    ? NoColorVariant
-                    : undefined,
+    variantMap[variant]?.(isActive),
   );
 };
 
@@ -150,3 +134,14 @@ const ToolbarVariant = (isActive: boolean): ClassValue =>
   );
 
 const NoColorVariant: ClassValue = Base;
+
+const variantMap: Record<string, (isActive: boolean) => ClassValue> = {
+  normal: NormalVariant,
+  submit: SubmitVariant,
+  danger: DangerVariant,
+  ghost: GhostVariant,
+  panelGhost: PanelGhostVariant,
+  navbar: NavBarVariant,
+  toolbar: ToolbarVariant,
+  "no-color": () => NoColorVariant,
+};
