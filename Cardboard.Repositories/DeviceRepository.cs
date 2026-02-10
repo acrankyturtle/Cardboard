@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics;
 using System.Globalization;
-using System.Text.Json;
 using Cardboard.Device;
 using Cardboard.Metadata;
 using Cardboard.Update;
