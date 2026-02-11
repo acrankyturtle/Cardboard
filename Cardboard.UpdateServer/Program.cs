@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using Cardboard.Api;
 using Cardboard.Device;
 using Cardboard.Metadata;
+using Cardboard.Update;
 using Cardboard.Update.Api;
 using Cardboard.Update.Api.Abstractions;
 using Cardboard.Utilities;
