@@ -46,24 +46,16 @@ app.UseCors();
 
 var config = app.Services.GetRequiredService<IOptions<UpdateServerPathConfiguration>>().Value;
 
-var firmwarePath = Path.GetFullPath(
-	config.Firmware ?? Path.Combine(Environment.CurrentDirectory, "files", "firmware")
-);
+var firmwarePath = Path.GetFullPath(config.Firmware);
 Directory.CreateDirectory(firmwarePath);
 
-var controllerPath = Path.GetFullPath(
-	config.Controller ?? Path.Combine(Environment.CurrentDirectory, "files", "controller")
-);
+var controllerPath = Path.GetFullPath(config.Controller);
 Directory.CreateDirectory(controllerPath);
 
-var metadataPath = Path.GetFullPath(
-	config.Metadata ?? Path.Combine(Environment.CurrentDirectory, "files", "metadata")
-);
+var metadataPath = Path.GetFullPath(config.Metadata);
 Directory.CreateDirectory(metadataPath);
 
-var deviceIconsPath = Path.GetFullPath(
-	config.DeviceIcons ?? Path.Combine(Environment.CurrentDirectory, "files", "device-icons")
-);
+var deviceIconsPath = Path.GetFullPath(config.DeviceIcons);
 Directory.CreateDirectory(deviceIconsPath);
 
 var fileJsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
@@ -504,8 +496,13 @@ file static class FileHasher
 
 file class UpdateServerPathConfiguration
 {
-	public string? Firmware { get; init; }
-	public string? Controller { get; init; }
-	public string? Metadata { get; init; }
-	public string? DeviceIcons { get; init; }
+	public string Firmware { get; init; } = Path.Combine(Environment.CurrentDirectory, "files", "firmware");
+
+	public string Controller { get; init; } =
+		Path.Combine(Environment.CurrentDirectory, "files", "controller");
+
+	public string Metadata { get; init; } = Path.Combine(Environment.CurrentDirectory, "files", "metadata");
+
+	public string DeviceIcons { get; init; } =
+		Path.Combine(Environment.CurrentDirectory, "files", "device-icons");
 }
