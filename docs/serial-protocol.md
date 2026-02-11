@@ -162,7 +162,7 @@ Each `LayerTag` is a `StringU8`.
 |-------|------|-------------|
 | result | u8 | `0xFF` = success |
 
-### EnterBootloader
+### Reboot
 
 **UUID:** `6dce0823-d199-5abb-a56f-a85cdba61842`
 

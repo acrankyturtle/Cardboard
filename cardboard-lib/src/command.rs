@@ -4,10 +4,10 @@ use crate::context::ContextSettingsFlash;
 use crate::error::Error;
 use crate::error::ErrorLog;
 use crate::serialize::{Readable, Writeable};
-use crate::storage::load_settings_from_flash;
 use crate::storage::BlockFlash;
 use crate::storage::BlockFlashExt;
 use crate::storage::PartitionedFlashMemory;
+use crate::storage::load_settings_from_flash;
 use crate::time::Clock;
 use async_trait::async_trait;
 use core::cmp::Ord;
@@ -226,7 +226,7 @@ impl<Context: ContextReboot + ContextSerialRx + ContextSerialTx> Command<Context
 	fn info(&self) -> CommandInfo {
 		CommandInfo {
 			id: CommandId(uuid!("6dce0823-d199-5abb-a56f-a85cdba61842")),
-			name: "Enter Bootloader",
+			name: "Reboot",
 		}
 	}
 
@@ -350,10 +350,7 @@ where
 		}
 	}
 
-	async fn try_execute<Context>(
-		&self,
-		ctx: &mut Context,
-	) -> Result<bool, (u8, &'static str)>
+	async fn try_execute<Context>(&self, ctx: &mut Context) -> Result<bool, (u8, &'static str)>
 	where
 		Context: ContextSerialRx + ContextSerialTx + ContextSettingsFlash,
 		Settings: Readable + Default,
