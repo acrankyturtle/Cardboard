@@ -21,10 +21,14 @@ file sealed class ApiMetadataSource(
 	ILogger<ApiMetadataSource> logger
 ) : IMetadataSource, IClearMemoryCache, IClearDiskCache
 {
-	private static readonly JsonSerializerOptions _cacheJsonOptions = new()
+	private static readonly JsonSerializerOptions _cacheJsonOptions = CreateCacheJsonOptions();
+
+	private static JsonSerializerOptions CreateCacheJsonOptions()
 	{
-		PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-	};
+		var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+		options.Converters.Add(new JsonStringEnumConverter());
+		return options;
+	}
 
 	private readonly IApiCache<DeviceTypeId, DeviceMetadata> _metadataCache = DiskBasedApiCache.Create<
 		DeviceTypeId,
