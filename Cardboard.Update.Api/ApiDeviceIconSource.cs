@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -29,25 +31,7 @@ file sealed class ApiDeviceIconSource(
 		},
 		cacheOptions.Value.IconCache,
 		cacheOptions.Value.IconCacheManifest,
-		k =>
-		{
-			// hash full file path to avoid using subdirectories and ensure consistent file names
-			const int hashSize = 32;
-			const int base64Size = 44; // Base64-encoded 32 bytes is always 44 characters
-
-			var byteCount = System.Text.Encoding.UTF8.GetByteCount(k);
-			Span<byte> buffer = stackalloc byte[byteCount];
-			System.Text.Encoding.UTF8.GetBytes(k, buffer);
-			Span<byte> hash = stackalloc byte[hashSize];
-			System.Security.Cryptography.SHA256.HashData(buffer, hash);
-			Span<char> base64Hash = stackalloc char[base64Size];
-			Convert.TryToBase64Chars(hash, base64Hash, out _);
-			base64Hash.Replace('/', '_');
-
-			// omit padding character
-			var fileName = new string(base64Hash[..^1]);
-			return fileName;
-		},
+		DeviceIconCacheHelper.HashFileName,
 		async (_, v, stream) =>
 		{
 			await stream.WriteAsync(v.Data);
@@ -83,6 +67,31 @@ file sealed class ApiDeviceIconSource(
 	public async Task ClearDiskCache()
 	{
 		await _cache.ClearFallback();
+	}
+}
+
+internal static class DeviceIconCacheHelper
+{
+	/// <summary>
+	/// Hashes a file name using SHA-256 to produce a flat, URL-safe cache key.
+	/// </summary>
+	public static string HashFileName(string key)
+	{
+		const int hashSize = 32;
+		const int base64Size = 44; // Base64-encoded 32 bytes is always 44 characters
+
+		var byteCount = Encoding.UTF8.GetByteCount(key);
+		Span<byte> buffer = stackalloc byte[byteCount];
+		Encoding.UTF8.GetBytes(key, buffer);
+		Span<byte> hash = stackalloc byte[hashSize];
+		SHA256.HashData(buffer, hash);
+		Span<char> base64Hash = stackalloc char[base64Size];
+		Convert.TryToBase64Chars(hash, base64Hash, out _);
+		base64Hash.Replace('/', '_');
+
+		// omit padding character
+		var fileName = new string(base64Hash[..^1]);
+		return fileName;
 	}
 }
 

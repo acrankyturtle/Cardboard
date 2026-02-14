@@ -54,6 +54,7 @@ builder
 	.AddApiFirmwareSource(updateConfig)
 	.AddApiMetadataSource(pathsConfig)
 	.AddApiDeviceIconSource(pathsConfig)
+	.AddBundledCacheSeeder()
 	.AddApiControllerSource()
 	.AddDeviceServices()
 	.AddDeviceUpdater()

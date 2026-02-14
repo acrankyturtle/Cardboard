@@ -30,6 +30,26 @@
 		<ProjectReference Include="..\Cardboard.Update.Api\Cardboard.Update.Api.csproj" />
 		<ProjectReference Include="..\Cardboard.Windows\Cardboard.Windows.csproj" />
 	</ItemGroup>
+	<!-- Copy bundled update server files to output -->
+	<PropertyGroup>
+		<UpdateServerFilesPath>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\..\Cardboard.UpdateServer\files'))</UpdateServerFilesPath>
+	</PropertyGroup>
+	<Target Name="CopyBundledFiles" AfterTargets="Build">
+		<ItemGroup>
+			<BundledMetadataFiles Include="$(UpdateServerFilesPath)\metadata\**\*" />
+			<BundledDeviceIconFiles Include="$(UpdateServerFilesPath)\device-icons\**\*" />
+		</ItemGroup>
+		<Copy
+			SourceFiles="@(BundledMetadataFiles)"
+			DestinationFiles="@(BundledMetadataFiles->'$(OutputPath)bundled\metadata\%(RecursiveDir)%(Filename)%(Extension)')"
+			SkipUnchangedFiles="true"
+		/>
+		<Copy
+			SourceFiles="@(BundledDeviceIconFiles)"
+			DestinationFiles="@(BundledDeviceIconFiles->'$(OutputPath)bundled\device-icons\%(RecursiveDir)%(Filename)%(Extension)')"
+			SkipUnchangedFiles="true"
+		/>
+	</Target>
 	<!-- React Frontend Build (Release only) -->
 	<PropertyGroup>
 		<ReactProjectPath>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\..\react-frontend'))</ReactProjectPath>

@@ -290,11 +290,6 @@ internal class DiskBackedApiCache<TKey, TValue>(
 		await File.WriteAllTextAsync(ManifestFullFileName, json);
 	}
 
-	private sealed class CacheManifest
-	{
-		public List<string> Files { get; init; } = [];
-	}
-
 	public void Dispose()
 	{
 		_semaphore.Dispose();
@@ -408,6 +403,11 @@ internal static class DiskBasedApiCache
 				name
 			);
 	}
+}
+
+internal sealed class CacheManifest
+{
+	public List<string> Files { get; init; } = [];
 }
 
 internal class CacheTimings
