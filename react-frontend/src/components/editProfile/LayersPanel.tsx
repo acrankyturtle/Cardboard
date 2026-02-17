@@ -21,6 +21,7 @@ import {
 import { AddIcon, RemoveIcon } from "../../assets/sharedIcons.tsx";
 import { PanelContainer, HeaderBar, headerBarIconClass, headerBarButtonClass } from "./panelShared.tsx";
 import { Tooltip } from "../Tooltip.tsx";
+import { HelpLink } from "../HelpLink.tsx";
 
 interface LayerListBoxItem extends ListBoxItem {
   layer: TaggedDeviceLayer | DeviceKeyLayer;
@@ -86,6 +87,7 @@ export function LayersPanel({ className }: { className?: string }) {
           <LayersIcon />
         </div>
         <div className="grow">Layers</div>
+        <HelpLink section="layers" />
         <Tooltip content="Add layer">
           <button
             className={headerBarButtonClass}

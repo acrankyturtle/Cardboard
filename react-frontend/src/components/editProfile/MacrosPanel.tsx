@@ -19,6 +19,7 @@ import {
 import { downloadJsonFile, pickAndReadJsonFile } from "../../lib/jsonFileUtils.ts";
 import { PanelContainer, HeaderBar, headerBarButtonClass } from "./panelShared.tsx";
 import { Tooltip } from "../Tooltip.tsx";
+import { HelpLink } from "../HelpLink.tsx";
 
 export function isValidMacro(data: unknown): data is DeviceMacro {
   if (!data || typeof data !== "object") return false;
@@ -61,6 +62,7 @@ export function MacrosPanel({ className }: { className?: string }) {
           <MacroIcon />
         </div>
         <div className="grow">Macros</div>
+        <HelpLink section="macros" />
         <Tooltip content="New macro">
           <button
             className={headerBarButtonClass}

@@ -3,6 +3,7 @@ import { ListBox } from "../ListBox.tsx";
 import { useEditDeviceContext, getTagsInProfile } from "../../lib/editDeviceContext.tsx";
 import { PanelContainer, HeaderBar, headerBarIconClass, headerBarButtonClass } from "./panelShared.tsx";
 import { Tooltip } from "../Tooltip.tsx";
+import { HelpLink } from "../HelpLink.tsx";
 
 export function TagsPanel({ className }: { className?: string }) {
   const { state, dispatch } = useEditDeviceContext();
@@ -23,6 +24,7 @@ export function TagsPanel({ className }: { className?: string }) {
           <TagsIcon />
         </div>
         <div className="grow">Tags</div>
+        <HelpLink section="tags" />
         <Tooltip content="Select all">
           <button
             className={headerBarButtonClass}

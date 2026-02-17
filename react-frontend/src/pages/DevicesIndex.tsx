@@ -37,6 +37,7 @@ import { NavigationBlocker } from "../components/NavigationBlocker.tsx";
 import { EditableProfileName } from "../components/EditableProfileName.tsx";
 import { BootloaderFirmwareUpdateDialog } from "../components/BootloaderFirmwareUpdateDialog.tsx";
 import { ExportIcon, ImportIcon } from "../assets/sharedIcons.tsx";
+import { HelpLink } from "../components/HelpLink.tsx";
 
 export function DevicesIndex({
   deviceId,
@@ -88,6 +89,7 @@ function DeviceIndexView() {
     <>
       <DevicesHeader>
         <div className="grow">Devices</div>
+        <HelpLink section="getting-started" size="medium" />
         {bootloaderAvailable && (
           <Button
             buttonStyle={{ variant: "ghost" }}
@@ -389,6 +391,7 @@ function EditDeviceView() {
         >
           Save
         </Button>
+        <HelpLink section="profiles" size="medium" />
       </DevicesHeader>
       <div className="grow overflow-y-hidden border-l-3 border-stone-950">
         <EditDeviceProfile className="h-full" />

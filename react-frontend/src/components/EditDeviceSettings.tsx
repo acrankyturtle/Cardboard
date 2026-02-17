@@ -13,6 +13,7 @@ import { LoadingIndicator } from "./LoadingIndicator.tsx";
 import { Dialog, DialogBody, DialogDivider, DialogHeader } from "./Dialog.tsx";
 import { Checkbox } from "@headlessui/react";
 import { NavigationBlocker } from "./NavigationBlocker.tsx";
+import { HelpLink } from "./HelpLink.tsx";
 
 export function EditDeviceSettings({
   device,
@@ -112,6 +113,7 @@ export function EditDeviceSettings({
         >
           Save
         </Button>
+        <HelpLink section="device-settings" size="medium" />
       </Header>
 
       <div className="grow overflow-y-auto p-6">

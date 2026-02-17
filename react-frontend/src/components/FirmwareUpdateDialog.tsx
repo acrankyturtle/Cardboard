@@ -16,6 +16,7 @@ import {
   DialogHeaderTitle,
 } from "./Dialog";
 import { LoadingIndicator } from "./LoadingIndicator";
+import { HelpLink } from "./HelpLink.tsx";
 
 interface FirmwareUpdateDialogProps {
   open: boolean;
@@ -47,12 +48,13 @@ export function FirmwareUpdateDialog({
   return (
     <Dialog open={open} closeOnBackdropClick={false}>
       <DialogHeader>
-        <DialogHeaderTitle>
+        <DialogHeaderTitle className="flex items-center gap-2">
           {isSuccess
             ? "Update Complete"
             : isError
               ? "Update Failed"
               : "Updating Firmware"}
+          <HelpLink section="firmware-updates" />
         </DialogHeaderTitle>
       </DialogHeader>
       <DialogDivider />

@@ -17,6 +17,7 @@ import {
 import { KeyRenderer } from "../KeyRenderer.tsx";
 import { KeyboardIcon } from "../../assets/sharedIcons.tsx";
 import { PanelContainer, HeaderBar, headerBarIconClass } from "./panelShared.tsx";
+import { HelpLink } from "../HelpLink.tsx";
 
 export function KeyViewPanel({ className }: { className?: string }) {
   const { state } = useEditDeviceContext();
@@ -267,6 +268,7 @@ export function KeysPanel({
         <div className="grow">
           {showPhysicalKeys ? "Keys" : showVirtualKeys ? "Virtual Keys" : "???"}
         </div>
+        <HelpLink section="keys-bindings" />
       </HeaderBar>
       <ListBox
         className="grow"

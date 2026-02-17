@@ -1,7 +1,7 @@
 import Header from "../components/Header.tsx";
 import ReactMarkdown from "react-markdown";
 import guideContent from "@root/GUIDE.md?raw";
-import { ReactNode, useRef } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 import type { Components } from "react-markdown";
 
 function slugify(text: string): string {
@@ -15,12 +15,22 @@ function getTextContent(children: ReactNode): string {
   if (typeof children === "string") return children;
   if (Array.isArray(children)) return children.map(getTextContent).join("");
   if (children && typeof children === "object" && "props" in children)
-    return getTextContent((children as { props: { children?: ReactNode } }).props.children);
+    return getTextContent(
+      (children as { props: { children?: ReactNode } }).props.children,
+    );
   return "";
 }
 
 export function GuideIndex() {
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash) {
+      const target = scrollRef.current?.querySelector(hash);
+      target?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, []);
 
   const components: Components = {
     h1: ({ children, ...props }) => {

@@ -36,6 +36,7 @@ import {
   createStartSequenceActionEvent,
 } from "../../lib/actionEventUtils.ts";
 import { TemplatePanel } from "../MacroTemplates.tsx";
+import { HelpLink } from "../HelpLink.tsx";
 
 export function EditMacroDialog() {
   const { state, dispatch } = useEditDeviceContext();
@@ -83,8 +84,9 @@ export function EditMacroDialog() {
       closeOnBackdropClick={false}
     >
       <DialogHeader>
-        <DialogHeaderTitle className="text-lg font-bold">
+        <DialogHeaderTitle className="flex items-center gap-2 text-lg font-bold">
           Edit Macro
+          <HelpLink section="macros" />
         </DialogHeaderTitle>
         <DialogHeaderDescription>
           {isNew ? (

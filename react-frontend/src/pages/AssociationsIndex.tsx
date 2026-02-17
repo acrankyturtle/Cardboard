@@ -44,6 +44,7 @@ import {
   RemoveIcon,
 } from "../assets/sharedIcons.tsx";
 import { Tooltip } from "../components/Tooltip.tsx";
+import { HelpLink } from "../components/HelpLink.tsx";
 import { getInputDevices, InputDeviceInfo } from "../api/inputDevices.ts";
 import { downloadJsonFile, pickAndReadJsonFile } from "../lib/jsonFileUtils.ts";
 
@@ -196,6 +197,7 @@ export function AssociationsIndex() {
           </div>
           <div>Add</div>
         </Button>
+        <HelpLink section="associations" size="medium" />
       </AssociationsHeader>
       <div className="grow overflow-y-auto p-4">
         {isLoading ? (
@@ -445,10 +447,11 @@ function EditAssociationDialog({
       closeOnBackdropClick={false}
     >
       <DialogHeader>
-        <DialogHeaderTitle>
+        <DialogHeaderTitle className="flex items-center gap-2">
           {isNew ? "New Association" : "Edit Association"}
+          <HelpLink section="associations" />
         </DialogHeaderTitle>
-        <DialogHeaderDescription>
+        <DialogHeaderDescription className="flex items-center gap-2">
           Configure tags and virtual keys to apply when an application matches
         </DialogHeaderDescription>
       </DialogHeader>

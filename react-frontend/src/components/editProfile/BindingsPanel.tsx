@@ -7,9 +7,15 @@ import {
   useEditDeviceContext,
 } from "../../lib/editDeviceContext.tsx";
 import { AddIcon, MacroIcon, RemoveIcon } from "../../assets/sharedIcons.tsx";
-import { PanelContainer, HeaderBar, headerBarIconClass, headerBarButtonClass } from "./panelShared.tsx";
+import {
+  PanelContainer,
+  HeaderBar,
+  headerBarIconClass,
+  headerBarButtonClass,
+} from "./panelShared.tsx";
 import { SelectAllIcon, DeselectIcon } from "./TagsPanel.tsx";
 import { Tooltip } from "../Tooltip.tsx";
+import { HelpLink } from "../HelpLink.tsx";
 
 export function BindingsPanel({ className }: { className?: string }) {
   const { state, dispatch } = useEditDeviceContext();
@@ -36,6 +42,7 @@ export function BindingsPanel({ className }: { className?: string }) {
           <MacroIcon />
         </div>
         <div className="grow">Bindings</div>
+        <HelpLink section="keys-bindings" />
         <Tooltip content="Select all">
           <button
             className={headerBarButtonClass}
@@ -83,7 +90,10 @@ export function BindingsPanel({ className }: { className?: string }) {
                 ),
               });
 
-              dispatch({ type: "setSelectedBindings", index: [bindings.length] });
+              dispatch({
+                type: "setSelectedBindings",
+                index: [bindings.length],
+              });
             }}
           >
             <AddIcon />
