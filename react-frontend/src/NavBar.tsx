@@ -35,6 +35,11 @@ export function NavBar({ className }: { className?: string }) {
               {(selected) => <LogIcon selected={selected} />}
             </NavBarButton>
           </Tooltip>
+          <Tooltip content="Guide" side="right">
+            <NavBarButton to="/guide">
+              {(selected) => <GuideIcon selected={selected} />}
+            </NavBarButton>
+          </Tooltip>
         </div>
         <VersionInfo />
       </div>
@@ -133,6 +138,16 @@ function AssociationsIcon({ selected }: { selected?: boolean }) {
     <ToggledIcon
       activeComponent={<AssociationsFilled />}
       normalComponent={<AssociationsOutline />}
+      selected={selected}
+    />
+  );
+}
+
+function GuideIcon({ selected }: { selected?: boolean }) {
+  return (
+    <ToggledIcon
+      activeComponent={<GuideIconFilled />}
+      normalComponent={<GuideIconOutline />}
       selected={selected}
     />
   );
@@ -331,6 +346,46 @@ function LogIconFilled() {
       <path d="M14 6h6" />
       <path d="M14 12h6" />
       <path d="M14 18h6" />
+    </svg>
+  );
+}
+
+function GuideIconOutline() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0" />
+      <path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0" />
+      <path d="M3 6l0 13" />
+      <path d="M12 6l0 13" />
+      <path d="M21 6l0 13" />
+    </svg>
+  );
+}
+
+function GuideIconFilled() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0" />
+      <path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0" />
+      <path d="M3 6l0 13" />
+      <path d="M12 6l0 13" />
+      <path d="M21 6l0 13" />
     </svg>
   );
 }

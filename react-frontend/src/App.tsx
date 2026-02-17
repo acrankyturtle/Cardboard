@@ -6,6 +6,7 @@ import { DevicesIndex } from "./pages/DevicesIndex.tsx";
 import { LogsIndex } from "./pages/LogsIndex.tsx";
 import { AssociationsIndex } from "./pages/AssociationsIndex.tsx";
 import { DashboardIndex } from "./pages/DashboardIndex.tsx";
+import { GuideIndex } from "./pages/GuideIndex.tsx";
 import { useDeviceEvents } from "./api/devices.ts";
 
 // note: all icons from https://tablericons.com/
@@ -37,6 +38,7 @@ function App() {
             />
             <Route path="/associations" element={<AssociationsIndex />} />
             <Route path="/logs" element={<LogsIndex />} />
+            <Route path="/guide" element={<GuideIndex />} />
             <Route path="*" element={<NoMatch />} />
           </Route>
         </Routes>
