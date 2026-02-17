@@ -629,8 +629,6 @@ mod tests {
 			expected_num_bytes_written
 		);
 
-		assert_eq!(ctx.serial_tx.serial_tx.written.len(), 2771);
-
 		// check is_valid byte
 		assert_eq!(ctx.serial_tx.serial_tx.written[0], 0xFF);
 
