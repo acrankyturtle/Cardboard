@@ -395,9 +395,9 @@ impl<'a> SequenceState<'a> {
 		self.elapsed += elapsed;
 
 		while let Some(action) = self.pending.pop() {
-			if action.predelay_ms <= self.elapsed.to_millis() {
+			if (action.predelay_ms as u64) <= self.elapsed.to_millis() {
 				on_event(&action.action_event);
-				self.elapsed -= action.predelay_ms.millis();
+				self.elapsed -= (action.predelay_ms as u64).millis();
 			} else {
 				self.pending.push(action);
 				return 0.millis();

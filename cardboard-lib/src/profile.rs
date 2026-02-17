@@ -260,7 +260,7 @@ impl Default for Sequence {
 }
 
 pub struct Action {
-	pub predelay_ms: u64,
+	pub predelay_ms: u16,
 	pub action_event: ActionEvent,
 }
 
@@ -270,7 +270,7 @@ impl Readable for Action {
 		Self: Sized,
 	{
 		let predelay_ms = reader
-			.read_u64()
+			.read_u16()
 			.await
 			.ok_or("Failed to read predelay ms")?;
 		let action_event = ActionEvent::read_from(reader).await?;

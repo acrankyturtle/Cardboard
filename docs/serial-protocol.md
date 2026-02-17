@@ -298,7 +298,7 @@ The profile is serialized as a versioned blob and stored in flash memory. The on
 
 | Field | Type |
 |-------|------|
-| predelay_ms | u64 |
+| predelay_ms | u16 |
 | action_event | ActionEvent |
 
 ### ActionEvent

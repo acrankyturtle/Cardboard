@@ -215,12 +215,12 @@ public sealed class Sequence : IReadable<Sequence>, IWriteable
 
 public sealed class Action : IReadable<Action>, IWriteable
 {
-	public ulong PredelayMs { get; init; }
+	public ushort PredelayMs { get; init; }
 	public required ActionEvent ActionEvent { get; init; }
 
 	public static Action ReadFrom(BinaryReader reader)
 	{
-		var predelayMs = reader.ReadUInt64();
+		var predelayMs = reader.ReadUInt16();
 		var actionEvent = ActionEvent.ReadFrom(reader);
 
 		return new() { PredelayMs = predelayMs, ActionEvent = actionEvent };
