@@ -84,7 +84,7 @@ export function EditMacroDialog() {
       closeOnBackdropClick={false}
     >
       <DialogHeader>
-        <DialogHeaderTitle className="flex items-center gap-2 text-lg font-bold">
+        <DialogHeaderTitle className="flex items-center gap-2">
           Edit Macro
           <HelpLink section="macros" />
         </DialogHeaderTitle>
