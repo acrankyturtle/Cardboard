@@ -20,9 +20,11 @@ export function KeyRenderer({
   const [keyOffset, setKeyOffset] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
     const updateScale = () => {
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
+      const rect = el.getBoundingClientRect();
 
       // get bounds of keys
       let minX = Infinity,
@@ -61,9 +63,9 @@ export function KeyRenderer({
       setScale(newScale);
     };
 
-    updateScale();
-    window.addEventListener("resize", updateScale);
-    return () => window.removeEventListener("resize", updateScale);
+    const observer = new ResizeObserver(updateScale);
+    observer.observe(el);
+    return () => observer.disconnect();
   }, [keys]);
 
   // Convert units (100u = 1 key) to pixels with scaling

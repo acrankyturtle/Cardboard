@@ -42,7 +42,7 @@ export function BindingsPanel({ className }: { className?: string }) {
           <MacroIcon />
         </div>
         <div className="grow">Bindings</div>
-        <HelpLink section="keys-bindings" />
+        <HelpLink className="shrink-0" section="keys-bindings" />
         <Tooltip content="Select all">
           <button
             className={headerBarButtonClass}

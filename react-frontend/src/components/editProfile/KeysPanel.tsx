@@ -16,7 +16,11 @@ import {
 } from "../../lib/editDeviceContext.tsx";
 import { KeyRenderer } from "../KeyRenderer.tsx";
 import { KeyboardIcon } from "../../assets/sharedIcons.tsx";
-import { PanelContainer, HeaderBar, headerBarIconClass } from "./panelShared.tsx";
+import {
+  PanelContainer,
+  HeaderBar,
+  headerBarIconClass,
+} from "./panelShared.tsx";
 import { HelpLink } from "../HelpLink.tsx";
 
 export function KeyViewPanel({ className }: { className?: string }) {
@@ -132,7 +136,9 @@ interface KeyListBoxItem extends ListBoxItem {
   key: DeviceKey | VirtualKey;
 }
 
-export const getActionLabelForMacros = (macros: readonly DeviceMacro[]): string => {
+export const getActionLabelForMacros = (
+  macros: readonly DeviceMacro[],
+): string => {
   switch (macros.length) {
     case 0:
       return "";
@@ -194,7 +200,7 @@ export function VirtualKeyPanel({ className }: { className?: string }) {
       )}
     >
       <div>Virtual Keys</div>
-      <div className="flex flex-wrap justify-center">
+      <div className="flex max-h-40 flex-wrap justify-center overflow-y-auto">
         {vks.map((vk) => (
           <Key
             key={vk.keyId}
@@ -268,7 +274,7 @@ export function KeysPanel({
         <div className="grow">
           {showPhysicalKeys ? "Keys" : showVirtualKeys ? "Virtual Keys" : "???"}
         </div>
-        <HelpLink section="keys-bindings" />
+        <HelpLink className="shrink-0" section="keys-bindings" />
       </HeaderBar>
       <ListBox
         className="grow"

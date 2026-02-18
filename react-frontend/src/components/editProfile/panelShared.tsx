@@ -40,7 +40,7 @@ export function HeaderBar({
   );
 }
 
-export const headerBarIconClass = "size-6 text-stone-100";
+export const headerBarIconClass = "size-6 text-stone-100 shrink-0";
 
 export const headerBarButtonClass = clsx(
   headerBarIconClass,

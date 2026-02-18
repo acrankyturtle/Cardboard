@@ -23,7 +23,7 @@ function App() {
         fetcher: fetcher,
       }}
     >
-      <main className="flex h-full bg-stone-950 text-stone-100">
+      <main className="flex h-full min-w-[64rem] bg-stone-950 text-stone-100">
         <Routes>
           <Route element={<Layout />}>
             <Route index element={<DashboardIndex />} />

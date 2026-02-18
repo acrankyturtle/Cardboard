@@ -108,7 +108,7 @@ export function LayersPanel({ className }: { className?: string }) {
           <LayersIcon />
         </div>
         <div className="grow">Layers</div>
-        <HelpLink section="layers" />
+        <HelpLink className="shrink-0" section="layers" />
         <Tooltip content="Add layer">
           <button
             className={headerBarButtonClass}
@@ -122,7 +122,10 @@ export function LayersPanel({ className }: { className?: string }) {
                 newLayer,
               );
               dispatch({ type: "setProfile", profile: updated });
-              dispatch({ type: "setSelectedLayer", layerId: newLayer.layer.id });
+              dispatch({
+                type: "setSelectedLayer",
+                layerId: newLayer.layer.id,
+              });
             }}
           >
             <AddIcon />

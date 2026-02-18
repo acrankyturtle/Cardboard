@@ -23,7 +23,7 @@ export function Dialog({
   closeOnBackdropClick?: boolean;
 }) {
   const panelClassName = clsx(
-    "flex flex-col gap-y-4 rounded-2xl border-2 border-stone-950 bg-stone-700 p-4 text-stone-100 shadow-lg shadow-black/50",
+    "flex flex-col gap-y-4 rounded-2xl border-2 border-stone-950 bg-stone-700 p-4 text-stone-100 shadow-lg shadow-black/50 max-w-[calc(100vw-2rem)]",
     className,
   );
   return (

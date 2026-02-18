@@ -332,7 +332,7 @@ function EditDeviceView() {
       />
       <DevicesHeader>
         <div
-          className={clsx("flex grow gap-3", {
+          className={clsx("flex min-w-0 grow flex-wrap gap-3", {
             "items-center": isEditingProfileName,
             "items-end": !isEditingProfileName,
           })}
@@ -349,7 +349,7 @@ function EditDeviceView() {
             }
             onEditing={(v) => setIsEditingProfileName(v)}
           />
-          <div className="text-lg font-normal text-stone-400">
+          <div className="overflow-hidden text-ellipsis text-lg font-normal text-stone-400">
             {state.device.id}
           </div>
         </div>

@@ -11,7 +11,7 @@ function Page({
   return (
     <div
       className={clsx(
-        "flex w-5xl shrink-1 flex-col gap-10 px-4 py-6",
+        "flex max-w-5xl w-full shrink-1 flex-col gap-10 px-4 py-6",
         className,
       )}
     >
