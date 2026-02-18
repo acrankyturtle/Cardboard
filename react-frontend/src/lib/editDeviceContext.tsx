@@ -103,7 +103,17 @@ type EditMacroModalOptions = {
   macro: DeviceMacro;
 } & ModalBaseOptions;
 
-type ModalOptions = null | EditTaggedLayerModalOptions | EditMacroModalOptions;
+type ImportKeyModalOptions = {
+  type: "importKey";
+  keyExport: import("./keyImportExport.ts").KeyExport;
+  conflicts: import("./keyImportExport.ts").MacroConflict[];
+} & ModalBaseOptions;
+
+type ModalOptions =
+  | null
+  | EditTaggedLayerModalOptions
+  | EditMacroModalOptions
+  | ImportKeyModalOptions;
 
 const editDeviceReducer = (
   state: EditDeviceState,

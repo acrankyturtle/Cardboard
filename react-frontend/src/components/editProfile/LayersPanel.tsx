@@ -18,10 +18,31 @@ import {
   updateKeyLayers,
   useEditDeviceContext,
 } from "../../lib/editDeviceContext.tsx";
-import { AddIcon, RemoveIcon } from "../../assets/sharedIcons.tsx";
-import { PanelContainer, HeaderBar, headerBarIconClass, headerBarButtonClass } from "./panelShared.tsx";
+import {
+  AddIcon,
+  ExportIcon,
+  ImportIcon,
+  RemoveIcon,
+} from "../../assets/sharedIcons.tsx";
+import {
+  PanelContainer,
+  HeaderBar,
+  headerBarIconClass,
+  headerBarButtonClass,
+} from "./panelShared.tsx";
 import { Tooltip } from "../Tooltip.tsx";
 import { HelpLink } from "../HelpLink.tsx";
+import {
+  downloadJsonFile,
+  pickAndReadJsonFile,
+} from "../../lib/jsonFileUtils.ts";
+import {
+  applyKeyImport,
+  buildKeyExport,
+  detectConflicts,
+  isValidKeyExport,
+  KeyExport,
+} from "../../lib/keyImportExport.ts";
 
 interface LayerListBoxItem extends ListBoxItem {
   layer: TaggedDeviceLayer | DeviceKeyLayer;
@@ -185,6 +206,56 @@ export function LayersPanel({ className }: { className?: string }) {
             }}
           >
             <MoveDownIcon />
+          </button>
+        </Tooltip>
+        <Tooltip content="Import key">
+          <button
+            className={headerBarButtonClass}
+            disabled={!state.selectedKey}
+            onClick={async () => {
+              if (!state.selectedKey) return;
+              const data = await pickAndReadJsonFile<KeyExport>();
+              if (!data || !isValidKeyExport(data)) return;
+              const conflicts = detectConflicts(data, state.profile);
+              if (conflicts.length === 0) {
+                const updatedProfile = applyKeyImport(
+                  state.selectedKey,
+                  data,
+                  [],
+                  state.profile,
+                );
+                dispatch({ type: "setProfile", profile: updatedProfile });
+              } else {
+                dispatch({
+                  type: "setModal",
+                  modal: {
+                    type: "importKey",
+                    show: true,
+                    keyExport: data,
+                    conflicts,
+                  },
+                });
+              }
+            }}
+          >
+            <ImportIcon />
+          </button>
+        </Tooltip>
+        <Tooltip content="Export key">
+          <button
+            className={headerBarButtonClass}
+            disabled={!state.selectedKey}
+            onClick={() => {
+              if (!state.selectedKey) return;
+              const keyExport = buildKeyExport(state.selectedKey, state);
+              if (!keyExport) return;
+              const keyName =
+                state.device.keyMap.find((k) => k.keyId === state.selectedKey)
+                  ?.name ?? "key";
+              downloadJsonFile(keyExport, `${keyName}-key.json`);
+            }}
+          >
+            <ExportIcon />
           </button>
         </Tooltip>
       </HeaderBar>

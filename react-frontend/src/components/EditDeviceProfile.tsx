@@ -5,6 +5,7 @@ import { LayersPanel } from "./editProfile/LayersPanel.tsx";
 import { BindingsPanel } from "./editProfile/BindingsPanel.tsx";
 import { MacrosPanel } from "./editProfile/MacrosPanel.tsx";
 import { EditMacroDialog } from "./editProfile/EditMacroDialog.tsx";
+import { ImportKeyDialog } from "./editProfile/ImportKeyDialog.tsx";
 import { EditTaggedLayerDialog } from "./EditTaggedLayerDialog.tsx";
 
 export function EditDeviceProfile({ className }: { className?: string }) {
@@ -27,6 +28,7 @@ export function EditDeviceProfile({ className }: { className?: string }) {
       </div>
       <EditTaggedLayerDialog />
       <EditMacroDialog />
+      <ImportKeyDialog />
     </>
   );
 }
