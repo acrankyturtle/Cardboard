@@ -21,6 +21,7 @@ import {
   ContextMenuTrigger,
   ContextMenuPopup,
   ContextMenuItem,
+  ContextMenuIcon,
 } from "../ContextMenu.tsx";
 
 export function BindingsPanel({ className }: { className?: string }) {
@@ -176,15 +177,15 @@ export function BindingsPanel({ className }: { className?: string }) {
         </ContextMenuTrigger>
         <ContextMenuPopup>
           <ContextMenuItem onClick={selectAll}>
-            <span className="size-4 shrink-0">
+            <ContextMenuIcon>
               <SelectAllIcon />
-            </span>
+            </ContextMenuIcon>
             Select All
           </ContextMenuItem>
           <ContextMenuItem onClick={deselectAll}>
-            <span className="size-4 shrink-0">
+            <ContextMenuIcon>
               <DeselectIcon />
-            </span>
+            </ContextMenuIcon>
             Deselect All
           </ContextMenuItem>
           <ContextMenuItem
@@ -196,9 +197,9 @@ export function BindingsPanel({ className }: { className?: string }) {
             }
             onClick={addBinding}
           >
-            <span className="size-4 shrink-0">
+            <ContextMenuIcon>
               <AddIcon />
-            </span>
+            </ContextMenuIcon>
             Add Binding
           </ContextMenuItem>
           <ContextMenuItem
@@ -210,9 +211,9 @@ export function BindingsPanel({ className }: { className?: string }) {
             }
             onClick={removeBinding}
           >
-            <span className="size-4 shrink-0">
+            <ContextMenuIcon>
               <RemoveIcon />
-            </span>
+            </ContextMenuIcon>
             Remove Binding
           </ContextMenuItem>
         </ContextMenuPopup>

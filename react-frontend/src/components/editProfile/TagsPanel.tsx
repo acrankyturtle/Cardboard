@@ -17,6 +17,7 @@ import {
   ContextMenuTrigger,
   ContextMenuPopup,
   ContextMenuItem,
+  ContextMenuIcon,
 } from "../ContextMenu.tsx";
 
 export function TagsPanel({ className }: { className?: string }) {
@@ -79,15 +80,15 @@ export function TagsPanel({ className }: { className?: string }) {
         </ContextMenuTrigger>
         <ContextMenuPopup>
           <ContextMenuItem onClick={selectAll}>
-            <span className="size-4 shrink-0">
+            <ContextMenuIcon>
               <SelectAllIcon />
-            </span>
+            </ContextMenuIcon>
             Select All
           </ContextMenuItem>
           <ContextMenuItem onClick={deselectAll}>
-            <span className="size-4 shrink-0">
+            <ContextMenuIcon>
               <DeselectIcon />
-            </span>
+            </ContextMenuIcon>
             Deselect All
           </ContextMenuItem>
         </ContextMenuPopup>

@@ -32,6 +32,7 @@ import {
   ContextMenuTrigger,
   ContextMenuPopup,
   ContextMenuItem,
+  ContextMenuIcon,
 } from "../ContextMenu.tsx";
 
 interface LayerListBoxItem extends ListBoxItem {
@@ -231,9 +232,9 @@ export function LayersPanel({ className }: { className?: string }) {
         </ContextMenuTrigger>
         <ContextMenuPopup>
           <ContextMenuItem onClick={addLayer}>
-            <span className="size-4 shrink-0">
+            <ContextMenuIcon>
               <AddIcon />
-            </span>
+            </ContextMenuIcon>
             Add Layer
           </ContextMenuItem>
           <ContextMenuItem
@@ -243,21 +244,21 @@ export function LayersPanel({ className }: { className?: string }) {
             }
             onClick={deleteLayer}
           >
-            <span className="size-4 shrink-0">
+            <ContextMenuIcon>
               <RemoveIcon />
-            </span>
+            </ContextMenuIcon>
             Delete Layer
           </ContextMenuItem>
           <ContextMenuItem onClick={moveUp}>
-            <span className="size-4 shrink-0">
+            <ContextMenuIcon>
               <MoveUpIcon />
-            </span>
+            </ContextMenuIcon>
             Move Up
           </ContextMenuItem>
           <ContextMenuItem onClick={moveDown}>
-            <span className="size-4 shrink-0">
+            <ContextMenuIcon>
               <MoveDownIcon />
-            </span>
+            </ContextMenuIcon>
             Move Down
           </ContextMenuItem>
         </ContextMenuPopup>

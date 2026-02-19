@@ -25,6 +25,7 @@ import {
   ContextMenuTrigger,
   ContextMenuPopup,
   ContextMenuItem,
+  ContextMenuIcon,
 } from "../ContextMenu.tsx";
 
 export function isValidMacro(data: unknown): data is DeviceMacro {
@@ -230,36 +231,48 @@ export function MacrosPanel({ className }: { className?: string }) {
         </ContextMenuTrigger>
         <ContextMenuPopup>
           <ContextMenuItem onClick={newMacro}>
-            <span className="size-4 shrink-0"><AddIcon /></span>
+            <ContextMenuIcon>
+              <AddIcon />
+            </ContextMenuIcon>
             New Macro
           </ContextMenuItem>
           <ContextMenuItem
             disabled={state.selectedMacro === null}
             onClick={copyMacro}
           >
-            <span className="size-4 shrink-0"><CopyIcon /></span>
+            <ContextMenuIcon>
+              <CopyIcon />
+            </ContextMenuIcon>
             Copy
           </ContextMenuItem>
           <ContextMenuItem onClick={pasteMacro}>
-            <span className="size-4 shrink-0"><PasteIcon /></span>
+            <ContextMenuIcon>
+              <PasteIcon />
+            </ContextMenuIcon>
             Paste
           </ContextMenuItem>
           <ContextMenuItem onClick={importMacro}>
-            <span className="size-4 shrink-0"><ImportIcon /></span>
+            <ContextMenuIcon>
+              <ImportIcon />
+            </ContextMenuIcon>
             Import
           </ContextMenuItem>
           <ContextMenuItem
             disabled={state.selectedMacro === null}
             onClick={exportMacro}
           >
-            <span className="size-4 shrink-0"><ExportIcon /></span>
+            <ContextMenuIcon>
+              <ExportIcon />
+            </ContextMenuIcon>
             Export
           </ContextMenuItem>
           <ContextMenuItem
             disabled={selectedMacroUsages !== 0}
             onClick={deleteMacroAction}
           >
-            <span className="size-4 shrink-0"><RemoveIcon /></span>
+            <ContextMenuIcon>
+              <RemoveIcon />
+            </ContextMenuIcon>
             Delete Macro
           </ContextMenuItem>
         </ContextMenuPopup>

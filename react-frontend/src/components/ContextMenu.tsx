@@ -43,6 +43,10 @@ export function ContextMenuPopup({
   );
 }
 
+export function ContextMenuIcon({ children }: { children: ReactNode }) {
+  return <div className="size-5 shrink-0">{children}</div>;
+}
+
 export function ContextMenuItem({
   className,
   children,

@@ -11,7 +11,7 @@ import {
   KeyExport,
 } from "../../lib/keyImportExport.ts";
 import { useEditDeviceContext } from "../../lib/editDeviceContext.tsx";
-import { ContextMenuItem } from "../ContextMenu.tsx";
+import { ContextMenuItem, ContextMenuIcon } from "../ContextMenu.tsx";
 
 export function useKeyImportExport() {
   const { state, dispatch } = useEditDeviceContext();
@@ -61,15 +61,15 @@ export function KeyImportExportMenuItems() {
   return (
     <>
       <ContextMenuItem disabled={!hasSelectedKey} onClick={importKey}>
-        <span className="size-4 shrink-0">
+        <ContextMenuIcon>
           <ImportIcon />
-        </span>
+        </ContextMenuIcon>
         Import Key
       </ContextMenuItem>
       <ContextMenuItem disabled={!hasSelectedKey} onClick={exportKey}>
-        <span className="size-4 shrink-0">
+        <ContextMenuIcon>
           <ExportIcon />
-        </span>
+        </ContextMenuIcon>
         Export Key
       </ContextMenuItem>
     </>
