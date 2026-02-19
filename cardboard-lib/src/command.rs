@@ -264,11 +264,13 @@ impl<Context: ContextSerialTx + ContextAllocator + ContextClock + ContextErrorLo
 	async fn execute(&self, ctx: &mut Context) -> Result<(), &'static str> {
 		let allocator_current = ctx.allocator().current();
 		let allocator_max = ctx.allocator().max();
+		let allocator_capacity = ctx.allocator().capacity();
 
 		let response = StatusResponse {
 			now: ctx.clock().now().ticks(),
 			allocator_current,
 			allocator_max,
+			allocator_capacity,
 			errors: ctx.errors().get_errors().cloned().collect(),
 		};
 
@@ -509,6 +511,7 @@ struct StatusResponse {
 	pub now: u64,
 	pub allocator_current: usize,
 	pub allocator_max: usize,
+	pub allocator_capacity: usize,
 	// WISH: pub mouse_enabled: bool,
 	pub errors: Vec<Error>,
 }
@@ -518,6 +521,7 @@ impl Writeable for StatusResponse {
 		writer.write_u64(self.now).await?;
 		writer.write_u32(self.allocator_current as u32).await?;
 		writer.write_u32(self.allocator_max as u32).await?;
+		writer.write_u32(self.allocator_capacity as u32).await?;
 		// WISH: writer.write_bool(self.mouse_enabled).await?;
 		writer.write_collection_u8(&self.errors).await?;
 		Ok(())

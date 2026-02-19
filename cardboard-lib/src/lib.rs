@@ -34,6 +34,7 @@ mod test;
 pub trait TrackedAllocator {
 	fn current(&self) -> usize;
 	fn max(&self) -> usize;
+	fn capacity(&self) -> usize;
 }
 
 /// Tracking allocator wrapper that monitors heap usage.
@@ -43,15 +44,17 @@ pub trait TrackedAllocator {
 pub struct TrackingAllocator<A: GlobalAlloc> {
 	pub inner: A,
 	current: Mutex<Cell<usize>>, // Current allocated bytes
-	max: Mutex<Cell<usize>>,     // Maximum allocated bytes ever
+	max: Mutex<Cell<usize>>,    // Maximum allocated bytes ever
+	capacity: usize,             // Total capacity
 }
 
 impl<A: GlobalAlloc> TrackingAllocator<A> {
-	pub const fn new(inner: A) -> Self {
+	pub const fn new(inner: A, capacity: usize) -> Self {
 		TrackingAllocator {
 			inner,
 			current: Mutex::new(Cell::new(0)),
 			max: Mutex::new(Cell::new(0)),
+			capacity,
 		}
 	}
 
@@ -65,7 +68,12 @@ impl<A: GlobalAlloc> TrackingAllocator<A> {
 		critical_section::with(|cs| self.max.borrow(cs).get())
 	}
 
-	/// Reset min and max to current value
+	/// Get total capacity
+	pub fn capacity(&self) -> usize {
+		self.capacity
+	}
+
+	/// Reset max to current value
 	pub fn reset_stats(&self) {
 		critical_section::with(|cs| {
 			let current = self.current.borrow(cs).get();
@@ -124,5 +132,9 @@ impl<A: GlobalAlloc> TrackedAllocator for TrackingAllocator<A> {
 
 	fn max(&self) -> usize {
 		self.max()
+	}
+
+	fn capacity(&self) -> usize {
+		self.capacity()
 	}
 }

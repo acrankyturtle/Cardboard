@@ -60,6 +60,7 @@ export interface DeviceSettings {
 export interface DeviceStatusReport {
   tick: number;
   allocated: number;
+  maxAllocated: number;
   allocatorSize: number;
   errors: readonly DeviceStatusError[];
 }

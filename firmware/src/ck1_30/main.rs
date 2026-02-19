@@ -65,7 +65,7 @@ static mut HEAP: [u8; HEAP_SIZE] = [0; HEAP_SIZE];
 pub type Heap = LlffHeap;
 
 #[global_allocator]
-static ALLOCATOR: TrackingAllocator<Heap> = TrackingAllocator::new(Heap::empty());
+static ALLOCATOR: TrackingAllocator<Heap> = TrackingAllocator::new(Heap::empty(), HEAP_SIZE);
 
 const ROWS: usize = 5;
 const COLS: usize = 6;

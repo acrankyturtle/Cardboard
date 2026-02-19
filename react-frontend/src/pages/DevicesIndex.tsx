@@ -201,9 +201,18 @@ function DeviceInfoDialog({ deviceId }: { deviceId: string | null }) {
                 <DialogDivider className="col-span-2 my-4" />
                 <StatName>Tick</StatName>
                 <StatValue>{device.status.tick} us</StatValue>
-                <StatName>Allocator</StatName>
+                <StatName>Allocator current (bytes)</StatName>
                 <StatValue>
                   {`${device.status.allocated} / ${device.status.allocatorSize} (${((device.status.allocated / device.status.allocatorSize) * 100).toPrecision(2)}%)`}
+                </StatValue>
+                <StatName>Allocator maximum (bytes)</StatName>
+                <StatValue>
+                  {device.status.maxAllocated} (
+                  {(
+                    (device.status.maxAllocated / device.status.allocatorSize) *
+                    100
+                  ).toPrecision(2)}
+                  %)
                 </StatValue>
               </StatTable>
               {device.status.errors.length > 0 && (

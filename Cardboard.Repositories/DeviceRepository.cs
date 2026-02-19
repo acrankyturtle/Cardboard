@@ -133,6 +133,7 @@ public sealed class DeviceStatusReport
 {
 	public required ulong Tick { get; init; }
 	public required ulong Allocated { get; init; }
+	public required ulong MaxAllocated { get; init; }
 	public required ulong AllocatorSize { get; init; }
 	public required IReadOnlyCollection<DeviceStatusError> Errors { get; init; }
 
@@ -143,7 +144,8 @@ public sealed class DeviceStatusReport
 		{
 			Tick = status.Now,
 			Allocated = status.AllocatorCurrent,
-			AllocatorSize = status.AllocatorMax,
+			MaxAllocated = status.AllocatorMax,
+			AllocatorSize = status.AllocatorCapacity,
 			Errors = errors,
 		};
 	}

@@ -19,6 +19,7 @@ public sealed class DeviceStatus : IReadable<DeviceStatus>
 	public required ulong Now { get; init; }
 	public required ulong AllocatorCurrent { get; init; }
 	public required ulong AllocatorMax { get; init; }
+	public required ulong AllocatorCapacity { get; init; }
 	public required IReadOnlyCollection<DeviceError> Errors { get; init; }
 
 	public static DeviceStatus ReadFrom(BinaryReader reader)
@@ -26,6 +27,7 @@ public sealed class DeviceStatus : IReadable<DeviceStatus>
 		var now = reader.ReadUInt64();
 		var allocatorCurrent = reader.ReadUInt32();
 		var allocatorMax = reader.ReadUInt32();
+		var allocatorCapacity = reader.ReadUInt32();
 		var errors = reader.ReadCollectionU8<DeviceError>();
 
 		return new()
@@ -33,6 +35,7 @@ public sealed class DeviceStatus : IReadable<DeviceStatus>
 			Now = now,
 			AllocatorCurrent = allocatorCurrent,
 			AllocatorMax = allocatorMax,
+			AllocatorCapacity = allocatorCapacity,
 			Errors = errors,
 		};
 	}
