@@ -48,9 +48,12 @@ function App() {
 }
 
 function Layout() {
+  const [searchParams] = useSearchParams();
+  const hideNav = searchParams.get("ref") === "help";
+
   return (
     <div className="flex size-full overflow-hidden">
-      <NavBar className="sticky top-0 left-0" />
+      {!hideNav && <NavBar className="sticky top-0 left-0" />}
       <div className="mx-auto flex-1 justify-items-center">
         <Outlet />
       </div>

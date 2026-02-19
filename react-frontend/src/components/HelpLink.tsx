@@ -16,7 +16,7 @@ export function HelpLink({
   return (
     <Tooltip content={tooltip ?? "Help"}>
       <a
-        href={`/guide#${section}`}
+        href={`/guide?ref=help#${section}`}
         target="_blank"
         rel="noopener noreferrer"
         className={clsx(
