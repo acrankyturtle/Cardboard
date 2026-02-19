@@ -36,7 +36,7 @@ import {
 import { NavigationBlocker } from "../components/NavigationBlocker.tsx";
 import { EditableProfileName } from "../components/EditableProfileName.tsx";
 import { BootloaderFirmwareUpdateDialog } from "../components/BootloaderFirmwareUpdateDialog.tsx";
-import { ExportIcon, ImportIcon } from "../assets/sharedIcons.tsx";
+import { ThickExportIcon, ThickImportIcon } from "../assets/sharedIcons.tsx";
 import { HelpLink } from "../components/HelpLink.tsx";
 
 export function DevicesIndex({
@@ -376,7 +376,7 @@ function EditDeviceView() {
           buttonStyle={{ variant: "ghost" }}
           onClick={handleImportProfile}
         >
-          <ImportIcon className="-my-2 -ml-1 size-5" />
+          <ThickImportIcon className="-my-2 -ml-1 size-5" />
           <div>Import</div>
         </Button>
         <Button
@@ -384,7 +384,7 @@ function EditDeviceView() {
           buttonStyle={{ variant: "ghost" }}
           onClick={handleExportProfile}
         >
-          <ExportIcon className="-my-2 -ml-1 size-5" />
+          <ThickExportIcon className="-my-2 -ml-1 size-5" />
           <div>Export</div>
         </Button>
         <Link

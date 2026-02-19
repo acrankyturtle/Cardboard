@@ -39,9 +39,9 @@ import {
   AddIcon,
   DeleteIcon,
   EditIcon,
-  ExportIcon,
-  ImportIcon,
   RemoveIcon,
+  ThickExportIcon,
+  ThickImportIcon,
 } from "../assets/sharedIcons.tsx";
 import { Tooltip } from "../components/Tooltip.tsx";
 import { HelpLink } from "../components/HelpLink.tsx";
@@ -176,7 +176,7 @@ export function AssociationsIndex() {
           disabled={importing}
         >
           <div className="-my-2 -ml-1 size-5">
-            <ImportIcon />
+            <ThickImportIcon />
           </div>
           <div>{importing ? "Importing..." : "Import"}</div>
         </Button>
@@ -187,7 +187,7 @@ export function AssociationsIndex() {
           disabled={associations.length === 0}
         >
           <div className="-my-2 -ml-1 size-5">
-            <ExportIcon />
+            <ThickExportIcon />
           </div>
           <div>Export</div>
         </Button>
