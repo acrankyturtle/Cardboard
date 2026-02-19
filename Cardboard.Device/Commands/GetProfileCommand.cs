@@ -13,7 +13,7 @@ public sealed class GetProfileCommand : ICommand<Unit, DeviceProfile>
 		var isValid = stream.Reader.ReadByte() == 0xFF;
 		var length = stream.Reader.ReadUInt16();
 
-		var data = ReadProfileData();
+		var data = stream.Reader.ReadBytes(length);
 
 		if (!isValid)
 		{
@@ -30,20 +30,5 @@ public sealed class GetProfileCommand : ICommand<Unit, DeviceProfile>
 		var dataReader = new BinaryReader(ms);
 		var profile = DeviceProfile.ReadFrom(dataReader);
 		return profile;
-
-		byte[] ReadProfileData()
-		{
-			// extend our read timeout because it's normal to wait for a response when sending large profiles
-			var readTimeout = stream.Reader.BaseStream.ReadTimeout;
-			try
-			{
-				stream.Reader.BaseStream.ReadTimeout = 60_000;
-				return stream.Reader.ReadBytes(length);
-			}
-			finally
-			{
-				stream.Reader.BaseStream.ReadTimeout = readTimeout;
-			}
-		}
 	}
 }

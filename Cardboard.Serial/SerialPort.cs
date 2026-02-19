@@ -58,8 +58,8 @@ public sealed class SystemSerialPort(string name, SerialPort serialPort, ILogger
 			NewLine = "\n",
 			Parity = Parity.None,
 			StopBits = StopBits.One,
-			ReadTimeout = 10000,
-			WriteTimeout = 10000,
+			ReadTimeout = 1000,
+			WriteTimeout = 1000,
 		};
 
 		try
