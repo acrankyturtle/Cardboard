@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 
 namespace Cardboard.Update.Api;
 
-file class ApiControllerSource(
+internal class ApiControllerSource(
 	IHttpClientFactory httpClientFactory,
 	IOptions<UpdateSourceConfiguration> options,
 	IOptions<CacheTimings> cacheTimingOptions,

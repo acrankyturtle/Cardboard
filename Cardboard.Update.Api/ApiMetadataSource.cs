@@ -12,7 +12,7 @@ using Microsoft.Extensions.Options;
 
 namespace Cardboard.Update.Api;
 
-file sealed class ApiMetadataSource(
+internal sealed class ApiMetadataSource(
 	IHttpClientFactory httpClientFactory,
 	IOptions<UpdateSourceConfiguration> options,
 	IOptions<MetadataCacheConfiguration> cacheOptions,

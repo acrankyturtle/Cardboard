@@ -11,7 +11,7 @@ using Microsoft.Extensions.Options;
 
 namespace Cardboard.Update.Api;
 
-file class ApiFirmwareSource(
+internal class ApiFirmwareSource(
 	IHttpClientFactory httpClientFactory,
 	IOptions<UpdateSourceConfiguration> options,
 	IOptions<CacheTimings> cacheTimingOptions,

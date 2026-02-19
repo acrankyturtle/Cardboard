@@ -7,7 +7,7 @@ using Microsoft.Extensions.Options;
 
 namespace Cardboard.Update.Api;
 
-file sealed class ApiDeviceIconSource(
+internal sealed class ApiDeviceIconSource(
 	IHttpClientFactory httpClientFactory,
 	IOptions<UpdateSourceConfiguration> options,
 	IOptions<DeviceIconCacheConfiguration> cacheOptions,
