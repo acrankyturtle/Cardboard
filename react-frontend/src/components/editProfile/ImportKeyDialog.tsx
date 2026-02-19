@@ -59,7 +59,7 @@ export function ImportKeyDialog() {
       conflicts,
       state.profile,
     );
-    dispatch({ type: "setProfile", profile: updatedProfile });
+    dispatch({ type: "setProfile", profile: updatedProfile, description: "Import key" });
     dispatch({ type: "setModal", modal: null });
   };
 

@@ -270,6 +270,7 @@ export function EditMacroDialog() {
             dispatch({
               type: "setProfile",
               profile: updated,
+              description: `${isNew ? "Create" : "Edit"} macro '${macro.name}'`,
             });
             dispatch({
               type: "setModal",

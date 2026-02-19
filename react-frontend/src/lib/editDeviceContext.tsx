@@ -20,10 +20,17 @@ export interface EditDevice {
   dispatch: (action: EditDeviceAction) => void;
 }
 
+export interface HistoryEntry {
+  profile: DeviceProfile;
+  description: string;
+}
+
 export interface EditDeviceState {
   device: DeviceDetails;
   profile: DeviceProfile;
   originalProfile: DeviceProfile;
+  undoStack: readonly HistoryEntry[];
+  redoStack: readonly HistoryEntry[];
   selectedKey: string | null;
   selectedLayer: string | null;
   selectedMacro: string | null;
@@ -46,11 +53,14 @@ export type EditDeviceAction = EditDeviceActionBase &
     | SetSelectedTagsAction
     | SetModalAction
     | CleanChangesAction
+    | UndoAction
+    | RedoAction
   );
 
 export interface SetProfileAction {
   type: "setProfile";
   profile: DeviceProfile;
+  description: string;
 }
 
 export interface SetSelectedKeyAction {
@@ -87,6 +97,14 @@ export interface CleanChangesAction {
   type: "cleanChanges";
 }
 
+export interface UndoAction {
+  type: "undo";
+}
+
+export interface RedoAction {
+  type: "redo";
+}
+
 interface ModalBaseOptions {
   type: string;
   show?: boolean;
@@ -115,16 +133,26 @@ type ModalOptions =
   | EditMacroModalOptions
   | ImportKeyModalOptions;
 
+const UNDO_STACK_LIMIT = 50;
+
 const editDeviceReducer = (
   state: EditDeviceState,
   action: EditDeviceAction,
 ): EditDeviceState => {
   switch (action.type) {
-    case "setProfile":
+    case "setProfile": {
+      const entry: HistoryEntry = {
+        profile: state.profile,
+        description: action.description,
+      };
+      const undoStack = [...state.undoStack, entry].slice(-UNDO_STACK_LIMIT);
       return {
         ...state,
         profile: action.profile,
+        undoStack,
+        redoStack: [],
       };
+    }
     case "setSelectedKey": {
       const key = action.keyId ? findKeyById(action.keyId, state) : null;
 
@@ -174,6 +202,32 @@ const editDeviceReducer = (
         ...state,
         modal: action.modal,
       };
+    case "undo": {
+      if (state.undoStack.length === 0) return state;
+      const entry = state.undoStack[state.undoStack.length - 1];
+      return {
+        ...state,
+        profile: entry.profile,
+        undoStack: state.undoStack.slice(0, -1),
+        redoStack: [
+          ...state.redoStack,
+          { profile: state.profile, description: entry.description },
+        ],
+      };
+    }
+    case "redo": {
+      if (state.redoStack.length === 0) return state;
+      const entry = state.redoStack[state.redoStack.length - 1];
+      return {
+        ...state,
+        profile: entry.profile,
+        redoStack: state.redoStack.slice(0, -1),
+        undoStack: [
+          ...state.undoStack,
+          { profile: state.profile, description: entry.description },
+        ],
+      };
+    }
     case "cleanChanges":
       return {
         ...state,
@@ -215,6 +269,8 @@ export function EditDeviceContextProvider({
     device,
     profile: initializedProfile,
     originalProfile: initializedProfile,
+    undoStack: [],
+    redoStack: [],
     selectedKey: null,
     selectedLayer: null,
     selectedMacro: null,

@@ -72,6 +72,7 @@ export function BindingsPanel({ className }: { className?: string }) {
         state.profile,
         [...bindings, state.selectedMacro],
       ),
+      description: "Add binding",
     });
 
     dispatch({
@@ -98,6 +99,7 @@ export function BindingsPanel({ className }: { className?: string }) {
           (_, i) => !state.selectedBinding.some((b) => b === i),
         ),
       ),
+      description: "Remove binding",
     });
     dispatch({
       type: "setSelectedBindings",
@@ -167,6 +169,7 @@ export function BindingsPanel({ className }: { className?: string }) {
                   state.profile,
                   bindings.filter((_, i) => !items.some((b) => b.index === i)),
                 ),
+                description: "Remove binding",
               });
               dispatch({
                 type: "setSelectedBindings",

@@ -145,7 +145,14 @@ export function MacrosPanel({ className }: { className?: string }) {
           ? state.profile.macros[index + 1].id
           : state.profile.macros[index - 1].id;
 
-    dispatch({ type: "setProfile", profile: result });
+    const macroName =
+      state.profile.macros.find((m) => m.id === state.selectedMacro)?.name ??
+      "macro";
+    dispatch({
+      type: "setProfile",
+      profile: result,
+      description: `Delete macro '${macroName}'`,
+    });
 
     if (newSelectedMacro !== null) {
       dispatch({ type: "setSelectedMacro", macroId: newSelectedMacro });

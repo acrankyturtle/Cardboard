@@ -114,6 +114,7 @@ export function EditTaggedLayerDialog() {
             dispatch({
               type: "setProfile",
               profile: updated,
+              description: "Edit layer",
             });
             dispatch({
               type: "setModal",

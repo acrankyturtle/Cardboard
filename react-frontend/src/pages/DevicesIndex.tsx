@@ -36,8 +36,14 @@ import {
 import { NavigationBlocker } from "../components/NavigationBlocker.tsx";
 import { EditableProfileName } from "../components/EditableProfileName.tsx";
 import { BootloaderFirmwareUpdateDialog } from "../components/BootloaderFirmwareUpdateDialog.tsx";
-import { ThickExportIcon, ThickImportIcon } from "../assets/sharedIcons.tsx";
+import {
+  RedoIcon,
+  ThickExportIcon,
+  ThickImportIcon,
+  UndoIcon,
+} from "../assets/sharedIcons.tsx";
 import { HelpLink } from "../components/HelpLink.tsx";
+import { Tooltip } from "../components/Tooltip.tsx";
 
 export function DevicesIndex({
   deviceId,
@@ -324,7 +330,46 @@ function EditDeviceView() {
     }
 
     setSaveError(null);
-    dispatch({ type: "setProfile", profile: data });
+    dispatch({
+      type: "setProfile",
+      profile: data,
+      description: "Import profile",
+    });
+  }, [dispatch]);
+
+  const canUndo = state.undoStack.length > 0;
+  const canRedo = state.redoStack.length > 0;
+  const undoDescription = canUndo
+    ? state.undoStack[state.undoStack.length - 1].description
+    : undefined;
+  const redoDescription = canRedo
+    ? state.redoStack[state.redoStack.length - 1].description
+    : undefined;
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      )
+        return;
+
+      if (e.ctrlKey && !e.altKey && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        dispatch({ type: "undo" });
+      } else if (
+        e.ctrlKey &&
+        !e.altKey &&
+        (e.key === "Z" || (e.key === "z" && e.shiftKey) || e.key === "y")
+      ) {
+        e.preventDefault();
+        dispatch({ type: "redo" });
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
   }, [dispatch]);
 
   const hasChanges = useMemo(
@@ -354,6 +399,7 @@ function EditDeviceView() {
               dispatch({
                 type: "setProfile",
                 profile: { ...state.profile, name: newName },
+                description: "Rename profile",
               })
             }
             onEditing={(v) => setIsEditingProfileName(v)}
@@ -371,6 +417,38 @@ function EditDeviceView() {
           Profile saved successfully
         </div>
         {saveError && <div className="text-lg text-red-500">{saveError}</div>}
+        <Tooltip
+          content={
+            undoDescription
+              ? `Undo: ${undoDescription} (ctrl+z)`
+              : "Nothing to undo"
+          }
+        >
+          <Button
+            className="px-2"
+            buttonStyle={{ variant: "ghost" }}
+            onClick={() => dispatch({ type: "undo" })}
+            disabled={!canUndo}
+          >
+            <UndoIcon className="-m-0.5 size-6" />
+          </Button>
+        </Tooltip>
+        <Tooltip
+          content={
+            redoDescription
+              ? `Redo: ${redoDescription} (ctrl+shift+z)`
+              : "Nothing to redo"
+          }
+        >
+          <Button
+            className="px-2"
+            buttonStyle={{ variant: "ghost" }}
+            onClick={() => dispatch({ type: "redo" })}
+            disabled={!canRedo}
+          >
+            <RedoIcon className="-m-0.5 size-6" />
+          </Button>
+        </Tooltip>
         <Button
           className="gap-1 px-4"
           buttonStyle={{ variant: "ghost" }}
