@@ -174,8 +174,9 @@ export function LayersPanel({ className }: { className?: string }) {
         <div className={headerBarIconClass}>
           <LayersIcon />
         </div>
-        <div className="grow">Layers</div>
+        <div>Layers</div>
         <HelpLink className="shrink-0" section="layers" />
+        <div className="grow" />
         <Tooltip content="Add layer">
           <button className={headerBarButtonClass} onClick={addLayer}>
             <AddIcon />

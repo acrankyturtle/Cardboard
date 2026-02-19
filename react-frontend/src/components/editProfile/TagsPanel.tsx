@@ -40,8 +40,9 @@ export function TagsPanel({ className }: { className?: string }) {
         <div className={headerBarIconClass}>
           <TagsIcon />
         </div>
-        <div className="grow">Tags</div>
+        <div>Tags</div>
         <HelpLink className="shrink-0" section="tags" />
+        <div className="grow" />
         <Tooltip content="Select all">
           <button className={headerBarButtonClass} onClick={selectAll}>
             <SelectAllIcon />

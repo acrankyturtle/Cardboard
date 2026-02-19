@@ -157,8 +157,9 @@ export function MacrosPanel({ className }: { className?: string }) {
         <div className="size-5">
           <MacroIcon />
         </div>
-        <div className="grow">Macros</div>
+        <div>Macros</div>
         <HelpLink section="macros" />
+        <div className="grow" />
         <Tooltip content="New macro">
           <button className={headerBarButtonClass} onClick={newMacro}>
             <AddIcon />

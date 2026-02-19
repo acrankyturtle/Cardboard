@@ -288,7 +288,7 @@ export function KeysPanel({
         <div className={headerBarIconClass}>
           <KeyboardIcon />
         </div>
-        <div className="grow">
+        <div>
           {showPhysicalKeys ? "Keys" : showVirtualKeys ? "Virtual Keys" : "???"}
         </div>
         <HelpLink className="shrink-0" section="keys-bindings" />
