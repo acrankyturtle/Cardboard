@@ -16,6 +16,12 @@ import {
 import { SelectAllIcon, DeselectIcon } from "./TagsPanel.tsx";
 import { Tooltip } from "../Tooltip.tsx";
 import { HelpLink } from "../HelpLink.tsx";
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuPopup,
+  ContextMenuItem,
+} from "../ContextMenu.tsx";
 
 export function BindingsPanel({ className }: { className?: string }) {
   const { state, dispatch } = useEditDeviceContext();
@@ -35,6 +41,69 @@ export function BindingsPanel({ className }: { className?: string }) {
         : { label: "(unknown)", value: m, index: i };
     }) ?? [];
 
+  const selectAll = () => {
+    dispatch({
+      type: "setSelectedBindings",
+      index: macros.map((m) => m.index),
+    });
+  };
+
+  const deselectAll = () => {
+    dispatch({ type: "setSelectedBindings", index: [] });
+  };
+
+  const addBinding = () => {
+    if (
+      !state.selectedKey ||
+      !state.selectedLayer ||
+      !state.selectedMacro ||
+      !bindings
+    )
+      return;
+
+    if (bindings.some((m) => m === state.selectedMacro)) return;
+
+    dispatch({
+      type: "setProfile",
+      profile: updateLayerBindings(
+        state.selectedKey,
+        state.selectedLayer,
+        state.profile,
+        [...bindings, state.selectedMacro],
+      ),
+    });
+
+    dispatch({
+      type: "setSelectedBindings",
+      index: [bindings.length],
+    });
+  };
+
+  const removeBinding = () => {
+    if (
+      !state.selectedKey ||
+      !state.selectedLayer ||
+      state.selectedBinding === null ||
+      !bindings
+    )
+      return;
+    dispatch({
+      type: "setProfile",
+      profile: updateLayerBindings(
+        state.selectedKey,
+        state.selectedLayer,
+        state.profile,
+        bindings.filter(
+          (_, i) => !state.selectedBinding.some((b) => b === i),
+        ),
+      ),
+    });
+    dispatch({
+      type: "setSelectedBindings",
+      index: [],
+    });
+  };
+
   return (
     <PanelContainer className={className}>
       <HeaderBar>
@@ -44,65 +113,43 @@ export function BindingsPanel({ className }: { className?: string }) {
         <div className="grow">Bindings</div>
         <HelpLink className="shrink-0" section="keys-bindings" />
         <Tooltip content="Select all">
-          <button
-            className={headerBarButtonClass}
-            onClick={() => {
-              dispatch({
-                type: "setSelectedBindings",
-                index: macros.map((m) => m.index),
-              });
-            }}
-          >
+          <button className={headerBarButtonClass} onClick={selectAll}>
             <SelectAllIcon />
           </button>
         </Tooltip>
         <Tooltip content="Deselect all">
-          <button
-            className={headerBarButtonClass}
-            onClick={() => {
-              dispatch({ type: "setSelectedBindings", index: [] });
-            }}
-          >
+          <button className={headerBarButtonClass} onClick={deselectAll}>
             <DeselectIcon />
           </button>
         </Tooltip>
         <Tooltip content="Add binding">
-          <button
-            className={headerBarButtonClass}
-            onClick={() => {
-              if (
-                !state.selectedKey ||
-                !state.selectedLayer ||
-                !state.selectedMacro ||
-                !bindings
-              )
-                return;
-
-              if (bindings.some((m) => m === state.selectedMacro)) return;
-
-              dispatch({
-                type: "setProfile",
-                profile: updateLayerBindings(
-                  state.selectedKey,
-                  state.selectedLayer,
-                  state.profile,
-                  [...bindings, state.selectedMacro],
-                ),
-              });
-
-              dispatch({
-                type: "setSelectedBindings",
-                index: [bindings.length],
-              });
-            }}
-          >
+          <button className={headerBarButtonClass} onClick={addBinding}>
             <AddIcon />
           </button>
         </Tooltip>
         <Tooltip content="Remove binding">
-          <button
-            className={headerBarButtonClass}
-            onClick={() => {
+          <button className={headerBarButtonClass} onClick={removeBinding}>
+            <RemoveIcon />
+          </button>
+        </Tooltip>
+      </HeaderBar>
+      <ContextMenu>
+        <ContextMenuTrigger>
+          <ListBox
+            className="grow"
+            items={macros}
+            isMultiSelect
+            selected={state.selectedBinding.map((i) => macros[i])}
+            setSelected={(v) =>
+              dispatch({
+                type: "setSelectedBindings",
+                index: v.map((item) => item.index),
+              })
+            }
+            onDoubleClick={(item) =>
+              dispatch({ type: "setSelectedMacro", macroId: item.value })
+            }
+            onDelete={(items) => {
               if (
                 !state.selectedKey ||
                 !state.selectedLayer ||
@@ -116,9 +163,7 @@ export function BindingsPanel({ className }: { className?: string }) {
                   state.selectedKey,
                   state.selectedLayer,
                   state.profile,
-                  bindings.filter(
-                    (_, i) => !state.selectedBinding.some((b) => b === i),
-                  ),
+                  bindings.filter((_, i) => !items.some((b) => b.index === i)),
                 ),
               });
               dispatch({
@@ -126,48 +171,51 @@ export function BindingsPanel({ className }: { className?: string }) {
                 index: [],
               });
             }}
+          />
+        </ContextMenuTrigger>
+        <ContextMenuPopup>
+          <ContextMenuItem onClick={selectAll}>
+            <span className="size-4 shrink-0">
+              <SelectAllIcon />
+            </span>
+            Select All
+          </ContextMenuItem>
+          <ContextMenuItem onClick={deselectAll}>
+            <span className="size-4 shrink-0">
+              <DeselectIcon />
+            </span>
+            Deselect All
+          </ContextMenuItem>
+          <ContextMenuItem
+            disabled={
+              !state.selectedKey ||
+              !state.selectedLayer ||
+              !state.selectedMacro ||
+              !bindings
+            }
+            onClick={addBinding}
           >
-            <RemoveIcon />
-          </button>
-        </Tooltip>
-      </HeaderBar>
-      <ListBox
-        className="grow"
-        items={macros}
-        isMultiSelect
-        selected={state.selectedBinding.map((i) => macros[i])}
-        setSelected={(v) =>
-          dispatch({
-            type: "setSelectedBindings",
-            index: v.map((item) => item.index),
-          })
-        }
-        onDoubleClick={(item) =>
-          dispatch({ type: "setSelectedMacro", macroId: item.value })
-        }
-        onDelete={(items) => {
-          if (
-            !state.selectedKey ||
-            !state.selectedLayer ||
-            state.selectedBinding === null ||
-            !bindings
-          )
-            return;
-          dispatch({
-            type: "setProfile",
-            profile: updateLayerBindings(
-              state.selectedKey,
-              state.selectedLayer,
-              state.profile,
-              bindings.filter((_, i) => !items.some((b) => b.index === i)),
-            ),
-          });
-          dispatch({
-            type: "setSelectedBindings",
-            index: [],
-          });
-        }}
-      />
+            <span className="size-4 shrink-0">
+              <AddIcon />
+            </span>
+            Add Binding
+          </ContextMenuItem>
+          <ContextMenuItem
+            disabled={
+              !state.selectedKey ||
+              !state.selectedLayer ||
+              !state.selectedBinding ||
+              state.selectedBinding.length < 1
+            }
+            onClick={removeBinding}
+          >
+            <span className="size-4 shrink-0">
+              <RemoveIcon />
+            </span>
+            Remove Binding
+          </ContextMenuItem>
+        </ContextMenuPopup>
+      </ContextMenu>
     </PanelContainer>
   );
 }

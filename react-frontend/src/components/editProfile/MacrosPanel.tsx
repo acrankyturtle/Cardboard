@@ -20,6 +20,12 @@ import { downloadJsonFile, pickAndReadJsonFile } from "../../lib/jsonFileUtils.t
 import { PanelContainer, HeaderBar, headerBarButtonClass } from "./panelShared.tsx";
 import { Tooltip } from "../Tooltip.tsx";
 import { HelpLink } from "../HelpLink.tsx";
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuPopup,
+  ContextMenuItem,
+} from "../ContextMenu.tsx";
 
 export function isValidMacro(data: unknown): data is DeviceMacro {
   if (!data || typeof data !== "object") return false;
@@ -55,6 +61,96 @@ export function MacrosPanel({ className }: { className?: string }) {
     return { selectedMacro, selectedMacroUsages };
   }, [state]);
 
+  const newMacro = () => {
+    dispatch({
+      type: "setModal",
+      modal: {
+        type: "editMacro",
+        show: true,
+        macro: {
+          id: crypto.randomUUID(),
+          name: "New Macro",
+          cutChannels: [],
+          startSequence: { actions: [] },
+          loopSequence: { actions: [] },
+          endSequence: { actions: [] },
+        },
+      },
+    });
+  };
+
+  const copyMacro = () => {
+    if (!state.selectedMacro) return;
+    const macro = findMacroById(state.selectedMacro, state.profile);
+    if (!macro) return;
+    const { id: _, ...macroWithoutId } = macro;
+    navigator.clipboard.writeText(
+      JSON.stringify(macroWithoutId, null, 2),
+    );
+  };
+
+  const pasteMacro = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      const data = JSON.parse(text);
+      if (!isValidMacro(data)) return;
+      dispatch({
+        type: "setModal",
+        modal: {
+          type: "editMacro",
+          show: true,
+          macro: { ...data, id: crypto.randomUUID() },
+        },
+      });
+    } catch {
+      // invalid clipboard content — silently ignore
+    }
+  };
+
+  const importMacro = async () => {
+    const data = await pickAndReadJsonFile<DeviceMacro>();
+    if (!data || !isValidMacro(data)) return;
+    dispatch({
+      type: "setModal",
+      modal: {
+        type: "editMacro",
+        show: true,
+        macro: { ...data, id: crypto.randomUUID() },
+      },
+    });
+  };
+
+  const exportMacro = () => {
+    if (!state.selectedMacro) return;
+    const macro = findMacroById(state.selectedMacro, state.profile);
+    if (!macro) return;
+    const { id: _, ...macroWithoutId } = macro;
+    downloadJsonFile(macroWithoutId, `${macro.name}-macro.json`);
+  };
+
+  const deleteMacroAction = () => {
+    if (!state.selectedMacro) return;
+    const result = deleteMacro(state.selectedMacro, state.profile);
+    if (result === "in use") return;
+
+    const index = state.profile.macros.findIndex(
+      (m) => m.id === state.selectedMacro,
+    );
+
+    const newSelectedMacro =
+      index < 0 || state.profile.macros.length === 1
+        ? null
+        : index + 1 < state.profile.macros.length
+          ? state.profile.macros[index + 1].id
+          : state.profile.macros[index - 1].id;
+
+    dispatch({ type: "setProfile", profile: result });
+
+    if (newSelectedMacro !== null) {
+      dispatch({ type: "setSelectedMacro", macroId: newSelectedMacro });
+    }
+  };
+
   return (
     <PanelContainer className={className}>
       <HeaderBar>
@@ -64,99 +160,33 @@ export function MacrosPanel({ className }: { className?: string }) {
         <div className="grow">Macros</div>
         <HelpLink section="macros" />
         <Tooltip content="New macro">
-          <button
-            className={headerBarButtonClass}
-            onClick={() => {
-              dispatch({
-                type: "setModal",
-                modal: {
-                  type: "editMacro",
-                  show: true,
-                  macro: {
-                    id: crypto.randomUUID(),
-                    name: "New Macro",
-                    cutChannels: [],
-                    startSequence: { actions: [] },
-                    loopSequence: { actions: [] },
-                    endSequence: { actions: [] },
-                  },
-                },
-              });
-            }}
-          >
+          <button className={headerBarButtonClass} onClick={newMacro}>
             <AddIcon />
           </button>
         </Tooltip>
         <Tooltip content="Copy">
           <button
             className={headerBarButtonClass}
-            onClick={() => {
-              if (!state.selectedMacro) return;
-              const macro = findMacroById(state.selectedMacro, state.profile);
-              if (!macro) return;
-              const { id: _, ...macroWithoutId } = macro;
-              navigator.clipboard.writeText(
-                JSON.stringify(macroWithoutId, null, 2),
-              );
-            }}
+            onClick={copyMacro}
             disabled={state.selectedMacro === null}
           >
             <CopyIcon />
           </button>
         </Tooltip>
         <Tooltip content="Paste">
-          <button
-            className={headerBarButtonClass}
-            onClick={async () => {
-              try {
-                const text = await navigator.clipboard.readText();
-                const data = JSON.parse(text);
-                if (!isValidMacro(data)) return;
-                dispatch({
-                  type: "setModal",
-                  modal: {
-                    type: "editMacro",
-                    show: true,
-                    macro: { ...data, id: crypto.randomUUID() },
-                  },
-                });
-              } catch {
-                // invalid clipboard content — silently ignore
-              }
-            }}
-          >
+          <button className={headerBarButtonClass} onClick={pasteMacro}>
             <PasteIcon />
           </button>
         </Tooltip>
         <Tooltip content="Import">
-          <button
-            className={headerBarButtonClass}
-            onClick={async () => {
-              const data = await pickAndReadJsonFile<DeviceMacro>();
-              if (!data || !isValidMacro(data)) return;
-              dispatch({
-                type: "setModal",
-                modal: {
-                  type: "editMacro",
-                  show: true,
-                  macro: { ...data, id: crypto.randomUUID() },
-                },
-              });
-            }}
-          >
+          <button className={headerBarButtonClass} onClick={importMacro}>
             <ImportIcon />
           </button>
         </Tooltip>
         <Tooltip content="Export">
           <button
             className={headerBarButtonClass}
-            onClick={() => {
-              if (!state.selectedMacro) return;
-              const macro = findMacroById(state.selectedMacro, state.profile);
-              if (!macro) return;
-              const { id: _, ...macroWithoutId } = macro;
-              downloadJsonFile(macroWithoutId, `${macro.name}-macro.json`);
-            }}
+            onClick={exportMacro}
             disabled={state.selectedMacro === null}
           >
             <ExportIcon />
@@ -165,57 +195,74 @@ export function MacrosPanel({ className }: { className?: string }) {
         <Tooltip content="Delete macro">
           <button
             className={headerBarButtonClass}
-            onClick={() => {
-              if (!state.selectedMacro) return;
-              const result = deleteMacro(state.selectedMacro, state.profile);
-              if (result === "in use") return;
-
-              // get macro id i+1 where i is the index of the deleted macro
-              const index = state.profile.macros.findIndex(
-                (m) => m.id === state.selectedMacro,
-              );
-
-              const newSelectedMacro =
-                index < 0 || state.profile.macros.length === 1
-                  ? null
-                  : index + 1 < state.profile.macros.length
-                    ? state.profile.macros[index + 1].id
-                    : state.profile.macros[index - 1].id;
-
-              dispatch({ type: "setProfile", profile: result });
-
-              if (newSelectedMacro !== null) {
-                dispatch({ type: "setSelectedMacro", macroId: newSelectedMacro });
-              }
-            }}
+            onClick={deleteMacroAction}
             disabled={selectedMacroUsages !== 0}
           >
             <RemoveIcon />
           </button>
         </Tooltip>
       </HeaderBar>
-      <ListBox
-        className="grow"
-        variant="blue"
-        renderItem={(item) => <MacroListItem item={item} />}
-        items={macros}
-        selected={selectedMacro}
-        setSelected={(v) =>
-          dispatch({ type: "setSelectedMacro", macroId: v.value })
-        }
-        onDoubleClick={(item) => {
-          const macro = findMacroById(item.value, state.profile);
-          if (!macro) return;
-          dispatch({
-            type: "setModal",
-            modal: {
-              type: "editMacro",
-              show: true,
-              macro,
-            },
-          });
-        }}
-      />
+      <ContextMenu>
+        <ContextMenuTrigger>
+          <ListBox
+            className="grow"
+            variant="blue"
+            renderItem={(item) => <MacroListItem item={item} />}
+            items={macros}
+            selected={selectedMacro}
+            setSelected={(v) =>
+              dispatch({ type: "setSelectedMacro", macroId: v.value })
+            }
+            onDoubleClick={(item) => {
+              const macro = findMacroById(item.value, state.profile);
+              if (!macro) return;
+              dispatch({
+                type: "setModal",
+                modal: {
+                  type: "editMacro",
+                  show: true,
+                  macro,
+                },
+              });
+            }}
+          />
+        </ContextMenuTrigger>
+        <ContextMenuPopup>
+          <ContextMenuItem onClick={newMacro}>
+            <span className="size-4 shrink-0"><AddIcon /></span>
+            New Macro
+          </ContextMenuItem>
+          <ContextMenuItem
+            disabled={state.selectedMacro === null}
+            onClick={copyMacro}
+          >
+            <span className="size-4 shrink-0"><CopyIcon /></span>
+            Copy
+          </ContextMenuItem>
+          <ContextMenuItem onClick={pasteMacro}>
+            <span className="size-4 shrink-0"><PasteIcon /></span>
+            Paste
+          </ContextMenuItem>
+          <ContextMenuItem onClick={importMacro}>
+            <span className="size-4 shrink-0"><ImportIcon /></span>
+            Import
+          </ContextMenuItem>
+          <ContextMenuItem
+            disabled={state.selectedMacro === null}
+            onClick={exportMacro}
+          >
+            <span className="size-4 shrink-0"><ExportIcon /></span>
+            Export
+          </ContextMenuItem>
+          <ContextMenuItem
+            disabled={selectedMacroUsages !== 0}
+            onClick={deleteMacroAction}
+          >
+            <span className="size-4 shrink-0"><RemoveIcon /></span>
+            Delete Macro
+          </ContextMenuItem>
+        </ContextMenuPopup>
+      </ContextMenu>
     </PanelContainer>
   );
 }

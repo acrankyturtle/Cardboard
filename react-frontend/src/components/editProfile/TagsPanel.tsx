@@ -12,6 +12,12 @@ import {
 } from "./panelShared.tsx";
 import { Tooltip } from "../Tooltip.tsx";
 import { HelpLink } from "../HelpLink.tsx";
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuPopup,
+  ContextMenuItem,
+} from "../ContextMenu.tsx";
 
 export function TagsPanel({ className }: { className?: string }) {
   const { state, dispatch } = useEditDeviceContext();
@@ -25,6 +31,9 @@ export function TagsPanel({ className }: { className?: string }) {
     return state.selectedTags.map((t) => ({ label: t, value: t }));
   }, [state.selectedTags]);
 
+  const selectAll = () => dispatch({ type: "setSelectedTags", tags });
+  const deselectAll = () => dispatch({ type: "setSelectedTags", tags: [] });
+
   return (
     <PanelContainer className={className}>
       <HeaderBar>
@@ -34,42 +43,54 @@ export function TagsPanel({ className }: { className?: string }) {
         <div className="grow">Tags</div>
         <HelpLink className="shrink-0" section="tags" />
         <Tooltip content="Select all">
-          <button
-            className={headerBarButtonClass}
-            onClick={() => {
-              dispatch({ type: "setSelectedTags", tags });
-            }}
-          >
+          <button className={headerBarButtonClass} onClick={selectAll}>
             <SelectAllIcon />
           </button>
         </Tooltip>
         <Tooltip content="Deselect all">
-          <button
-            className={headerBarButtonClass}
-            onClick={() => {
-              dispatch({ type: "setSelectedTags", tags: [] });
-            }}
-          >
+          <button className={headerBarButtonClass} onClick={deselectAll}>
             <DeselectIcon />
           </button>
         </Tooltip>
       </HeaderBar>
-      <ListBox
-        items={tagItems}
-        selected={selectedTags}
-        setSelected={(items) =>
-          dispatch({ type: "setSelectedTags", tags: items.map((i) => i.value) })
-        }
-        variant={"yellow"}
-        isMultiSelect
-        renderItem={(item) => {
-          return (
-            <div className="flex size-full">
-              <div className="grow">{item.label}</div>
-            </div>
-          );
-        }}
-      />
+      <ContextMenu>
+        <ContextMenuTrigger>
+          <ListBox
+            className="grow"
+            items={tagItems}
+            selected={selectedTags}
+            setSelected={(items) =>
+              dispatch({
+                type: "setSelectedTags",
+                tags: items.map((i) => i.value),
+              })
+            }
+            variant={"yellow"}
+            isMultiSelect
+            renderItem={(item) => {
+              return (
+                <div className="flex size-full">
+                  <div className="grow">{item.label}</div>
+                </div>
+              );
+            }}
+          />
+        </ContextMenuTrigger>
+        <ContextMenuPopup>
+          <ContextMenuItem onClick={selectAll}>
+            <span className="size-4 shrink-0">
+              <SelectAllIcon />
+            </span>
+            Select All
+          </ContextMenuItem>
+          <ContextMenuItem onClick={deselectAll}>
+            <span className="size-4 shrink-0">
+              <DeselectIcon />
+            </span>
+            Deselect All
+          </ContextMenuItem>
+        </ContextMenuPopup>
+      </ContextMenu>
     </PanelContainer>
   );
 }

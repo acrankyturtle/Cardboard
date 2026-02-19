@@ -144,6 +144,15 @@ export function ListBox<TItem extends ListBoxItem>({
                   setSelected?.(item);
                 }
               }}
+              onContextMenu={() => {
+                if (isMultiSelect) {
+                  if (!isSelected) {
+                    setSelected?.([item]);
+                  }
+                } else {
+                  setSelected?.(item);
+                }
+              }}
               onDoubleClick={() => onDoubleClick?.(item)}
               className={clsx(
                 "cursor-pointer px-4 py-2 transition-colors duration-150 select-none",

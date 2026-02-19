@@ -43,6 +43,12 @@ import {
   isValidKeyExport,
   KeyExport,
 } from "../../lib/keyImportExport.ts";
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuPopup,
+  ContextMenuItem,
+} from "../ContextMenu.tsx";
 
 interface LayerListBoxItem extends ListBoxItem {
   layer: TaggedDeviceLayer | DeviceKeyLayer;
@@ -101,6 +107,119 @@ export function LayersPanel({ className }: { className?: string }) {
     [state],
   );
 
+  const addLayer = () => {
+    if (!state.selectedKey) return;
+    const newLayer = newTaggedLayer();
+    const updated = insertLayer(
+      state.selectedKey,
+      state.profile,
+      state.selectedLayer,
+      newLayer,
+    );
+    dispatch({ type: "setProfile", profile: updated });
+    dispatch({
+      type: "setSelectedLayer",
+      layerId: newLayer.layer.id,
+    });
+  };
+
+  const deleteLayer = () => {
+    if (
+      !state.selectedKey ||
+      !state.selectedLayer ||
+      !selectedLayer ||
+      isSelectedLayerDefaultLayer === undefined
+    )
+      return;
+
+    if (isSelectedLayerDefaultLayer) return;
+
+    const newSelectedIndex = Math.min(
+      Math.max(
+        layers.findIndex((l) => l.value === state.selectedLayer) + 1,
+        0,
+      ),
+      layers.length - 1,
+    );
+    const newSelected = layers[newSelectedIndex];
+    const updated = removeLayer(
+      state.selectedKey,
+      state.profile,
+      state.selectedLayer,
+    );
+    dispatch({ type: "setProfile", profile: updated });
+    dispatch({
+      type: "setSelectedLayer",
+      layerId: newSelected.value,
+    });
+  };
+
+  const moveUp = () => {
+    const selectedLayer = state.selectedLayer;
+    if (!state.selectedKey || !selectedLayer) return;
+    const updatedProfile = updateKeyLayers(
+      state.selectedKey,
+      state.profile,
+      (layers) => shiftLayer(selectedLayer, layers, -1),
+    );
+    dispatch({ type: "setProfile", profile: updatedProfile });
+    dispatch({
+      type: "setSelectedLayer",
+      layerId: state.selectedLayer,
+    });
+  };
+
+  const moveDown = () => {
+    const selectedLayer = state.selectedLayer;
+    if (!state.selectedKey || !selectedLayer) return;
+    const updatedProfile = updateKeyLayers(
+      state.selectedKey,
+      state.profile,
+      (layers) => shiftLayer(selectedLayer, layers, 1),
+    );
+    dispatch({ type: "setProfile", profile: updatedProfile });
+    dispatch({
+      type: "setSelectedLayer",
+      layerId: state.selectedLayer,
+    });
+  };
+
+  const importKey = async () => {
+    if (!state.selectedKey) return;
+    const data = await pickAndReadJsonFile<KeyExport>();
+    if (!data || !isValidKeyExport(data)) return;
+    const conflicts = detectConflicts(data, state.profile);
+    if (conflicts.length === 0) {
+      const updatedProfile = applyKeyImport(
+        state.selectedKey,
+        data,
+        [],
+        state.profile,
+      );
+      dispatch({ type: "setProfile", profile: updatedProfile });
+    } else {
+      dispatch({
+        type: "setModal",
+        modal: {
+          type: "importKey",
+          show: true,
+          keyExport: data,
+          conflicts,
+        },
+      });
+    }
+  };
+
+  const exportKey = () => {
+    if (!state.selectedKey) return;
+    const keyExport = buildKeyExport(state.selectedKey, state);
+    if (!keyExport) return;
+    const keyName =
+      state.device.keyMap.find((k) => k.keyId === state.selectedKey)
+        ?.name ?? "key";
+    downloadJsonFile(keyExport, `${keyName}-key.json`);
+  };
+
   return (
     <PanelContainer className={className}>
       <HeaderBar>
@@ -110,104 +229,26 @@ export function LayersPanel({ className }: { className?: string }) {
         <div className="grow">Layers</div>
         <HelpLink className="shrink-0" section="layers" />
         <Tooltip content="Add layer">
-          <button
-            className={headerBarButtonClass}
-            onClick={() => {
-              if (!state.selectedKey) return;
-              const newLayer = newTaggedLayer();
-              const updated = insertLayer(
-                state.selectedKey,
-                state.profile,
-                state.selectedLayer,
-                newLayer,
-              );
-              dispatch({ type: "setProfile", profile: updated });
-              dispatch({
-                type: "setSelectedLayer",
-                layerId: newLayer.layer.id,
-              });
-            }}
-          >
+          <button className={headerBarButtonClass} onClick={addLayer}>
             <AddIcon />
           </button>
         </Tooltip>
         <Tooltip content="Delete layer">
           <button
             className={headerBarButtonClass}
-            onClick={() => {
-              if (
-                !state.selectedKey ||
-                !state.selectedLayer ||
-                !selectedLayer ||
-                isSelectedLayerDefaultLayer === undefined
-              )
-                return;
-
-              if (isSelectedLayerDefaultLayer) return;
-
-              const newSelectedIndex = Math.min(
-                Math.max(
-                  layers.findIndex((l) => l.value === state.selectedLayer) + 1,
-                  0,
-                ),
-                layers.length - 1,
-              );
-              const newSelected = layers[newSelectedIndex];
-              const updated = removeLayer(
-                state.selectedKey,
-                state.profile,
-                state.selectedLayer,
-              );
-              dispatch({ type: "setProfile", profile: updated });
-              dispatch({
-                type: "setSelectedLayer",
-                layerId: newSelected.value,
-              });
-            }}
+            onClick={deleteLayer}
             disabled={isSelectedLayerDefaultLayer}
           >
             <RemoveIcon />
           </button>
         </Tooltip>
         <Tooltip content="Move up">
-          <button
-            className={headerBarButtonClass}
-            onClick={() => {
-              const selectedLayer = state.selectedLayer;
-              if (!state.selectedKey || !selectedLayer) return;
-              const updatedProfile = updateKeyLayers(
-                state.selectedKey,
-                state.profile,
-                (layers) => shiftLayer(selectedLayer, layers, -1),
-              );
-              dispatch({ type: "setProfile", profile: updatedProfile });
-              dispatch({
-                type: "setSelectedLayer",
-                layerId: state.selectedLayer,
-              });
-            }}
-          >
+          <button className={headerBarButtonClass} onClick={moveUp}>
             <MoveUpIcon />
           </button>
         </Tooltip>
         <Tooltip content="Move down">
-          <button
-            className={headerBarButtonClass}
-            onClick={() => {
-              const selectedLayer = state.selectedLayer;
-              if (!state.selectedKey || !selectedLayer) return;
-              const updatedProfile = updateKeyLayers(
-                state.selectedKey,
-                state.profile,
-                (layers) => shiftLayer(selectedLayer, layers, 1),
-              );
-              dispatch({ type: "setProfile", profile: updatedProfile });
-              dispatch({
-                type: "setSelectedLayer",
-                layerId: state.selectedLayer,
-              });
-            }}
-          >
+          <button className={headerBarButtonClass} onClick={moveDown}>
             <MoveDownIcon />
           </button>
         </Tooltip>
@@ -215,31 +256,7 @@ export function LayersPanel({ className }: { className?: string }) {
           <button
             className={headerBarButtonClass}
             disabled={!state.selectedKey}
-            onClick={async () => {
-              if (!state.selectedKey) return;
-              const data = await pickAndReadJsonFile<KeyExport>();
-              if (!data || !isValidKeyExport(data)) return;
-              const conflicts = detectConflicts(data, state.profile);
-              if (conflicts.length === 0) {
-                const updatedProfile = applyKeyImport(
-                  state.selectedKey,
-                  data,
-                  [],
-                  state.profile,
-                );
-                dispatch({ type: "setProfile", profile: updatedProfile });
-              } else {
-                dispatch({
-                  type: "setModal",
-                  modal: {
-                    type: "importKey",
-                    show: true,
-                    keyExport: data,
-                    conflicts,
-                  },
-                });
-              }
-            }}
+            onClick={importKey}
           >
             <ImportIcon />
           </button>
@@ -248,43 +265,84 @@ export function LayersPanel({ className }: { className?: string }) {
           <button
             className={headerBarButtonClass}
             disabled={!state.selectedKey}
-            onClick={() => {
-              if (!state.selectedKey) return;
-              const keyExport = buildKeyExport(state.selectedKey, state);
-              if (!keyExport) return;
-              const keyName =
-                state.device.keyMap.find((k) => k.keyId === state.selectedKey)
-                  ?.name ?? "key";
-              downloadJsonFile(keyExport, `${keyName}-key.json`);
-            }}
+            onClick={exportKey}
           >
             <ExportIcon />
           </button>
         </Tooltip>
       </HeaderBar>
-      <ListBox
-        variant="red"
-        items={layers}
-        selected={selectedLayer}
-        setSelected={(v) =>
-          dispatch({ type: "setSelectedLayer", layerId: v.value })
-        }
-        onDoubleClick={(item) => {
-          if ("layer" in item.layer && state.selectedKey) {
-            dispatch({
-              type: "setModal",
-              modal: {
-                type: "editTaggedLayer",
-                show: true,
-                keyId: state.selectedKey,
-                layerId: item.layer.layer.id,
-              },
-            });
-          } else {
-            // todo: edit default layer
-          }
-        }}
-      />
+      <ContextMenu>
+        <ContextMenuTrigger>
+          <ListBox
+            className="grow"
+            variant="red"
+            items={layers}
+            selected={selectedLayer}
+            setSelected={(v) =>
+              dispatch({ type: "setSelectedLayer", layerId: v.value })
+            }
+            onDoubleClick={(item) => {
+              if ("layer" in item.layer && state.selectedKey) {
+                dispatch({
+                  type: "setModal",
+                  modal: {
+                    type: "editTaggedLayer",
+                    show: true,
+                    keyId: state.selectedKey,
+                    layerId: item.layer.layer.id,
+                  },
+                });
+              } else {
+                // todo: edit default layer
+              }
+            }}
+          />
+        </ContextMenuTrigger>
+        <ContextMenuPopup>
+          <ContextMenuItem onClick={addLayer}>
+            <span className="size-4 shrink-0">
+              <AddIcon />
+            </span>
+            Add Layer
+          </ContextMenuItem>
+          <ContextMenuItem
+            disabled={
+              isSelectedLayerDefaultLayer === true ||
+              isSelectedLayerDefaultLayer === undefined
+            }
+            onClick={deleteLayer}
+          >
+            <span className="size-4 shrink-0">
+              <RemoveIcon />
+            </span>
+            Delete Layer
+          </ContextMenuItem>
+          <ContextMenuItem onClick={moveUp}>
+            <span className="size-4 shrink-0">
+              <MoveUpIcon />
+            </span>
+            Move Up
+          </ContextMenuItem>
+          <ContextMenuItem onClick={moveDown}>
+            <span className="size-4 shrink-0">
+              <MoveDownIcon />
+            </span>
+            Move Down
+          </ContextMenuItem>
+          <ContextMenuItem disabled={!state.selectedKey} onClick={importKey}>
+            <span className="size-4 shrink-0">
+              <ImportIcon />
+            </span>
+            Import Key
+          </ContextMenuItem>
+          <ContextMenuItem disabled={!state.selectedKey} onClick={exportKey}>
+            <span className="size-4 shrink-0">
+              <ExportIcon />
+            </span>
+            Export Key
+          </ContextMenuItem>
+        </ContextMenuPopup>
+      </ContextMenu>
     </PanelContainer>
   );
 }
