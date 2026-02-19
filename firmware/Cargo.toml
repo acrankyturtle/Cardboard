@@ -1,7 +1,7 @@
 [package]
 edition = "2021"
 name = "cardboard"
-version = "0.1.0"
+version = "1.0.0"
 
 [[bin]]
 name = "ck1_30"

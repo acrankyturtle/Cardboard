@@ -187,7 +187,11 @@ async fn main(spawner: Spawner) -> () {
 		manufacturer: "cranky",
 		r#type: DeviceTypeId::new(Uuid::from_u128(0x0407db48_ca74_5783_9b11_489637b7c615)),
 		variant: config::VARIANT,
-		version: DeviceVersion::new(1, 0, 0),
+		version: DeviceVersion::new(
+			env!("CARGO_PKG_VERSION_MAJOR").parse().unwrap_or(0),
+			env!("CARGO_PKG_VERSION_MINOR").parse().unwrap_or(0),
+			env!("CARGO_PKG_VERSION_PATCH").parse().unwrap_or(0),
+		),
 		commands: cmds.iter().map(|cmd| cmd.info()).collect(),
 	});
 
