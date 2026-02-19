@@ -15,13 +15,28 @@ import {
   useEditDeviceContext,
 } from "../../lib/editDeviceContext.tsx";
 import { KeyRenderer } from "../KeyRenderer.tsx";
-import { KeyboardIcon } from "../../assets/sharedIcons.tsx";
+import {
+  ExportIcon,
+  ImportIcon,
+  KeyboardIcon,
+} from "../../assets/sharedIcons.tsx";
 import {
   PanelContainer,
   HeaderBar,
   headerBarIconClass,
+  headerBarButtonClass,
 } from "./panelShared.tsx";
+import { Tooltip } from "../Tooltip.tsx";
 import { HelpLink } from "../HelpLink.tsx";
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuPopup,
+} from "../ContextMenu.tsx";
+import {
+  useKeyImportExport,
+  KeyImportExportMenuItems,
+} from "./keyImportExportMenu.tsx";
 
 export function KeyViewPanel({ className }: { className?: string }) {
   const { state } = useEditDeviceContext();
@@ -265,6 +280,8 @@ export function KeysPanel({
     [state],
   );
 
+  const { importKey, exportKey, hasSelectedKey } = useKeyImportExport();
+
   return (
     <PanelContainer className={className}>
       <HeaderBar>
@@ -275,25 +292,51 @@ export function KeysPanel({
           {showPhysicalKeys ? "Keys" : showVirtualKeys ? "Virtual Keys" : "???"}
         </div>
         <HelpLink className="shrink-0" section="keys-bindings" />
+        <div className="grow" />
+        <Tooltip content="Import key">
+          <button
+            className={headerBarButtonClass}
+            disabled={!hasSelectedKey}
+            onClick={importKey}
+          >
+            <ImportIcon />
+          </button>
+        </Tooltip>
+        <Tooltip content="Export key">
+          <button
+            className={headerBarButtonClass}
+            disabled={!hasSelectedKey}
+            onClick={exportKey}
+          >
+            <ExportIcon />
+          </button>
+        </Tooltip>
       </HeaderBar>
-      <ListBox
-        className="grow"
-        variant="green"
-        items={keys}
-        selected={selectedKey}
-        setSelected={(v) =>
-          dispatch({ type: "setSelectedKey", keyId: v.value })
-        }
-        renderItem={(item) => {
-          const layerCount = getLayerCount(item.value, state.profile);
-          return (
-            <div className="flex size-full">
-              <div className="grow">{item.label}</div>
-              {layerCount > 0 && <div>{layerCount}</div>}
-            </div>
-          );
-        }}
-      />
+      <ContextMenu>
+        <ContextMenuTrigger>
+          <ListBox
+            className="grow"
+            variant="green"
+            items={keys}
+            selected={selectedKey}
+            setSelected={(v) =>
+              dispatch({ type: "setSelectedKey", keyId: v.value })
+            }
+            renderItem={(item) => {
+              const layerCount = getLayerCount(item.value, state.profile);
+              return (
+                <div className="flex size-full">
+                  <div className="grow">{item.label}</div>
+                  {layerCount > 0 && <div>{layerCount}</div>}
+                </div>
+              );
+            }}
+          />
+        </ContextMenuTrigger>
+        <ContextMenuPopup>
+          <KeyImportExportMenuItems />
+        </ContextMenuPopup>
+      </ContextMenu>
     </PanelContainer>
   );
 }

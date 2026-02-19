@@ -18,12 +18,7 @@ import {
   updateKeyLayers,
   useEditDeviceContext,
 } from "../../lib/editDeviceContext.tsx";
-import {
-  AddIcon,
-  ExportIcon,
-  ImportIcon,
-  RemoveIcon,
-} from "../../assets/sharedIcons.tsx";
+import { AddIcon, RemoveIcon } from "../../assets/sharedIcons.tsx";
 import {
   PanelContainer,
   HeaderBar,
@@ -32,17 +27,6 @@ import {
 } from "./panelShared.tsx";
 import { Tooltip } from "../Tooltip.tsx";
 import { HelpLink } from "../HelpLink.tsx";
-import {
-  downloadJsonFile,
-  pickAndReadJsonFile,
-} from "../../lib/jsonFileUtils.ts";
-import {
-  applyKeyImport,
-  buildKeyExport,
-  detectConflicts,
-  isValidKeyExport,
-  KeyExport,
-} from "../../lib/keyImportExport.ts";
 import {
   ContextMenu,
   ContextMenuTrigger,
@@ -184,42 +168,6 @@ export function LayersPanel({ className }: { className?: string }) {
     });
   };
 
-  const importKey = async () => {
-    if (!state.selectedKey) return;
-    const data = await pickAndReadJsonFile<KeyExport>();
-    if (!data || !isValidKeyExport(data)) return;
-    const conflicts = detectConflicts(data, state.profile);
-    if (conflicts.length === 0) {
-      const updatedProfile = applyKeyImport(
-        state.selectedKey,
-        data,
-        [],
-        state.profile,
-      );
-      dispatch({ type: "setProfile", profile: updatedProfile });
-    } else {
-      dispatch({
-        type: "setModal",
-        modal: {
-          type: "importKey",
-          show: true,
-          keyExport: data,
-          conflicts,
-        },
-      });
-    }
-  };
-
-  const exportKey = () => {
-    if (!state.selectedKey) return;
-    const keyExport = buildKeyExport(state.selectedKey, state);
-    if (!keyExport) return;
-    const keyName =
-      state.device.keyMap.find((k) => k.keyId === state.selectedKey)
-        ?.name ?? "key";
-    downloadJsonFile(keyExport, `${keyName}-key.json`);
-  };
-
   return (
     <PanelContainer className={className}>
       <HeaderBar>
@@ -250,24 +198,6 @@ export function LayersPanel({ className }: { className?: string }) {
         <Tooltip content="Move down">
           <button className={headerBarButtonClass} onClick={moveDown}>
             <MoveDownIcon />
-          </button>
-        </Tooltip>
-        <Tooltip content="Import key">
-          <button
-            className={headerBarButtonClass}
-            disabled={!state.selectedKey}
-            onClick={importKey}
-          >
-            <ImportIcon />
-          </button>
-        </Tooltip>
-        <Tooltip content="Export key">
-          <button
-            className={headerBarButtonClass}
-            disabled={!state.selectedKey}
-            onClick={exportKey}
-          >
-            <ExportIcon />
           </button>
         </Tooltip>
       </HeaderBar>
@@ -328,18 +258,6 @@ export function LayersPanel({ className }: { className?: string }) {
               <MoveDownIcon />
             </span>
             Move Down
-          </ContextMenuItem>
-          <ContextMenuItem disabled={!state.selectedKey} onClick={importKey}>
-            <span className="size-4 shrink-0">
-              <ImportIcon />
-            </span>
-            Import Key
-          </ContextMenuItem>
-          <ContextMenuItem disabled={!state.selectedKey} onClick={exportKey}>
-            <span className="size-4 shrink-0">
-              <ExportIcon />
-            </span>
-            Export Key
           </ContextMenuItem>
         </ContextMenuPopup>
       </ContextMenu>
