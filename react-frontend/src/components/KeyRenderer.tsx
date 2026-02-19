@@ -6,6 +6,7 @@ export function KeyRenderer({
   className,
   keys,
   renderKey,
+  ...props
 }: {
   className?: string;
   keys: readonly KeyInfo[];
@@ -14,7 +15,7 @@ export function KeyRenderer({
     keyClassName: string,
     style: CSSProperties,
   ) => ReactNode;
-}) {
+} & React.HTMLAttributes<HTMLDivElement>) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [keyOffset, setKeyOffset] = useState({ x: 0, y: 0 });
@@ -79,6 +80,7 @@ export function KeyRenderer({
     <div
       ref={containerRef}
       className={clsx("relative grow overflow-hidden", className)}
+      {...props}
     >
       {keys.map((key) => {
         const style: CSSProperties = {

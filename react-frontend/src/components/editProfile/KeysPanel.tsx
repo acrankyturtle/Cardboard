@@ -57,6 +57,9 @@ export function KeyViewPanel({ className }: { className?: string }) {
           />
         );
       }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+      }}
     />
   );
 }
@@ -104,45 +107,58 @@ export function Key({
       className={clsx(keyClassName, { "p-0.5": !compact, "p-1": compact })}
       style={keyStyle}
     >
-      <button
-        className={clsx("group relative size-full cursor-pointer select-none", {
-          "p-[3px]": !compact,
-        })}
-        onClick={() => dispatch({ type: "setSelectedKey", keyId: keyId })}
-      >
-        <div
-          className={clsx(
-            "inline-flex size-full items-center justify-center rounded-lg",
-            keyColorToClassName(keyColor, isSelected),
-            {
-              "outline-lime-500": isSelected,
-              "outline-3 outline-offset-3": isSelected && !compact,
-              "outline-2 outline-offset-3": isSelected && compact,
-            },
-          )}
-        >
-          <div
-            className={clsx("line-clamp-3 overflow-hidden text-ellipsis", {
-              "text-sm": compact,
-            })}
+      <ContextMenu>
+        <ContextMenuTrigger>
+          <button
+            className={clsx(
+              "group relative size-full cursor-pointer select-none",
+              {
+                "p-[3px]": !compact,
+              },
+            )}
+            onClick={() => dispatch({ type: "setSelectedKey", keyId: keyId })}
+            onContextMenu={() =>
+              dispatch({ type: "setSelectedKey", keyId: keyId })
+            }
           >
-            {keyLabel}
-          </div>
-          <div
-            className={clsx("absolute", {
-              "text-stone-50": isSelected,
-              "text-stone-50/50 group-hover:text-stone-50": !isSelected,
-              "top-1.5 left-1.5 text-xs": !compact,
-              "top-0 left-1 text-xs": compact,
-            })}
-          >
-            {keyName}
-          </div>
-          <div className="absolute top-1.5 right-2 text-xs">
-            {layerCount > 0 && layerCount}
-          </div>
-        </div>
-      </button>
+            <div
+              className={clsx(
+                "inline-flex size-full items-center justify-center rounded-lg",
+                keyColorToClassName(keyColor, isSelected),
+                {
+                  "outline-lime-500": isSelected,
+                  "outline-3 outline-offset-3": isSelected && !compact,
+                  "outline-2 outline-offset-3": isSelected && compact,
+                },
+              )}
+            >
+              <div
+                className={clsx("line-clamp-3 overflow-hidden text-ellipsis", {
+                  "text-sm": compact,
+                })}
+              >
+                {keyLabel}
+              </div>
+              <div
+                className={clsx("absolute", {
+                  "text-stone-50": isSelected,
+                  "text-stone-50/50 group-hover:text-stone-50": !isSelected,
+                  "top-1.5 left-1.5 text-xs": !compact,
+                  "top-0 left-1 text-xs": compact,
+                })}
+              >
+                {keyName}
+              </div>
+              <div className="absolute top-1.5 right-2 text-xs">
+                {layerCount > 0 && layerCount}
+              </div>
+            </div>
+          </button>
+        </ContextMenuTrigger>
+        <ContextMenuPopup>
+          <KeyImportExportMenuItems />
+        </ContextMenuPopup>
+      </ContextMenu>
     </div>
   );
 }
