@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router";
+import { useEffect } from "react";
+import { useBlocker } from "react-router";
 import {
   Dialog,
   DialogBody,
@@ -18,11 +18,7 @@ export function NavigationBlocker({
   hasChanges: boolean;
   message?: string;
 }) {
-  const [showDialog, setShowDialog] = useState(false);
-  const pendingHref = useRef<string | null>(null);
-  const navigate = useNavigate();
-  const hasChangesRef = useRef(hasChanges);
-  hasChangesRef.current = hasChanges;
+  const blocker = useBlocker(hasChanges);
 
   // Handle browser beforeunload for closing tab/window
   useEffect(() => {
@@ -37,76 +33,24 @@ export function NavigationBlocker({
     return () => removeEventListener("beforeunload", handler);
   }, [hasChanges]);
 
-  // Intercept all link clicks
-  useEffect(() => {
-    if (!hasChanges) return;
-
-    const handleClick = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      const anchor = target.closest("a");
-
-      if (
-        anchor &&
-        anchor.href &&
-        anchor.href.startsWith(window.location.origin) &&
-        !anchor.target
-      ) {
-        const href = anchor.getAttribute("href");
-        if (
-          href &&
-          href !== window.location.pathname + window.location.search
-        ) {
-          event.preventDefault();
-          event.stopPropagation();
-          pendingHref.current = href;
-          setShowDialog(true);
-        }
-      }
-    };
-
-    // Use capture phase to intercept before React Router handles it
-    document.addEventListener("click", handleClick, true);
-    return () => document.removeEventListener("click", handleClick, true);
-  }, [hasChanges]);
-
-  // Handle browser back/forward buttons
-  useEffect(() => {
-    if (!hasChanges) return;
-
-    const currentPath = window.location.pathname + window.location.search;
-
-    const handlePopState = () => {
-      if (hasChangesRef.current) {
-        // Prevent navigation by pushing current state back
-        window.history.pushState(null, "", currentPath);
-        pendingHref.current = "back";
-        setShowDialog(true);
-      }
-    };
-
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, [hasChanges]);
-
   const handleStay = () => {
-    setShowDialog(false);
-    pendingHref.current = null;
+    if (blocker.state === "blocked") {
+      blocker.reset();
+    }
   };
 
   const handleLeave = () => {
-    const href = pendingHref.current;
-    setShowDialog(false);
-    pendingHref.current = null;
-
-    if (href === "back") {
-      window.history.back();
-    } else if (href) {
-      navigate(href);
+    if (blocker.state === "blocked") {
+      blocker.proceed();
     }
   };
 
   return (
-    <Dialog open={showDialog} onClose={handleStay} closeOnBackdropClick={false}>
+    <Dialog
+      open={blocker.state === "blocked"}
+      onClose={handleStay}
+      closeOnBackdropClick={false}
+    >
       <DialogHeader>
         <DialogHeaderTitle>Unsaved Changes</DialogHeaderTitle>
       </DialogHeader>
