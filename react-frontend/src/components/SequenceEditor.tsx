@@ -2,7 +2,7 @@ import { Sequence } from "../api/devices.ts";
 import clsx from "clsx";
 import { ActionView } from "./ActionView.tsx";
 import { ActionTypeMenu } from "./ActionTypeMenu.tsx";
-import { getButtonClassName } from "./Button.tsx";
+import { Button, getButtonClassName } from "./Button.tsx";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   convertSequenceDownToUp,
@@ -302,16 +302,14 @@ function InsertButton({
       }}
     >
       {({ active }) => (
-        <div
-          className={clsx(
-            getButtonClassName({ variant: "ghost", isActive: active }),
-            className,
-          )}
+        <Button
+          className={className}
+          buttonStyle={{ variant: "ghost", isActive: active }}
         >
           <div className={iconClassName}>
             <AddIcon />
           </div>
-        </div>
+        </Button>
       )}
     </ActionTypeMenu>
   );
