@@ -45,7 +45,6 @@ export const getButtonClassName = ({
   rounded = "full",
   padding = "normal",
   isActive = false,
-  disabled = "half-opacity",
 }: ButtonStyleOptions): string => {
   return clsx(
     animation === "normal" ? "transition-all duration-150" : undefined,
@@ -53,13 +52,18 @@ export const getButtonClassName = ({
     focusRing === "dark" ? DarkFocusRing : undefined,
     rounded === "full" ? "rounded-full" : undefined,
     padding === "normal" ? Padding : undefined,
-    disabled === "half-opacity" ? "data-disabled:opacity-50" : undefined,
     variantMap[variant]?.(isActive),
   );
 };
 
 const Base: ClassValue =
-  "inline-flex items-center text-sm font-medium justify-center select-none cursor-pointer";
+  "inline-flex items-center text-sm font-medium justify-center select-none not-disabled:cursor-pointer disabled:opacity-30";
+
+const ButtonTextColor = (isActive: boolean): ClassValue =>
+  clsx("not-disabled:hover:text-white not-disabled:active:text-white", {
+    "text-white": isActive,
+    "text-stone-200": !isActive,
+  });
 
 const Padding: ClassValue = "p-2";
 
@@ -71,69 +75,56 @@ const FocusRing: ClassValue =
 
 const NormalVariant = (isActive: boolean): ClassValue =>
   clsx(
-    "bg-stone-800 hover:bg-stone-700 hover:text-white active:text-white active:bg-stone-900",
-    {
-      "text-stone-100": isActive,
-      "text-stone-300": !isActive,
-    },
+    "bg-stone-800 not-disabled:hover:bg-stone-700 not-disabled:active:bg-stone-900",
     Base,
+    ButtonTextColor(isActive),
   );
 const SubmitVariant = (isActive: boolean): ClassValue =>
   clsx(
-    "bg-violet-900 hover:bg-violet-800 hover:text-white active:text-white active:bg-violet-950",
-    {
-      "text-stone-50": isActive,
-      "text-stone-200": !isActive,
-    },
+    "bg-violet-900 not-disabled:hover:bg-violet-800 not-disabled:active:bg-violet-950",
     Base,
+    ButtonTextColor(isActive),
   );
 const DangerVariant = (isActive: boolean): ClassValue =>
   clsx(
-    "bg-red-800 hover:bg-red-700 hover:text-white active:text-white active:bg-red-950",
-    {
-      "text-stone-50": isActive,
-      "text-stone-200": !isActive,
-    },
+    "bg-red-800 not-disabled:hover:bg-red-700 not-disabled:active:bg-red-950",
     Base,
+    ButtonTextColor(isActive),
   );
 const GhostVariant = (isActive: boolean): ClassValue =>
   clsx(
-    "hover:text-white active:text-white active:bg-stone-600",
+    "not-disabled:active:bg-stone-600",
     {
-      "text-stone-100 bg-stone-900": isActive,
-      "text-stone-300 hover:bg-stone-800": !isActive,
+      "bg-stone-900": isActive,
+      "not-disabled:hover:bg-stone-800": !isActive,
     },
     Base,
+    ButtonTextColor(isActive),
   );
 const PanelGhostVariant = (isActive: boolean): ClassValue =>
   clsx(
-    "hover:bg-stone-800 hover:text-white active:text-white active:bg-stone-600",
-    {
-      "text-stone-100": isActive,
-      "text-stone-300": !isActive,
-    },
+    "not-disabled:hover:bg-stone-800 not-disabled:active:bg-stone-600",
     Base,
+    ButtonTextColor(isActive),
   );
 const NavBarVariant = (isActive: boolean): ClassValue =>
   clsx(
-    "hover:bg-stone-700 hover:text-white active:text-white active:bg-stone-600 data-selected:bg-stone-900 data-selected:text-white",
+    "not-disabled:hover:bg-stone-700 not-disabled:active:bg-stone-600 data-selected:bg-stone-900 data-selected:text-white",
     {
-      "text-stone-50 bg-stone-900": isActive,
-      "text-stone-300": !isActive,
+      "bg-stone-900": isActive,
     },
     Base,
+    ButtonTextColor(isActive),
   );
 const ToolbarVariant = (isActive: boolean): ClassValue =>
   clsx(
-    "hover:bg-stone-800 hover:text-white active:text-white active:bg-stone-600",
-    {
-      "text-stone-100": isActive,
-      "text-stone-300": !isActive,
-    },
+    "not-disabled:hover:bg-stone-800 not-disabled:active:bg-stone-600",
     Base,
+    ButtonTextColor(isActive),
   );
 
-const NoColorVariant: ClassValue = Base;
+const NoColorVariant = (isActive: boolean): ClassValue =>
+  clsx(Base, ButtonTextColor(isActive));
 
 const variantMap: Record<string, (isActive: boolean) => ClassValue> = {
   normal: NormalVariant,
@@ -143,5 +134,5 @@ const variantMap: Record<string, (isActive: boolean) => ClassValue> = {
   panelGhost: PanelGhostVariant,
   navbar: NavBarVariant,
   toolbar: ToolbarVariant,
-  "no-color": () => NoColorVariant,
+  "no-color": NoColorVariant,
 };
