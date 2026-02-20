@@ -95,9 +95,7 @@ export function BindingsPanel({ className }: { className?: string }) {
         state.selectedKey,
         state.selectedLayer,
         state.profile,
-        bindings.filter(
-          (_, i) => !state.selectedBinding.some((b) => b === i),
-        ),
+        bindings.filter((_, i) => !state.selectedBinding.some((b) => b === i)),
       ),
       description: "Remove binding",
     });

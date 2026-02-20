@@ -2,5 +2,5 @@
 @plugin "@tailwindcss/typography";
 
 .root {
-    isolation: isolate;
+  isolation: isolate;
 }

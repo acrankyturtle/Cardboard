@@ -149,4 +149,3 @@ function EditSettingsIcon() {
     </svg>
   );
 }
-

@@ -28,7 +28,11 @@ export function useKeyImportExport() {
         [],
         state.profile,
       );
-      dispatch({ type: "setProfile", profile: updatedProfile, description: "Import key" });
+      dispatch({
+        type: "setProfile",
+        profile: updatedProfile,
+        description: "Import key",
+      });
     } else {
       dispatch({
         type: "setModal",

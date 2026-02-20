@@ -29,13 +29,7 @@ function getTextContent(children: ReactNode): string {
   return "";
 }
 
-function GuidePage({
-  title,
-  content,
-}: {
-  title: string;
-  content: string;
-}) {
+function GuidePage({ title, content }: { title: string; content: string }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 

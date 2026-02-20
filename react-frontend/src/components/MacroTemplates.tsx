@@ -1,7 +1,17 @@
 import { useState } from "react";
-import { TemplateType, TemplateResult, TemplateAction } from "./templates/templateUtils.ts";
-import { BasicTemplateEditor, tryParseBasicTemplate } from "./templates/BasicTemplate.tsx";
-import { RapidFireTemplateEditor, tryParseRapidFireTemplate } from "./templates/RapidFireTemplate.tsx";
+import {
+  TemplateType,
+  TemplateResult,
+  TemplateAction,
+} from "./templates/templateUtils.ts";
+import {
+  BasicTemplateEditor,
+  tryParseBasicTemplate,
+} from "./templates/BasicTemplate.tsx";
+import {
+  RapidFireTemplateEditor,
+  tryParseRapidFireTemplate,
+} from "./templates/RapidFireTemplate.tsx";
 import { TemplateCard } from "./templates/templateShared.tsx";
 
 export type { TemplateType, TemplateResult, TemplateAction };

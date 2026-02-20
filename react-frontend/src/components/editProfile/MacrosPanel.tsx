@@ -16,8 +16,15 @@ import {
   PasteIcon,
   RemoveIcon,
 } from "../../assets/sharedIcons.tsx";
-import { downloadJsonFile, pickAndReadJsonFile } from "../../lib/jsonFileUtils.ts";
-import { PanelContainer, HeaderBar, headerBarButtonClass } from "./panelShared.tsx";
+import {
+  downloadJsonFile,
+  pickAndReadJsonFile,
+} from "../../lib/jsonFileUtils.ts";
+import {
+  PanelContainer,
+  HeaderBar,
+  headerBarButtonClass,
+} from "./panelShared.tsx";
 import { Tooltip } from "../Tooltip.tsx";
 import { HelpLink } from "../HelpLink.tsx";
 import {
@@ -85,9 +92,7 @@ export function MacrosPanel({ className }: { className?: string }) {
     const macro = findMacroById(state.selectedMacro, state.profile);
     if (!macro) return;
     const { id: _, ...macroWithoutId } = macro;
-    navigator.clipboard.writeText(
-      JSON.stringify(macroWithoutId, null, 2),
-    );
+    navigator.clipboard.writeText(JSON.stringify(macroWithoutId, null, 2));
   };
 
   const pasteMacro = async () => {

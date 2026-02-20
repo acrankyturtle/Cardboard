@@ -151,42 +151,58 @@ function getEventsOfType<T>(
 const getKeyDowns = (sequence: Sequence): KeyboardKey[] =>
   getEventsOfType(
     sequence,
-    (a) => isKeyboardActionEvent(a.actionEvent) && isKeyDownEvent(a.actionEvent.keyboard),
-    (a) => (a.actionEvent as { keyboard: { keyDown: KeyboardKey } }).keyboard.keyDown,
+    (a) =>
+      isKeyboardActionEvent(a.actionEvent) &&
+      isKeyDownEvent(a.actionEvent.keyboard),
+    (a) =>
+      (a.actionEvent as { keyboard: { keyDown: KeyboardKey } }).keyboard
+        .keyDown,
   );
 
 const getKeyUps = (sequence: Sequence): KeyboardKey[] =>
   getEventsOfType(
     sequence,
-    (a) => isKeyboardActionEvent(a.actionEvent) && isKeyUpEvent(a.actionEvent.keyboard),
-    (a) => (a.actionEvent as { keyboard: { keyUp: KeyboardKey } }).keyboard.keyUp,
+    (a) =>
+      isKeyboardActionEvent(a.actionEvent) &&
+      isKeyUpEvent(a.actionEvent.keyboard),
+    (a) =>
+      (a.actionEvent as { keyboard: { keyUp: KeyboardKey } }).keyboard.keyUp,
   );
 
 const getButtonDowns = (sequence: Sequence): MouseButton[] =>
   getEventsOfType(
     sequence,
-    (a) => isMouseActionEvent(a.actionEvent) && isMouseDownEvent(a.actionEvent.mouse),
-    (a) => (a.actionEvent as { mouse: { buttonDown: MouseButton } }).mouse.buttonDown,
+    (a) =>
+      isMouseActionEvent(a.actionEvent) &&
+      isMouseDownEvent(a.actionEvent.mouse),
+    (a) =>
+      (a.actionEvent as { mouse: { buttonDown: MouseButton } }).mouse
+        .buttonDown,
   );
 
 const getButtonUps = (sequence: Sequence): MouseButton[] =>
   getEventsOfType(
     sequence,
-    (a) => isMouseActionEvent(a.actionEvent) && isMouseUpEvent(a.actionEvent.mouse),
-    (a) => (a.actionEvent as { mouse: { buttonUp: MouseButton } }).mouse.buttonUp,
+    (a) =>
+      isMouseActionEvent(a.actionEvent) && isMouseUpEvent(a.actionEvent.mouse),
+    (a) =>
+      (a.actionEvent as { mouse: { buttonUp: MouseButton } }).mouse.buttonUp,
   );
 
 const getLayerSets = (sequence: Sequence): string[] =>
   getEventsOfType(
     sequence,
-    (a) => isLayerActionEvent(a.actionEvent) && isLayerSetEvent(a.actionEvent.layer),
+    (a) =>
+      isLayerActionEvent(a.actionEvent) && isLayerSetEvent(a.actionEvent.layer),
     (a) => (a.actionEvent as { layer: { set: string } }).layer.set,
   );
 
 const getLayerClears = (sequence: Sequence): string[] =>
   getEventsOfType(
     sequence,
-    (a) => isLayerActionEvent(a.actionEvent) && isLayerClearEvent(a.actionEvent.layer),
+    (a) =>
+      isLayerActionEvent(a.actionEvent) &&
+      isLayerClearEvent(a.actionEvent.layer),
     (a) => (a.actionEvent as { layer: { clear: string } }).layer.clear,
   );
 

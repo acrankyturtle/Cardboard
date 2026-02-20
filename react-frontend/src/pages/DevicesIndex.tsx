@@ -404,7 +404,7 @@ function EditDeviceView() {
             }
             onEditing={(v) => setIsEditingProfileName(v)}
           />
-          <div className="overflow-hidden text-ellipsis text-lg font-normal text-stone-400">
+          <div className="overflow-hidden text-lg font-normal text-ellipsis text-stone-400">
             {state.device.id}
           </div>
         </div>

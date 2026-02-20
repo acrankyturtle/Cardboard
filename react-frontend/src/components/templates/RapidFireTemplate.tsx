@@ -10,7 +10,11 @@ import {
   eventsEqual,
   tryParseDownEvent,
 } from "./templateUtils.ts";
-import { TemplateLayout, ActionList, TemplatePreview } from "./templateShared.tsx";
+import {
+  TemplateLayout,
+  ActionList,
+  TemplatePreview,
+} from "./templateShared.tsx";
 
 export interface ParsedRapidFireTemplate {
   actions: TemplateAction[];

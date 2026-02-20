@@ -50,14 +50,17 @@ export function ComboInput<TItem extends ComboInputItem>({
   return (
     <Combobox
       as="div"
-      className={clsx("relative", variant === "default" ? "flex grow" : "min-w-0 grow")}
+      className={clsx(
+        "relative",
+        variant === "default" ? "flex grow" : "min-w-0 grow",
+      )}
       value={value}
       onChange={onChange}
     >
       <ComboboxInput
         className={clsx(
           variant === "compact"
-            ? "w-full rounded-xl bg-stone-800 py-1 pl-2 pr-6 text-sm text-stone-100 shadow-sm outline-0 focus:border-stone-600 focus:ring-1 focus:ring-stone-500 data-hover:bg-stone-900"
+            ? "w-full rounded-xl bg-stone-800 py-1 pr-6 pl-2 text-sm text-stone-100 shadow-sm outline-0 focus:border-stone-600 focus:ring-1 focus:ring-stone-500 data-hover:bg-stone-900"
             : "",
           className,
         )}

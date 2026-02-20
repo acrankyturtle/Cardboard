@@ -80,10 +80,7 @@ export function isValidKeyExport(data: unknown): data is KeyExport {
     if (!taggedLayer || typeof taggedLayer !== "object") return false;
     const tl = taggedLayer as Record<string, unknown>;
     if (!Array.isArray(tl.tags)) return false;
-    if (
-      tl.matchType !== TagMatchType.Any &&
-      tl.matchType !== TagMatchType.All
-    )
+    if (tl.matchType !== TagMatchType.Any && tl.matchType !== TagMatchType.All)
       return false;
     if (!tl.layer || typeof tl.layer !== "object") return false;
     const layer = tl.layer as Record<string, unknown>;

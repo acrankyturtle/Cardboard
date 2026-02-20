@@ -12,7 +12,11 @@ import {
   useMaybeEditDeviceContext,
 } from "../../lib/editDeviceContext.tsx";
 import { useAssociations } from "../../api/associations.ts";
-import { ActionEventIcon, KeyUpDownToggle, UnknownActionEventView } from "./shared.tsx";
+import {
+  ActionEventIcon,
+  KeyUpDownToggle,
+  UnknownActionEventView,
+} from "./shared.tsx";
 
 export function LayerActionEventView({
   event,
@@ -27,9 +31,7 @@ export function LayerActionEventView({
   const context = useMaybeEditDeviceContext();
   const { associations } = useAssociations();
   const tagItems = useMemo(() => {
-    const profileTags = context
-      ? getTagsInProfile(context.state.profile)
-      : [];
+    const profileTags = context ? getTagsInProfile(context.state.profile) : [];
     const associationTags = associations.flatMap((a) => a.data.tags);
     return [...new Set([...profileTags, ...associationTags])].sort();
   }, [context, associations]);

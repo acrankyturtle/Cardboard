@@ -67,7 +67,9 @@ export function FirmwareUpdateConfirmDialog({
       </DialogBody>
       <DialogFooter className="justify-end">
         <DialogCancelButton onClick={onCancel}>Cancel</DialogCancelButton>
-        <DialogConfirmButton onClick={onConfirm}>Update Now</DialogConfirmButton>
+        <DialogConfirmButton onClick={onConfirm}>
+          Update Now
+        </DialogConfirmButton>
       </DialogFooter>
     </Dialog>
   );

@@ -13,7 +13,11 @@ import { Input } from "@headlessui/react";
 import { InputClassName } from "../Input.tsx";
 import { MouseIcon } from "../../assets/sharedIcons.tsx";
 import { MouseKeySelector } from "../KeySelector.tsx";
-import { ActionEventIcon, KeyUpDownToggle, UnknownActionEventView } from "./shared.tsx";
+import {
+  ActionEventIcon,
+  KeyUpDownToggle,
+  UnknownActionEventView,
+} from "./shared.tsx";
 
 export function MouseActionEventView({
   event,

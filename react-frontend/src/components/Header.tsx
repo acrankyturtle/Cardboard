@@ -11,7 +11,7 @@ export function Header({
   return (
     <div
       className={clsx(
-        "h-18 w-full shrink-0 items-center bg-stone-900 px-4 lg:px-10 text-2xl font-semibold tracking-tight",
+        "h-18 w-full shrink-0 items-center bg-stone-900 px-4 text-2xl font-semibold tracking-tight lg:px-10",
         className,
       )}
     >

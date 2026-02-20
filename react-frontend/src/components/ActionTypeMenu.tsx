@@ -205,7 +205,10 @@ function ActionTypeGroup<T extends ActionEvent>({
       </MenuHeading>
       <div className="flex gap-1 p-0.5">
         {items.map((item, i) => (
-          <ActionTypeMenuItem key={i} onClick={() => onSelect(item.actionEvent)}>
+          <ActionTypeMenuItem
+            key={i}
+            onClick={() => onSelect(item.actionEvent)}
+          >
             {item.render}
           </ActionTypeMenuItem>
         ))}

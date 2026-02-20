@@ -70,7 +70,10 @@ export type BackendFirmwareStage =
   | "WaitingForReconnect"
   | "Restoring";
 
-export const BACKEND_STAGE_MAP: Record<BackendFirmwareStage, FirmwareUpdateStage> = {
+export const BACKEND_STAGE_MAP: Record<
+  BackendFirmwareStage,
+  FirmwareUpdateStage
+> = {
   Preparing: "preparing",
   EnteringBootloader: "bootloader",
   WaitingForBootloader: "bootloader",

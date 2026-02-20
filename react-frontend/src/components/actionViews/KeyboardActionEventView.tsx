@@ -8,7 +8,11 @@ import {
 } from "../../api/devices.ts";
 import { KeyboardIcon } from "../../assets/sharedIcons.tsx";
 import { KeyboardKeySelector } from "../KeySelector.tsx";
-import { ActionEventIcon, KeyUpDownToggle, UnknownActionEventView } from "./shared.tsx";
+import {
+  ActionEventIcon,
+  KeyUpDownToggle,
+  UnknownActionEventView,
+} from "./shared.tsx";
 
 export function KeyboardActionEventView({
   event,

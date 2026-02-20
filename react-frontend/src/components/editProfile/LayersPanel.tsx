@@ -101,7 +101,11 @@ export function LayersPanel({ className }: { className?: string }) {
       state.selectedLayer,
       newLayer,
     );
-    dispatch({ type: "setProfile", profile: updated, description: "Add layer" });
+    dispatch({
+      type: "setProfile",
+      profile: updated,
+      description: "Add layer",
+    });
     dispatch({
       type: "setSelectedLayer",
       layerId: newLayer.layer.id,
@@ -120,10 +124,7 @@ export function LayersPanel({ className }: { className?: string }) {
     if (isSelectedLayerDefaultLayer) return;
 
     const newSelectedIndex = Math.min(
-      Math.max(
-        layers.findIndex((l) => l.value === state.selectedLayer) + 1,
-        0,
-      ),
+      Math.max(layers.findIndex((l) => l.value === state.selectedLayer) + 1, 0),
       layers.length - 1,
     );
     const newSelected = layers[newSelectedIndex];
@@ -132,7 +133,11 @@ export function LayersPanel({ className }: { className?: string }) {
       state.profile,
       state.selectedLayer,
     );
-    dispatch({ type: "setProfile", profile: updated, description: "Delete layer" });
+    dispatch({
+      type: "setProfile",
+      profile: updated,
+      description: "Delete layer",
+    });
     dispatch({
       type: "setSelectedLayer",
       layerId: newSelected.value,
@@ -147,7 +152,11 @@ export function LayersPanel({ className }: { className?: string }) {
       state.profile,
       (layers) => shiftLayer(selectedLayer, layers, -1),
     );
-    dispatch({ type: "setProfile", profile: updatedProfile, description: "Move layer up" });
+    dispatch({
+      type: "setProfile",
+      profile: updatedProfile,
+      description: "Move layer up",
+    });
     dispatch({
       type: "setSelectedLayer",
       layerId: state.selectedLayer,
@@ -162,7 +171,11 @@ export function LayersPanel({ className }: { className?: string }) {
       state.profile,
       (layers) => shiftLayer(selectedLayer, layers, 1),
     );
-    dispatch({ type: "setProfile", profile: updatedProfile, description: "Move layer down" });
+    dispatch({
+      type: "setProfile",
+      profile: updatedProfile,
+      description: "Move layer down",
+    });
     dispatch({
       type: "setSelectedLayer",
       layerId: state.selectedLayer,

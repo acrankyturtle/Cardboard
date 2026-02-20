@@ -45,7 +45,9 @@ export function EditDeviceSettings({
       })
       .catch((e) => {
         if (e instanceof Error && e.name === "AbortError") return;
-        setLoadError(e instanceof Error ? e.message : "Failed to load settings");
+        setLoadError(
+          e instanceof Error ? e.message : "Failed to load settings",
+        );
         setLoading(false);
       });
 

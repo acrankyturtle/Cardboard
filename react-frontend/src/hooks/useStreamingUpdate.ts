@@ -183,7 +183,17 @@ export function useStreamingUpdate({
       });
       cleanup();
     }
-  }, [buildUrl, timeoutMs, initialStage, timeoutMessage, keysToRevalidate, cleanup, setError, mutate, onSuccess]);
+  }, [
+    buildUrl,
+    timeoutMs,
+    initialStage,
+    timeoutMessage,
+    keysToRevalidate,
+    cleanup,
+    setError,
+    mutate,
+    onSuccess,
+  ]);
 
   return {
     state,

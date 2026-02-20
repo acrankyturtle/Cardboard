@@ -321,7 +321,11 @@ function ActionEditor({
   }
 }
 
-export function TemplatePreview({ preview }: { preview: TemplateResult | null }) {
+export function TemplatePreview({
+  preview,
+}: {
+  preview: TemplateResult | null;
+}) {
   return (
     <div className="flex grow flex-col gap-2">
       <div className="text-sm font-medium">Preview</div>
