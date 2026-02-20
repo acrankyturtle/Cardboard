@@ -9,11 +9,11 @@ export function downloadJsonFile(data: unknown, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export function pickAndReadJsonFile<T>(): Promise<T | null> {
+export function pickAndReadJsonFile<T>(extension: string): Promise<T | null> {
   return new Promise((resolve) => {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = ".json";
+    input.accept = extension;
     input.onchange = async () => {
       const file = input.files?.[0];
       if (!file) {

@@ -18,7 +18,7 @@ export function useKeyImportExport() {
 
   const importKey = async () => {
     if (!state.selectedKey) return;
-    const data = await pickAndReadJsonFile<KeyExport>();
+    const data = await pickAndReadJsonFile<KeyExport>(".key.json");
     if (!data || !isValidKeyExport(data)) return;
     const conflicts = detectConflicts(data, state.profile);
     if (conflicts.length === 0) {
@@ -49,7 +49,7 @@ export function useKeyImportExport() {
     const keyName =
       state.device.keyMap.find((k) => k.keyId === state.selectedKey)?.name ??
       "key";
-    downloadJsonFile(keyExport, `${keyName}-key.json`);
+    downloadJsonFile(keyExport, `${keyName}.key.json`);
   };
 
   return { importKey, exportKey, hasSelectedKey: !!state.selectedKey };

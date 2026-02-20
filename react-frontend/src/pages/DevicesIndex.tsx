@@ -309,12 +309,12 @@ function EditDeviceView() {
   }, [saving, state.device.id, state.profile]);
 
   const handleExportProfile = useCallback(() => {
-    const filename = `${state.profile.name || state.device.model}-profile.json`;
+    const filename = `${state.profile.name || state.device.model}.profile.json`;
     downloadJsonFile(state.profile, filename);
   }, [state.profile, state.device.model]);
 
   const handleImportProfile = useCallback(async () => {
-    const data = await pickAndReadJsonFile<DeviceProfile>();
+    const data = await pickAndReadJsonFile<DeviceProfile>(".profile.json");
     if (!data) return;
 
     if (

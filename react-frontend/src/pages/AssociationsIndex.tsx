@@ -64,14 +64,14 @@ export function AssociationsIndex() {
   const handleExport = useCallback(() => {
     downloadJsonFile(
       { associations: associations.map((a) => a.data) },
-      "associations.json",
+      "cardboard.associations.json",
     );
   }, [associations]);
 
   const handleImport = useCallback(async () => {
     const file = await pickAndReadJsonFile<{
       associations: AssociationData[];
-    }>();
+    }>(".associations.json");
     if (!file) return;
 
     if (

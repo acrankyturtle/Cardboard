@@ -109,7 +109,7 @@ export function MacrosPanel({ className }: { className?: string }) {
   };
 
   const importMacro = async () => {
-    const data = await pickAndReadJsonFile<DeviceMacro>();
+    const data = await pickAndReadJsonFile<DeviceMacro>(".macro.json");
     if (!data || !isValidMacro(data)) return;
     dispatch({
       type: "setModal",
@@ -126,7 +126,7 @@ export function MacrosPanel({ className }: { className?: string }) {
     const macro = findMacroById(state.selectedMacro, state.profile);
     if (!macro) return;
     const { id: _, ...macroWithoutId } = macro;
-    downloadJsonFile(macroWithoutId, `${macro.name}-macro.json`);
+    downloadJsonFile(macroWithoutId, `${macro.name}.macro.json`);
   };
 
   const deleteMacroAction = () => {
