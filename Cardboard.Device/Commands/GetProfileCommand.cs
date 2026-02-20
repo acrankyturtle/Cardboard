@@ -19,7 +19,7 @@ public sealed class GetProfileCommand : ICommand<Unit, DeviceProfile>
 		{
 			return new()
 			{
-				Name = "(empty)",
+				Name = "",
 				Keys = [],
 				VirtualKeys = [],
 				Macros = [],
