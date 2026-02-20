@@ -102,6 +102,24 @@ app.UseLocalOriginValidation();
 
 if (app.Environment.IsDevelopment())
 {
+	// Suppress TaskCanceledException/OperationCanceledException from client disconnects
+	app.Use(
+		async (context, next) =>
+		{
+			try
+			{
+				await next(context);
+			}
+			catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+			{
+				// Client disconnected - not an error
+			}
+		}
+	);
+}
+
+if (app.Environment.IsDevelopment())
+{
 	app.UseSwagger();
 	app.UseSwaggerUI(c =>
 	{

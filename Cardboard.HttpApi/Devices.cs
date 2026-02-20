@@ -181,7 +181,7 @@ public static class Devices
 				await context.Response.Body.FlushAsync(cancellationToken);
 			}
 		}
-		catch (Exception ex)
+		catch (Exception ex) when (ex is not OperationCanceledException)
 		{
 			var evt = new FirmwareUpdateErrorEvent
 			{
@@ -192,8 +192,15 @@ public static class Devices
 				evt,
 				jsonOptions.Value.SerializerOptions
 			);
-			await context.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
-			await context.Response.Body.FlushAsync(cancellationToken);
+			try
+			{
+				await context.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
+				await context.Response.Body.FlushAsync(cancellationToken);
+			}
+			catch
+			{
+				// ignored
+			}
 		}
 	}
 
@@ -273,7 +280,7 @@ public static class Devices
 				await context.Response.Body.FlushAsync(cancellationToken);
 			}
 		}
-		catch (Exception ex)
+		catch (Exception ex) when (ex is not OperationCanceledException)
 		{
 			var evt = new FirmwareUpdateErrorEvent
 			{
@@ -284,8 +291,15 @@ public static class Devices
 				evt,
 				jsonOptions.Value.SerializerOptions
 			);
-			await context.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
-			await context.Response.Body.FlushAsync(cancellationToken);
+			try
+			{
+				await context.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
+				await context.Response.Body.FlushAsync(cancellationToken);
+			}
+			catch
+			{
+				// ignored
+			}
 		}
 	}
 
