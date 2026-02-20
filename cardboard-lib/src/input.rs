@@ -51,7 +51,7 @@ where
 				id: key_id,
 				prev_actual_state: KeyState::Released,
 				prev_reported_state: KeyState::Released,
-				keydown_time: Duration::from_ticks(0),
+				since_last_transition: debounce_time,
 				debounce_time,
 			}),
 		}
@@ -100,7 +100,7 @@ pub struct InputKey {
 	id: KeyId,
 	prev_actual_state: KeyState,
 	prev_reported_state: KeyState,
-	keydown_time: Duration,
+	since_last_transition: Duration,
 	debounce_time: Duration,
 }
 
@@ -110,39 +110,13 @@ impl InputKey {
 	}
 
 	pub fn update(&mut self, state: KeyState, dt: Duration) -> Option<KeyState> {
-		let prev_actual_state = self.prev_actual_state;
-		self.keydown_time += dt;
+		self.since_last_transition += dt;
+		self.prev_actual_state = state;
 
-		match (prev_actual_state, state) {
-			(KeyState::Released, KeyState::Pressed) => {
-				if self.prev_reported_state == KeyState::Released {
-					self.keydown_time = Duration::from_ticks(0);
-				}
-				self.prev_actual_state = KeyState::Pressed;
-			}
-			(KeyState::Pressed, KeyState::Released) => {
-				self.prev_actual_state = KeyState::Released;
-			}
-			_ => {}
-		}
-
-		let prev_reported_state = self.prev_reported_state;
-		let new_state = match (self.prev_reported_state, self.prev_actual_state) {
-			(KeyState::Pressed, KeyState::Released) => {
-				if self.keydown_time < self.debounce_time {
-					// debouncing
-					KeyState::Pressed
-				} else {
-					KeyState::Released
-				}
-			}
-			_ => self.prev_actual_state,
-		};
-
-		self.prev_reported_state = new_state;
-
-		if new_state != prev_reported_state {
-			Some(new_state)
+		if state != self.prev_reported_state && self.since_last_transition >= self.debounce_time {
+			self.prev_reported_state = state;
+			self.since_last_transition = Duration::from_ticks(0);
+			Some(state)
 		} else {
 			None
 		}
@@ -227,7 +201,7 @@ mod tests {
 			id: key_id,
 			prev_actual_state: KeyState::Released,
 			prev_reported_state: KeyState::Released,
-			keydown_time: Duration::from_ticks(0),
+			since_last_transition: Duration::from_ticks(0),
 			debounce_time: Duration::from_ticks(0),
 		};
 
@@ -243,7 +217,7 @@ mod tests {
 			id: key_id,
 			prev_actual_state: KeyState::Released,
 			prev_reported_state: KeyState::Released,
-			keydown_time: Duration::from_ticks(0),
+			since_last_transition: Duration::from_ticks(0),
 			debounce_time: Duration::from_ticks(0),
 		};
 
@@ -259,7 +233,7 @@ mod tests {
 			id: key_id,
 			prev_actual_state: KeyState::Pressed,
 			prev_reported_state: KeyState::Pressed,
-			keydown_time: Duration::from_ticks(0),
+			since_last_transition: Duration::from_ticks(0),
 			debounce_time: Duration::from_ticks(0),
 		};
 
@@ -275,7 +249,7 @@ mod tests {
 			id: key_id,
 			prev_actual_state: KeyState::Released,
 			prev_reported_state: KeyState::Released,
-			keydown_time: Duration::from_ticks(0),
+			since_last_transition: Duration::from_ticks(0),
 			debounce_time: Duration::from_ticks(0),
 		};
 
@@ -292,7 +266,7 @@ mod tests {
 			id: key_id,
 			prev_actual_state: KeyState::Pressed,
 			prev_reported_state: KeyState::Pressed,
-			keydown_time: Duration::from_ticks(0),
+			since_last_transition: Duration::from_ticks(0),
 			debounce_time: Duration::from_ticks(0),
 		};
 		let result = input_key.update(KeyState::Pressed, Duration::from_ticks(1));
@@ -307,7 +281,7 @@ mod tests {
 			id: key_id,
 			prev_actual_state: KeyState::Pressed,
 			prev_reported_state: KeyState::Pressed,
-			keydown_time: Duration::from_ticks(0),
+			since_last_transition: Duration::from_ticks(0),
 			debounce_time: Duration::from_ticks(0),
 		};
 		let result = input_key.update(KeyState::Pressed, Duration::from_ticks(0));
@@ -322,7 +296,7 @@ mod tests {
 			id: key_id,
 			prev_actual_state: KeyState::Released,
 			prev_reported_state: KeyState::Released,
-			keydown_time: Duration::from_ticks(0),
+			since_last_transition: Duration::from_ticks(5),
 			debounce_time: Duration::from_ticks(5),
 		};
 		_ = input_key.update(KeyState::Pressed, Duration::from_ticks(0));
@@ -338,7 +312,7 @@ mod tests {
 			id: key_id,
 			prev_actual_state: KeyState::Released,
 			prev_reported_state: KeyState::Released,
-			keydown_time: Duration::from_ticks(0),
+			since_last_transition: Duration::from_ticks(5),
 			debounce_time: Duration::from_ticks(5),
 		};
 		_ = input_key.update(KeyState::Pressed, Duration::from_ticks(0));
@@ -357,7 +331,7 @@ mod tests {
 			id: key_id,
 			prev_actual_state: KeyState::Released,
 			prev_reported_state: KeyState::Released,
-			keydown_time: Duration::from_ticks(0),
+			since_last_transition: Duration::from_ticks(5),
 			debounce_time: Duration::from_ticks(5),
 		};
 		_ = input_key.update(KeyState::Pressed, Duration::from_ticks(0));
@@ -375,7 +349,7 @@ mod tests {
 			id: key_id,
 			prev_actual_state: KeyState::Released,
 			prev_reported_state: KeyState::Released,
-			keydown_time: Duration::from_ticks(0),
+			since_last_transition: Duration::from_ticks(5),
 			debounce_time: Duration::from_ticks(5),
 		};
 		_ = input_key.update(KeyState::Pressed, Duration::from_ticks(0));
@@ -387,6 +361,56 @@ mod tests {
 		);
 
 		assert_eq!(result, Some(KeyState::Released));
+	}
+
+	#[test]
+	fn release_bounce_is_suppressed() {
+		let key_id = KeyId::new(Uuid::from_u128(0));
+		let mut input_key = InputKey {
+			id: key_id,
+			prev_actual_state: KeyState::Released,
+			prev_reported_state: KeyState::Released,
+			since_last_transition: Duration::from_ticks(5),
+			debounce_time: Duration::from_ticks(5),
+		};
+		// Press the key
+		let result = input_key.update(KeyState::Pressed, Duration::from_ticks(0));
+		assert_eq!(result, Some(KeyState::Pressed));
+
+		// Hold past debounce time, then release
+		let result = input_key.update(KeyState::Pressed, Duration::from_ticks(6));
+		assert_eq!(result, None);
+		let result = input_key.update(KeyState::Released, Duration::from_ticks(0));
+		assert_eq!(result, Some(KeyState::Released));
+
+		// Bounce: brief re-press within debounce window should be suppressed
+		let result = input_key.update(KeyState::Pressed, Duration::from_ticks(1));
+		assert_eq!(result, None);
+
+		// And the release after the bounce is also suppressed (state matches reported)
+		let result = input_key.update(KeyState::Released, Duration::from_ticks(1));
+		assert_eq!(result, None);
+	}
+
+	#[test]
+	fn repress_after_debounce_window_is_reported() {
+		let key_id = KeyId::new(Uuid::from_u128(0));
+		let mut input_key = InputKey {
+			id: key_id,
+			prev_actual_state: KeyState::Released,
+			prev_reported_state: KeyState::Released,
+			since_last_transition: Duration::from_ticks(5),
+			debounce_time: Duration::from_ticks(5),
+		};
+		// Press and release
+		let result = input_key.update(KeyState::Pressed, Duration::from_ticks(0));
+		assert_eq!(result, Some(KeyState::Pressed));
+		let result = input_key.update(KeyState::Released, Duration::from_ticks(6));
+		assert_eq!(result, Some(KeyState::Released));
+
+		// Re-press after debounce window passes should be reported
+		let result = input_key.update(KeyState::Pressed, Duration::from_ticks(5));
+		assert_eq!(result, Some(KeyState::Pressed));
 	}
 
 	pub struct MockKeyMatrixState<const ROWS: usize, const COLS: usize> {
