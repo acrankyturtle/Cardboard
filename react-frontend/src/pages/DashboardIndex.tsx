@@ -2,7 +2,7 @@ import { Link } from "react-router";
 import clsx from "clsx";
 import { useDeviceList } from "../api/devices.ts";
 import { useAssociations } from "../api/associations.ts";
-import { getAssetUrl } from "../api/cardboardApi.ts";
+import { SvgIcon } from "../components/SvgIcon.tsx";
 import { ReactNode } from "react";
 import { getButtonClassName } from "../components/Button.tsx";
 import Header from "../components/Header.tsx";
@@ -78,9 +78,8 @@ export function DashboardIndex() {
                       )}
                     >
                       {device.iconUrl ? (
-                        <img
-                          src={getAssetUrl(device.iconUrl)}
-                          alt=""
+                        <SvgIcon
+                          url={device.iconUrl}
                           className="size-10 rounded"
                         />
                       ) : (

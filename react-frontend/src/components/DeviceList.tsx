@@ -1,5 +1,5 @@
 import { DeviceSummary, useDeviceList } from "../api/devices.ts";
-import { getAssetUrl } from "../api/cardboardApi.ts";
+import { SvgIcon } from "./SvgIcon.tsx";
 import { useSearchParams } from "react-router";
 import { Button } from "./Button.tsx";
 import {
@@ -47,13 +47,7 @@ function DeviceCard({
     <div className="flex items-center justify-between gap-1 rounded-lg bg-stone-700 px-4 py-2 shadow-sm">
       <div className="flex grow items-center gap-3">
         {device.iconUrl && (
-          <div>
-            <img
-              className="size-8 rounded-md"
-              src={getAssetUrl(device.iconUrl)}
-              alt="Icon"
-            />
-          </div>
+          <SvgIcon className="size-8 rounded-md" url={device.iconUrl} />
         )}
         <div>
           <div>{device.name}</div>

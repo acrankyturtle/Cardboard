@@ -26,7 +26,7 @@ import {
   DialogHeaderTitle,
 } from "../components/Dialog.tsx";
 import { LoadingIndicator } from "../components/LoadingIndicator.tsx";
-import { getAssetUrl } from "../api/cardboardApi.ts";
+import { SvgIcon } from "../components/SvgIcon.tsx";
 import { InputClassName } from "../components/Input.tsx";
 import { UpdateFirmwareButton } from "../components/UpdateFirmwareButton.tsx";
 import {
@@ -142,13 +142,7 @@ function DeviceInfoDialog({ deviceId }: { deviceId: string | null }) {
             <DialogHeader>
               <DialogHeaderTitle className="flex items-center gap-3">
                 {device.iconUrl && (
-                  <div>
-                    <img
-                      className="size-8"
-                      src={getAssetUrl(device.iconUrl)}
-                      alt="Icon"
-                    />
-                  </div>
+                  <SvgIcon className="size-8" url={device.iconUrl} />
                 )}
                 Device Details
               </DialogHeaderTitle>
