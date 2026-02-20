@@ -68,6 +68,13 @@ export function AssociationsIndex() {
     );
   }, [associations]);
 
+  const handleExportOne = useCallback((association: Association) => {
+    downloadJsonFile(
+      { associations: [association.data] },
+      "single.associations.json",
+    );
+  }, []);
+
   const handleImport = useCallback(async () => {
     const file = await pickAndReadJsonFile<{
       associations: AssociationData[];
@@ -225,6 +232,7 @@ export function AssociationsIndex() {
                 key={association.id}
                 association={association}
                 onEdit={() => handleEdit(association)}
+                onExport={() => handleExportOne(association)}
                 onDelete={() => setDeletingAssociation(association)}
               />
             ))}
@@ -274,10 +282,12 @@ function AssociationsHeader({
 function AssociationCard({
   association,
   onEdit,
+  onExport,
   onDelete,
 }: {
   association: Association;
   onEdit: () => void;
+  onExport: () => void;
   onDelete: () => void;
 }) {
   return (
@@ -293,6 +303,18 @@ function AssociationCard({
           >
             <div className="size-8 p-1.5">
               <EditIcon />
+            </div>
+          </button>
+        </Tooltip>
+        <Tooltip content="Export">
+          <button
+            className={clsx(
+              getButtonClassName({ variant: "ghost", padding: "none" }),
+            )}
+            onClick={onExport}
+          >
+            <div className="size-8 p-1.5">
+              <ThickExportIcon />
             </div>
           </button>
         </Tooltip>
