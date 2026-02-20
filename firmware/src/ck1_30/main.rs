@@ -130,7 +130,9 @@ async fn main(spawner: Spawner) -> () {
 		/* 0x06 */ Box::new(SetVirtualKeysCommand::<VIRTUAL_KEY_BITFIELD_SIZE> {}),
 		/* 0x07 */ Box::new(UpdateSettingsCommand::<Settings, _>::new(|old, new| {
 			// reboot if mouse_enabled changed (requires USB re-enumeration)
+			// reboot if debounce_time_us changed (KeyMatrix is constructed at boot)
 			old.inner.mouse_enabled != new.inner.mouse_enabled
+				|| old.inner.debounce_time_us != new.inner.debounce_time_us
 		})),
 		/* 0x08 */ Box::new(GetSettingsCommand {}),
 	];
@@ -221,7 +223,7 @@ async fn main(spawner: Spawner) -> () {
 	]
 	.map(|pin| Box::new(Input::new(pin, Pull::Down)) as Box<dyn ColPin>);
 
-	let debounce_time = 10.millis();
+	let debounce_time = Duration::from_ticks(settings.inner.debounce_time_us as u64);
 	let matrix = KeyMatrix::new(key_ids, rows, cols, debounce_time);
 
 	let profile = match load_profile_from_flash(&mut flash.partition(&profile_partition)).await {
@@ -402,11 +404,15 @@ async fn hid_task_no_mouse(
 
 struct Ck130Settings {
 	mouse_enabled: bool,
+	debounce_time_us: u32,
 }
 
 impl Default for Ck130Settings {
 	fn default() -> Self {
-		Self { mouse_enabled: true }
+		Self {
+			mouse_enabled: true,
+			debounce_time_us: 10_000,
+		}
 	}
 }
 
@@ -419,10 +425,15 @@ impl SettingsData for Ck130Settings {
 				.read_bool()
 				.await
 				.ok_or("Could not read mouse enabled")?,
+			debounce_time_us: reader
+				.read_u32()
+				.await
+				.ok_or("Could not read debounce time")?,
 		})
 	}
 
 	async fn write_data<W: WriteAsync>(&self, writer: &mut W) -> Result<(), &'static str> {
-		writer.write_bool(self.mouse_enabled).await
+		writer.write_bool(self.mouse_enabled).await?;
+		writer.write_u32(self.debounce_time_us).await
 	}
 }

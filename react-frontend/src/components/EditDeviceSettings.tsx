@@ -14,6 +14,7 @@ import { Dialog, DialogBody, DialogDivider, DialogHeader } from "./Dialog.tsx";
 import { Checkbox } from "@headlessui/react";
 import { NavigationBlocker } from "./NavigationBlocker.tsx";
 import { HelpLink } from "./HelpLink.tsx";
+import { InputClassName } from "@root/react-frontend/src/components/Input.tsx";
 
 export function EditDeviceSettings({
   device,
@@ -125,6 +126,29 @@ export function EditDeviceSettings({
           <div className="text-red-400">Error: {loadError}</div>
         ) : settings ? (
           <div className="mx-auto max-w-2xl space-y-6">
+            <SettingsSection title="Input">
+              <SettingsRow
+                label="Debounce Time (μs)"
+                description="The minimum key press duration and time between key presses. Default is 10,000 μs (10 ms). Lower values might feel more responsive, but may cause accidental double presses. Consult your key switch manufacturer's specifications for recommended debounce times."
+              >
+                <input
+                  className={InputClassName}
+                  type="number"
+                  min={0}
+                  step={1000}
+                  value={settings.debounceTimeUs}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      debounceTimeUs: Math.max(
+                        0,
+                        Math.round(Number(e.target.value)),
+                      ),
+                    })
+                  }
+                />
+              </SettingsRow>
+            </SettingsSection>
             <SettingsSection title="Mouse">
               <SettingsRow
                 label="Enable Mouse"

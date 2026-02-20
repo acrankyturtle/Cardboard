@@ -353,3 +353,4 @@ Discriminated union (u8):
 |-------|------|
 | version | u32 (must be `1`) |
 | mouse_enabled | bool |
+| debounce_time_us | u32 |

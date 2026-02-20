@@ -16,7 +16,7 @@ The CK1-30 is a 30-key programmable Cardboard keypad built on the RP2040 microco
 | Connection | USB 2.0 (composite device) |
 | USB Endpoints | NKRO Keyboard, Mouse, Consumer Control, CDC Serial |
 | Profile Storage | Flash memory |
-| Key Debounce | 10 ms |
+| Key Debounce | 10 ms (default, configurable) |
 | Scan Rate | 1 ms |
 
 ## Key Layout

@@ -121,7 +121,7 @@ The `/api/devices/events` SSE endpoint subscribes to `IDeviceService.OnDevicesCh
 | Heap | 96 KB |
 | Row pins (output) | GPIO 28, 27, 26, 22, 21 |
 | Column pins (input) | GPIO 16, 17, 9, 18, 19, 20 |
-| Debounce | 10 ms |
+| Debounce | 10 ms (default, configurable) |
 | Scan interval | 1 ms |
 
 ### Flash Memory Layout

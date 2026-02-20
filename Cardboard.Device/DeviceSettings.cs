@@ -1,6 +1,6 @@
 namespace Cardboard.Device;
 
-public sealed class DeviceSettings : IReadable<DeviceSettings>, IWriteable
+public sealed record DeviceSettings : IReadable<DeviceSettings>, IWriteable
 {
 	private const uint Version = 1;
 
@@ -9,6 +9,8 @@ public sealed class DeviceSettings : IReadable<DeviceSettings>, IWriteable
 	/// </summary>
 	public required bool MouseEnabled { get; init; }
 
+	public required uint DebounceTimeUs { get; init; }
+
 	public static DeviceSettings ReadFrom(BinaryReader reader)
 	{
 		var version = reader.ReadUInt32();
@@ -16,15 +18,17 @@ public sealed class DeviceSettings : IReadable<DeviceSettings>, IWriteable
 			throw new InvalidDataException($"Unsupported {nameof(DeviceSettings)} version: {version}");
 
 		var isMouseEnabled = reader.ReadBoolean();
+		var debounceTimeUs = reader.ReadUInt32();
 
-		return new() { MouseEnabled = isMouseEnabled };
+		return new() { MouseEnabled = isMouseEnabled, DebounceTimeUs = debounceTimeUs };
 	}
 
 	public void WriteTo(BinaryWriter writer)
 	{
 		writer.Write(Version);
 		writer.Write(MouseEnabled);
+		writer.Write(DebounceTimeUs);
 	}
 
-	public static DeviceSettings CreateDefault() => new() { MouseEnabled = true };
+	public static DeviceSettings CreateDefault() => new() { MouseEnabled = true, DebounceTimeUs = 10_000 };
 }

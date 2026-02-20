@@ -51,10 +51,12 @@ export enum KeyColor {
 
 export interface DeviceSettingsReport {
   isMouseEnabled: boolean;
+  debounceTimeUs: number;
 }
 
 export interface DeviceSettings {
   mouseEnabled: boolean;
+  debounceTimeUs: number;
 }
 
 export interface DeviceStatusReport {

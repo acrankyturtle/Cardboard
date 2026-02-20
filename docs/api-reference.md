@@ -71,7 +71,8 @@ Get device settings.
 ```json
 {
   "deviceSettings": {
-    "mouseEnabled": true
+    "mouseEnabled": true,
+    "debounceTimeUs": 10000
   }
 }
 ```
