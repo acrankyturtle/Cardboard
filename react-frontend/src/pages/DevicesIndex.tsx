@@ -95,7 +95,6 @@ function DeviceIndexView() {
     <>
       <DevicesHeader>
         <div className="grow">Devices</div>
-        <HelpLink section="getting-started" size="medium" />
         {bootloaderAvailable && (
           <Button
             buttonStyle={{ variant: "ghost" }}
@@ -104,6 +103,7 @@ function DeviceIndexView() {
             Flash Bootloader Device
           </Button>
         )}
+        <HelpLink section="getting-started" size="medium" />
       </DevicesHeader>
       <div className="grow overflow-y-auto p-4">
         <div className="flex size-full flex-col items-center">
