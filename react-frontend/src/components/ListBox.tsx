@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useRef } from "react";
+import { ReactNode, useEffect, useRef, forwardRef, Ref } from "react";
 import clsx, { ClassValue } from "clsx";
 import * as React from "react";
 
@@ -33,17 +33,20 @@ type ListBoxProps<TItem extends ListBoxItem> =
   | ({ isMultiSelect?: false } & ListBoxSingleSelectProps<TItem>)
   | ({ isMultiSelect: true } & ListBoxMultiSelectProps<TItem>);
 
-export function ListBox<TItem extends ListBoxItem>({
-  className,
-  variant,
-  items,
-  selected,
-  setSelected,
-  onDoubleClick,
-  onDelete,
-  renderItem,
-  isMultiSelect,
-}: ListBoxProps<TItem>) {
+function ListBoxInner<TItem extends ListBoxItem>(
+  {
+    className,
+    variant,
+    items,
+    selected,
+    setSelected,
+    onDoubleClick,
+    onDelete,
+    renderItem,
+    isMultiSelect,
+  }: ListBoxProps<TItem>,
+  ref: Ref<HTMLDivElement>,
+) {
   const listRef = useRef<HTMLUListElement>(null);
   const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
 
@@ -110,7 +113,7 @@ export function ListBox<TItem extends ListBoxItem>({
   }, [onDelete, selected, isMultiSelect]);
 
   return (
-    <div className={clsx("overflow-y-auto", className)}>
+    <div ref={ref} className={clsx("overflow-y-auto", className)}>
       <ul
         ref={listRef}
         role="listbox"
@@ -164,7 +167,7 @@ export function ListBox<TItem extends ListBoxItem>({
               ) : item.label.length > 0 ? (
                 item.label
               ) : (
-                <div className="text-stone-50/25">(empty)</div>
+                <EmptyListItem />
               )}
             </li>
           );
@@ -172,6 +175,16 @@ export function ListBox<TItem extends ListBoxItem>({
       </ul>
     </div>
   );
+}
+
+export const ListBox = forwardRef(ListBoxInner) as <
+  TItem extends ListBoxItem,
+>(
+  props: ListBoxProps<TItem> & { ref?: Ref<HTMLDivElement> },
+) => React.ReactElement | null;
+
+export function EmptyListItem() {
+  return <div className="text-stone-50/25">(empty)</div>;
 }
 
 type ItemVariant = "violet" | "yellow" | "red" | "green" | "blue";

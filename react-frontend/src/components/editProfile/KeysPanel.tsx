@@ -1,5 +1,6 @@
 import clsx, { ClassValue } from "clsx";
 import { CSSProperties, useMemo } from "react";
+import { useDroppable } from "@dnd-kit/core";
 import {
   DeviceKey,
   DeviceMacro,
@@ -14,6 +15,7 @@ import {
   getVirtualKeyId,
   useEditDeviceContext,
 } from "../../lib/editDeviceContext.tsx";
+import { DropTargetData } from "./dndTypes.ts";
 import { KeyRenderer } from "../KeyRenderer.tsx";
 import {
   ExportIcon,
@@ -102,8 +104,15 @@ export function Key({
   );
   const keyLabel = useMemo(() => getActionLabelForMacros(macros), [macros]);
 
+  const dropData: DropTargetData = { type: "key", keyId };
+  const { setNodeRef, isOver } = useDroppable({
+    id: `key-${keyId}`,
+    data: dropData,
+  });
+
   return (
     <div
+      ref={setNodeRef}
       className={clsx(keyClassName, { "p-0.5": !compact, "p-1": compact })}
       style={keyStyle}
     >
@@ -123,12 +132,13 @@ export function Key({
           >
             <div
               className={clsx(
-                "inline-flex size-full items-center justify-center rounded-lg",
+                "inline-flex size-full items-center justify-center rounded-lg ring-3 ring-blue-400/0 transition-all duration-150 ring-inset",
                 keyColorToClassName(keyColor, isSelected),
                 {
                   "outline-lime-500": isSelected,
                   "outline-3 outline-offset-3": isSelected && !compact,
                   "outline-2 outline-offset-3": isSelected && compact,
+                  "ring-blue-400/100": isOver,
                 },
               )}
             >
@@ -140,7 +150,7 @@ export function Key({
                 {keyLabel}
               </div>
               <div
-                className={clsx("absolute", {
+                className={clsx("absolute transition-colors duration-150", {
                   "text-stone-50": isSelected,
                   "text-stone-50/50 group-hover:text-stone-50": !isSelected,
                   "top-1.5 left-1.5 text-xs": !compact,

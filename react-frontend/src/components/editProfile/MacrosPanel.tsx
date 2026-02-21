@@ -1,5 +1,6 @@
 import clsx from "clsx";
 import { useMemo } from "react";
+import { useDraggable } from "@dnd-kit/core";
 import { DeviceMacro } from "../../api/devices.ts";
 import { ListBox, ListBoxItem } from "../ListBox.tsx";
 import {
@@ -8,6 +9,7 @@ import {
   getMacroUsages,
   useEditDeviceContext,
 } from "../../lib/editDeviceContext.tsx";
+import { MacroDragData } from "./dndTypes.ts";
 import {
   AddIcon,
   ExportIcon,
@@ -298,8 +300,24 @@ function MacroListItem({ item }: { item: ListBoxItem }) {
   const usageCount = useMemo(() => {
     return getMacroUsages(item.value, state.profile).length;
   }, [state]);
+
+  const dragData: MacroDragData = {
+    type: "macro",
+    macroId: item.value,
+    macroName: item.label,
+  };
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `macro-${item.value}`,
+    data: dragData,
+  });
+
   return (
-    <div className="flex">
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className={clsx("flex", { "opacity-50": isDragging })}
+    >
       <div
         className={clsx("grow", {
           "text-stone-400": usageCount < 1,

@@ -1,11 +1,13 @@
+import clsx from "clsx";
 import { useMemo } from "react";
+import { useDroppable } from "@dnd-kit/core";
 import {
   DeviceKeyLayer,
   DeviceLayers,
   isTaggedDeviceLayer,
   TaggedDeviceLayer,
 } from "../../api/devices.ts";
-import { ListBox, ListBoxItem } from "../ListBox.tsx";
+import { EmptyListItem, ListBox, ListBoxItem } from "../ListBox.tsx";
 import {
   EditDeviceState,
   findKeyById,
@@ -18,6 +20,7 @@ import {
   updateKeyLayers,
   useEditDeviceContext,
 } from "../../lib/editDeviceContext.tsx";
+import { DropTargetData } from "./dndTypes.ts";
 import { AddIcon, RemoveIcon } from "../../assets/sharedIcons.tsx";
 import {
   PanelContainer,
@@ -226,6 +229,13 @@ export function LayersPanel({ className }: { className?: string }) {
             setSelected={(v) =>
               dispatch({ type: "setSelectedLayer", layerId: v.value })
             }
+            renderItem={(item) => (
+              <DroppableLayerItem
+                layerId={item.value}
+                keyId={state.selectedKey}
+                label={item.label}
+              />
+            )}
             onDoubleClick={(item) => {
               if ("layer" in item.layer && state.selectedKey) {
                 dispatch({
@@ -277,6 +287,36 @@ export function LayersPanel({ className }: { className?: string }) {
         </ContextMenuPopup>
       </ContextMenu>
     </PanelContainer>
+  );
+}
+
+function DroppableLayerItem({
+  layerId,
+  keyId,
+  label,
+}: {
+  layerId: string;
+  keyId: string | null;
+  label: string;
+}) {
+  const dropData: DropTargetData = {
+    type: "layer",
+    keyId: keyId ?? "",
+    layerId,
+  };
+  const { setNodeRef, isOver } = useDroppable({
+    id: `layer-${layerId}`,
+    data: dropData,
+    disabled: !keyId,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={clsx("size-full", { "bg-blue-500/30": isOver })}
+    >
+      {label || <EmptyListItem />}
+    </div>
   );
 }
 

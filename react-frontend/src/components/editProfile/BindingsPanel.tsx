@@ -1,3 +1,5 @@
+import clsx from "clsx";
+import { useDroppable } from "@dnd-kit/core";
 import { isTaggedDeviceLayer } from "../../api/devices.ts";
 import { ListBox, ListBoxItem } from "../ListBox.tsx";
 import {
@@ -6,6 +8,7 @@ import {
   updateLayerBindings,
   useEditDeviceContext,
 } from "../../lib/editDeviceContext.tsx";
+import { DropTargetData } from "./dndTypes.ts";
 import { AddIcon, MacroIcon, RemoveIcon } from "../../assets/sharedIcons.tsx";
 import {
   PanelContainer,
@@ -105,6 +108,13 @@ export function BindingsPanel({ className }: { className?: string }) {
     });
   };
 
+  const dropData: DropTargetData = { type: "bindings" };
+  const { setNodeRef, isOver } = useDroppable({
+    id: "bindings-panel",
+    data: dropData,
+    disabled: !state.selectedKey || !state.selectedLayer,
+  });
+
   return (
     <PanelContainer className={className}>
       <HeaderBar>
@@ -138,7 +148,13 @@ export function BindingsPanel({ className }: { className?: string }) {
       <ContextMenu>
         <ContextMenuTrigger>
           <ListBox
-            className="grow"
+            ref={setNodeRef}
+            className={clsx(
+              "grow outline-3 -outline-offset-3 outline-blue-400/0 transition-all duration-150",
+              {
+                "outline-blue-400/100": isOver,
+              },
+            )}
             items={macros}
             isMultiSelect
             selected={state.selectedBinding.map((i) => macros[i])}

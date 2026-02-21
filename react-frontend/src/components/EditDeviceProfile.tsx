@@ -1,5 +1,17 @@
 import clsx from "clsx";
 import { useRef, useState, useEffect } from "react";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragStartEvent,
+  DragEndEvent,
+  pointerWithin,
+} from "@dnd-kit/core";
+import { snapCenterToCursor } from "@dnd-kit/modifiers";
+import { isTaggedDeviceLayer } from "../api/devices.ts";
 import { TagsPanel } from "./editProfile/TagsPanel.tsx";
 import {
   KeysPanel,
@@ -12,10 +24,29 @@ import { MacrosPanel } from "./editProfile/MacrosPanel.tsx";
 import { EditMacroDialog } from "./editProfile/EditMacroDialog.tsx";
 import { ImportKeyDialog } from "./editProfile/ImportKeyDialog.tsx";
 import { EditTaggedLayerDialog } from "./EditTaggedLayerDialog.tsx";
+import { isMacroDragData, DropTargetData } from "./editProfile/dndTypes.ts";
+import {
+  findKeyById,
+  findSelectedProfileLayer,
+  getActiveLayer,
+  updateLayerBindings,
+  useEditDeviceContext,
+} from "../lib/editDeviceContext.tsx";
 
 export function EditDeviceProfile({ className }: { className?: string }) {
   const columnRef = useRef<HTMLDivElement>(null);
+  const dropSuccessRef = useRef(false);
   const [showVirtualPanel, setShowVirtualPanel] = useState(true);
+  const [activeDrag, setActiveDrag] = useState<{
+    macroId: string;
+    macroName: string;
+  } | null>(null);
+
+  const { state, dispatch } = useEditDeviceContext();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
 
   useEffect(() => {
     const el = columnRef.current;
@@ -27,28 +58,126 @@ export function EditDeviceProfile({ className }: { className?: string }) {
     return () => observer.disconnect();
   }, []);
 
+  const handleDragStart = (event: DragStartEvent) => {
+    const data = event.active.data.current;
+    if (isMacroDragData(data)) {
+      setActiveDrag({ macroId: data.macroId, macroName: data.macroName });
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    dropSuccessRef.current = false;
+    setActiveDrag(null);
+
+    const dragData = event.active.data.current;
+    const dropData = event.over?.data.current as DropTargetData | undefined;
+    if (!dragData || !dropData || !isMacroDragData(dragData)) return;
+
+    const macroId = dragData.macroId;
+
+    if (dropData.type === "key") {
+      const key = findKeyById(dropData.keyId, state);
+      if (!key) return;
+      const activeLayer = getActiveLayer(key.layers, state.selectedTags);
+      if (activeLayer.macros.includes(macroId)) return;
+      dispatch({
+        type: "setProfile",
+        profile: updateLayerBindings(
+          dropData.keyId,
+          activeLayer.id,
+          state.profile,
+          [...activeLayer.macros, macroId],
+        ),
+        description: "Add binding (drag)",
+      });
+      dispatch({ type: "setSelectedKey", keyId: dropData.keyId });
+      dropSuccessRef.current = true;
+    } else if (dropData.type === "layer") {
+      const key = findKeyById(dropData.keyId, state);
+      if (!key) return;
+      const allLayers = [
+        ...key.layers.layers.map((l) => l.layer),
+        key.layers.defaultLayer,
+      ];
+      const layer = allLayers.find((l) => l.id === dropData.layerId);
+      if (!layer) return;
+      if (layer.macros.includes(macroId)) return;
+      dispatch({
+        type: "setProfile",
+        profile: updateLayerBindings(
+          dropData.keyId,
+          dropData.layerId,
+          state.profile,
+          [...layer.macros, macroId],
+        ),
+        description: "Add binding (drag)",
+      });
+      dispatch({ type: "setSelectedLayer", layerId: dropData.layerId });
+      dropSuccessRef.current = true;
+    } else if (dropData.type === "bindings") {
+      if (!state.selectedKey || !state.selectedLayer) return;
+      const selectedLayer = findSelectedProfileLayer(state);
+      if (!selectedLayer) return;
+      const macros = isTaggedDeviceLayer(selectedLayer)
+        ? selectedLayer.layer.macros
+        : selectedLayer.macros;
+      if (macros.includes(macroId)) return;
+      dispatch({
+        type: "setProfile",
+        profile: updateLayerBindings(
+          state.selectedKey,
+          state.selectedLayer,
+          state.profile,
+          [...macros, macroId],
+        ),
+        description: "Add binding (drag)",
+      });
+      dropSuccessRef.current = true;
+    }
+  };
+
   return (
     <>
-      <div
-        className={clsx("flex gap-0.5 overflow-x-auto bg-stone-950", className)}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={pointerWithin}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
       >
-        <div className="grid min-w-56 grid-rows-2 flex-col gap-0.5">
-          <TagsPanel />
-          <KeysPanel showPhysicalKeys showVirtualKeys />
-        </div>
         <div
-          ref={columnRef}
-          className="hidden grow basis-[56rem] flex-col xl:flex"
+          className={clsx(
+            "flex gap-[3px] overflow-x-auto bg-stone-950",
+            className,
+          )}
         >
-          <KeyViewPanel className="m-4 grow" />
-          {showVirtualPanel && <VirtualKeyPanel className="mx-10 mb-4" />}
+          <div className="grid min-w-56 grid-rows-2 flex-col gap-[3px]">
+            <TagsPanel />
+            <KeysPanel showPhysicalKeys showVirtualKeys />
+          </div>
+          <div
+            ref={columnRef}
+            className="hidden grow basis-[56rem] flex-col xl:flex"
+          >
+            <KeyViewPanel className="m-4 grow" />
+            {showVirtualPanel && <VirtualKeyPanel className="mx-10 mb-4" />}
+          </div>
+          <div className="grid shrink grow basis-80 grid-rows-2 gap-[3px]">
+            <LayersPanel />
+            <BindingsPanel />
+          </div>
+          <MacrosPanel className="shrink grow basis-80" />
         </div>
-        <div className="grid shrink grow basis-80 grid-rows-2 gap-0.5">
-          <LayersPanel />
-          <BindingsPanel />
-        </div>
-        <MacrosPanel className="shrink grow basis-80" />
-      </div>
+        <DragOverlay
+          dropAnimation={dropSuccessRef.current ? null : undefined}
+          modifiers={[snapCenterToCursor]}
+        >
+          {activeDrag && (
+            <div className="w-fit cursor-none rounded-full bg-blue-500 px-3 py-1 text-sm text-white shadow-lg select-none">
+              {activeDrag.macroName}
+            </div>
+          )}
+        </DragOverlay>
+      </DndContext>
       <EditTaggedLayerDialog />
       <EditMacroDialog />
       <ImportKeyDialog />
