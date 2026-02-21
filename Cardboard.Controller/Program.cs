@@ -54,6 +54,7 @@ builder
 	.AddApiFirmwareSource(updateConfig)
 	.AddApiMetadataSource(pathsConfig)
 	.AddApiDeviceIconSource(pathsConfig)
+	.AddVersionChangeDetector(pathsConfig) // add this before bundled cache seeder so it runs first
 	.AddBundledCacheSeeder()
 	.AddApiControllerSource()
 	.AddDeviceServices()
