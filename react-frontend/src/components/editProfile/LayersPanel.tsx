@@ -11,6 +11,7 @@ import { RedListItem } from "../ListItem.tsx";
 import {
   EditDeviceState,
   findKeyById,
+  findLayerById,
   findSelectedProfileLayer,
   getSelectedKeyProfileLayers,
   getTaggedLayerName,
@@ -136,7 +137,12 @@ export function LayersPanel({ className }: { className?: string }) {
   const moveUp = () => {
     if (!state.selectedKey || !state.selectedLayer) return;
     dispatch(
-      moveLayerAction(state.selectedKey, state.selectedLayer, "up", state.profile),
+      moveLayerAction(
+        state.selectedKey,
+        state.selectedLayer,
+        "up",
+        state.profile,
+      ),
     );
     dispatch({
       type: "setSelectedLayer",
@@ -276,6 +282,12 @@ function DroppableLayerItem({
   label: string;
   selected?: boolean;
 }) {
+  const { state } = useEditDeviceContext();
+  const layer = useMemo(() => {
+    if (!keyId) return null;
+    return findLayerById(keyId, layerId, state);
+  }, [keyId, layerId, state]);
+
   const dropData: DropTargetData = {
     type: "layer",
     keyId: keyId ?? "",
@@ -292,15 +304,21 @@ function DroppableLayerItem({
       selected={selected}
       ref={setNodeRef}
       className={clsx(
-        "size-full outline-3 -outline-offset-3 outline-blue-400/0 transition-all duration-150",
+        "flex size-full items-center outline-3 -outline-offset-3 outline-blue-400/0 transition-all duration-150",
         { "outline-blue-400/100": isOver },
       )}
     >
-      {label || <EmptyListItem />}
+      <div className="grow">{label || <EmptyListItem />}</div>
+      {layer &&
+        layer.macros.length != 1 &&
+        (layer.macros.length !== 0 ? (
+          <div>{layer.macros.length}</div>
+        ) : (
+          <div className="opacity-40">(no bindings)</div>
+        ))}
     </RedListItem>
   );
 }
-
 
 function LayersIcon() {
   return (
