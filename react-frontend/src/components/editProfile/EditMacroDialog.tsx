@@ -48,6 +48,23 @@ export function EditMacroDialog() {
     state.modal.type === "editMacro" &&
     state.modal.show;
 
+  const selectName =
+    state.modal !== null &&
+    state.modal.type === "editMacro" &&
+    state.modal.selectName === true;
+
+  const nameInputRef = useCallback(
+    (node: HTMLInputElement | null) => {
+      if (node) {
+        node.focus();
+        if (selectName) {
+          node.select();
+        }
+      }
+    },
+    [selectName],
+  );
+
   const { macro, setMacro } = useMemo(() => {
     if (!state.modal || state.modal.type !== "editMacro" || !state.modal.show)
       return {};
@@ -108,11 +125,13 @@ export function EditMacroDialog() {
           <Field className="flex flex-col gap-1">
             <Label>Name</Label>
             <Input
+              ref={nameInputRef}
               className={clsx("w-full", InputClassName)}
               type="text"
               maxLength={255}
               value={macro.name}
               onChange={(e) => setMacro({ ...macro, name: e.target.value })}
+              autoFocus
             />
           </Field>
           <div className="grid grid-cols-[1fr_2fr] gap-x-6">

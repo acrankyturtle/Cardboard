@@ -137,6 +137,7 @@ type AddTaggedLayerModalOptions = {
 type EditMacroModalOptions = {
   type: "editMacro";
   macro: DeviceMacro;
+  selectName?: boolean;
 } & ModalBaseOptions;
 
 type ImportKeyModalOptions = {
