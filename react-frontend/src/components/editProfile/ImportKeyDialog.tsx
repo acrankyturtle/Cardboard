@@ -56,27 +56,29 @@ export function ImportKeyDialog() {
 
   return (
     <Dialog className="w-2xl" open={isOpen} onClose={closeModal}>
-      <DialogHeader>
-        <DialogHeaderTitle>Import Key</DialogHeaderTitle>
-        <DialogHeaderDescription>
-          {conflicts.length} macro{conflicts.length !== 1 ? "s" : ""} with
-          conflicting IDs found. Choose how to resolve each.
-        </DialogHeaderDescription>
-      </DialogHeader>
-      <DialogDivider />
-      <DialogBody className="max-h-96 overflow-y-auto">
-        {conflicts.map((conflict, index) => (
-          <ConflictItem
-            key={conflict.imported.id}
-            conflict={conflict}
-            onChange={(resolution) => updateResolution(index, resolution)}
-          />
-        ))}
-      </DialogBody>
-      <DialogFooter className="justify-end">
-        <DialogConfirmButton onClick={handleImport}>Import</DialogConfirmButton>
-        <DialogCancelButton onClick={closeModal}>Cancel</DialogCancelButton>
-      </DialogFooter>
+      <form onSubmit={(e) => { e.preventDefault(); handleImport(); }}>
+        <DialogHeader>
+          <DialogHeaderTitle>Import Key</DialogHeaderTitle>
+          <DialogHeaderDescription>
+            {conflicts.length} macro{conflicts.length !== 1 ? "s" : ""} with
+            conflicting IDs found. Choose how to resolve each.
+          </DialogHeaderDescription>
+        </DialogHeader>
+        <DialogDivider />
+        <DialogBody className="max-h-96 overflow-y-auto">
+          {conflicts.map((conflict, index) => (
+            <ConflictItem
+              key={conflict.imported.id}
+              conflict={conflict}
+              onChange={(resolution) => updateResolution(index, resolution)}
+            />
+          ))}
+        </DialogBody>
+        <DialogFooter className="justify-end">
+          <DialogConfirmButton onClick={handleImport}>Import</DialogConfirmButton>
+          <DialogCancelButton onClick={closeModal}>Cancel</DialogCancelButton>
+        </DialogFooter>
+      </form>
     </Dialog>
   );
 }

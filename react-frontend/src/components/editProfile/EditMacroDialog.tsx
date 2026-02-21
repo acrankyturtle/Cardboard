@@ -86,6 +86,15 @@ export function EditMacroDialog() {
     dispatch({ type: "setModal", modal: null });
   }, [dispatch]);
 
+  const handleConfirm = useCallback(() => {
+    if (!showModal || !macro) return;
+    const isNewMacro = getMacroUsages(macro.id, state.profile).length === 0 &&
+      !state.profile.macros.some((m) => m.id === macro.id);
+    dispatch(saveMacro(macro, isNewMacro, state.profile));
+    dispatch({ type: "setModal", modal: null });
+    dispatch({ type: "setSelectedMacro", macroId: macro.id });
+  }, [showModal, macro, dispatch, state.profile]);
+
   if (!macro) return <></>;
 
   const numberOfUsages = getMacroUsages(macro.id, state.profile).length;
@@ -100,198 +109,193 @@ export function EditMacroDialog() {
       onClose={closeModal}
       closeOnBackdropClick={false}
     >
-      <DialogHeader>
-        <DialogHeaderTitle className="flex items-center gap-2">
-          Edit Macro
-          <HelpLink section="macros" />
-        </DialogHeaderTitle>
-        <DialogHeaderDescription>
-          {isNew ? (
-            "New macro"
-          ) : numberOfUsages > 1 ? (
-            <div className="font-semibold text-sky-300">
-              {numberOfUsages} usages
-            </div>
-          ) : numberOfUsages === 1 ? (
-            "1 usage"
-          ) : (
-            "Unused"
-          )}
-        </DialogHeaderDescription>
-      </DialogHeader>
-      <DialogDivider />
-      <DialogBody className="gap-y-5">
-        <Fieldset className="space-y-4">
-          <Field className="flex flex-col gap-1">
-            <Label>Name</Label>
-            <Input
-              ref={nameInputRef}
-              className={clsx("w-full", InputClassName)}
-              type="text"
-              maxLength={255}
-              value={macro.name}
-              onChange={(e) => setMacro({ ...macro, name: e.target.value })}
-              autoFocus
-            />
-          </Field>
-          <div className="grid grid-cols-[1fr_2fr] gap-x-6">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleConfirm();
+        }}
+      >
+        <DialogHeader>
+          <DialogHeaderTitle className="flex items-center gap-2">
+            Edit Macro
+            <HelpLink section="macros" />
+          </DialogHeaderTitle>
+          <DialogHeaderDescription>
+            {isNew ? (
+              "New macro"
+            ) : numberOfUsages > 1 ? (
+              <div className="font-semibold text-sky-300">
+                {numberOfUsages} usages
+              </div>
+            ) : numberOfUsages === 1 ? (
+              "1 usage"
+            ) : (
+              "Unused"
+            )}
+          </DialogHeaderDescription>
+        </DialogHeader>
+        <DialogDivider />
+        <DialogBody className="gap-y-5">
+          <Fieldset className="space-y-4">
             <Field className="flex flex-col gap-1">
-              <Label className="flex items-center gap-2">
-                Play Channel
-                <ChannelSummaryLink
-                  profile={state.profile}
-                  currentMacro={macro}
-                />
-              </Label>
+              <Label>Name</Label>
               <Input
+                ref={nameInputRef}
                 className={clsx("w-full", InputClassName)}
-                type="number"
-                min={0}
-                max={255}
-                value={macro.playChannel ?? ""}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setMacro({
-                    ...macro,
-                    playChannel: value === "" ? undefined : parseInt(value, 10),
-                  });
-                }}
-                placeholder="None"
+                type="text"
+                maxLength={255}
+                value={macro.name}
+                onChange={(e) => setMacro({ ...macro, name: e.target.value })}
+                autoFocus
               />
             </Field>
-            <CutChannelsField
-              value={macro.cutChannels}
-              onChange={(channels) =>
-                setMacro({ ...macro, cutChannels: channels })
-              }
-            />
-          </div>
-        </Fieldset>
-        <DialogDivider />
-        <TabGroup
-          className="space-y-4"
-          selectedIndex={tabIndex}
-          onChange={(index) => {
-            // Prevent switching to sequences when template is being edited
-            if (isTemplateEditing && index === 0) return;
-            setTabIndex(index);
-          }}
-        >
-          <TabList className="space-x-1">
-            <Tab
-              as={Button}
-              className="px-4"
-              buttonStyle={{ variant: "navbar" }}
-              disabled={isTemplateEditing}
-            >
-              Sequences
-            </Tab>
-            <Tab
-              as={Button}
-              className="px-4"
-              buttonStyle={{ variant: "navbar" }}
-            >
-              Templates
-            </Tab>
-          </TabList>
-          <TabPanels className="h-96 rounded-lg border border-stone-900 bg-stone-800">
-            <TabPanel
-              tabIndex={-1}
-              className="grid size-full grid-cols-3 gap-2 p-2"
-            >
-              <SequenceEditor
-                type="start"
-                value={macro?.startSequence ?? { actions: [] }}
-                setValue={(s) => {
-                  if (!macro) return;
-                  setMacro({ ...macro, startSequence: s });
-                }}
-                transformActionEvent={(event) =>
-                  createStartSequenceActionEvent(
-                    event,
-                    macro?.endSequence,
-                    macro?.startSequence,
-                  )
+            <div className="grid grid-cols-[1fr_2fr] gap-x-6">
+              <Field className="flex flex-col gap-1">
+                <Label className="flex items-center gap-2">
+                  Play Channel
+                  <ChannelSummaryLink
+                    profile={state.profile}
+                    currentMacro={macro}
+                  />
+                </Label>
+                <Input
+                  className={clsx("w-full", InputClassName)}
+                  type="number"
+                  min={0}
+                  max={255}
+                  value={macro.playChannel ?? ""}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setMacro({
+                      ...macro,
+                      playChannel:
+                        value === "" ? undefined : parseInt(value, 10),
+                    });
+                  }}
+                  placeholder="None"
+                />
+              </Field>
+              <CutChannelsField
+                value={macro.cutChannels}
+                onChange={(channels) =>
+                  setMacro({ ...macro, cutChannels: channels })
                 }
-                onCopyToOther={(s) => {
-                  if (!macro) return;
-                  setMacro({ ...macro, endSequence: s });
-                }}
               />
-              <SequenceEditor
-                type="loop"
-                value={macro?.loopSequence ?? { actions: [] }}
-                setValue={(s) => {
-                  if (!macro) return;
-                  setMacro({ ...macro, loopSequence: s });
-                }}
-              />
-              <SequenceEditor
-                type="end"
-                value={macro?.endSequence ?? { actions: [] }}
-                setValue={(s) => {
-                  if (!macro) return;
-                  setMacro({ ...macro, endSequence: s });
-                }}
-                transformActionEvent={(event) =>
-                  createEndSequenceActionEvent(
-                    event,
-                    macro?.startSequence,
-                    macro?.endSequence,
-                  )
-                }
-                onCopyToOther={(s) => {
-                  if (!macro) return;
-                  setMacro({ ...macro, startSequence: s });
-                }}
-              />
-            </TabPanel>
-            <TabPanel tabIndex={-1} className="size-full p-3">
-              <TemplatePanel
-                setMacro={(result) => {
-                  setMacro({
-                    ...macro,
-                    startSequence: result.start,
-                    loopSequence: result.loop,
-                    endSequence: result.end,
-                  });
-                }}
-                onEditingChange={setIsTemplateEditing}
-                currentMacro={
-                  macro
-                    ? {
-                        start: macro.startSequence,
-                        loop: macro.loopSequence,
-                        end: macro.endSequence,
-                      }
-                    : undefined
-                }
-                onSwitchToSequences={() => setTabIndex(0)}
-              />
-            </TabPanel>
-          </TabPanels>
-        </TabGroup>
-      </DialogBody>
-      <DialogFooter>
-        <div className="grow" />
-        <DialogConfirmButton
-          onClick={() => {
-            if (!showModal || !macro) return;
-            dispatch(saveMacro(macro, isNew, state.profile));
-            dispatch({
-              type: "setModal",
-              modal: null,
-            });
-            dispatch({
-              type: "setSelectedMacro",
-              macroId: macro.id,
-            });
-          }}
-        >
-          Confirm
-        </DialogConfirmButton>
-        <DialogCancelButton onClick={closeModal}>Cancel</DialogCancelButton>
-      </DialogFooter>
+            </div>
+          </Fieldset>
+          <DialogDivider />
+          <TabGroup
+            className="space-y-4"
+            selectedIndex={tabIndex}
+            onChange={(index) => {
+              // Prevent switching to sequences when template is being edited
+              if (isTemplateEditing && index === 0) return;
+              setTabIndex(index);
+            }}
+          >
+            <TabList className="space-x-1">
+              <Tab
+                as={Button}
+                className="px-4"
+                buttonStyle={{ variant: "navbar" }}
+                disabled={isTemplateEditing}
+              >
+                Sequences
+              </Tab>
+              <Tab
+                as={Button}
+                className="px-4"
+                buttonStyle={{ variant: "navbar" }}
+              >
+                Templates
+              </Tab>
+            </TabList>
+            <TabPanels className="h-96 rounded-lg border border-stone-900 bg-stone-800">
+              <TabPanel
+                tabIndex={-1}
+                className="grid size-full grid-cols-3 gap-2 p-2"
+              >
+                <SequenceEditor
+                  type="start"
+                  value={macro?.startSequence ?? { actions: [] }}
+                  setValue={(s) => {
+                    if (!macro) return;
+                    setMacro({ ...macro, startSequence: s });
+                  }}
+                  transformActionEvent={(event) =>
+                    createStartSequenceActionEvent(
+                      event,
+                      macro?.endSequence,
+                      macro?.startSequence,
+                    )
+                  }
+                  onCopyToOther={(s) => {
+                    if (!macro) return;
+                    setMacro({ ...macro, endSequence: s });
+                  }}
+                />
+                <SequenceEditor
+                  type="loop"
+                  value={macro?.loopSequence ?? { actions: [] }}
+                  setValue={(s) => {
+                    if (!macro) return;
+                    setMacro({ ...macro, loopSequence: s });
+                  }}
+                />
+                <SequenceEditor
+                  type="end"
+                  value={macro?.endSequence ?? { actions: [] }}
+                  setValue={(s) => {
+                    if (!macro) return;
+                    setMacro({ ...macro, endSequence: s });
+                  }}
+                  transformActionEvent={(event) =>
+                    createEndSequenceActionEvent(
+                      event,
+                      macro?.startSequence,
+                      macro?.endSequence,
+                    )
+                  }
+                  onCopyToOther={(s) => {
+                    if (!macro) return;
+                    setMacro({ ...macro, startSequence: s });
+                  }}
+                />
+              </TabPanel>
+              <TabPanel tabIndex={-1} className="size-full p-3">
+                <TemplatePanel
+                  setMacro={(result) => {
+                    setMacro({
+                      ...macro,
+                      startSequence: result.start,
+                      loopSequence: result.loop,
+                      endSequence: result.end,
+                    });
+                  }}
+                  onEditingChange={setIsTemplateEditing}
+                  currentMacro={
+                    macro
+                      ? {
+                          start: macro.startSequence,
+                          loop: macro.loopSequence,
+                          end: macro.endSequence,
+                        }
+                      : undefined
+                  }
+                  onSwitchToSequences={() => setTabIndex(0)}
+                />
+              </TabPanel>
+            </TabPanels>
+          </TabGroup>
+        </DialogBody>
+        <DialogFooter>
+          <div className="grow" />
+          <DialogConfirmButton onClick={handleConfirm}>
+            Confirm
+          </DialogConfirmButton>
+          <DialogCancelButton onClick={closeModal}>Cancel</DialogCancelButton>
+        </DialogFooter>
+      </form>
     </Dialog>
   );
 }

@@ -1,17 +1,16 @@
 import { Input } from "@headlessui/react";
 import clsx from "clsx";
 import { useRef, useState } from "react";
+import * as React from "react";
 
 export function TagListEditor({
   value,
   onChange,
-  onEnterEmpty,
   className,
   autoFocus,
 }: {
   value?: readonly string[];
   onChange?: (value: readonly string[]) => void;
-  onEnterEmpty?: () => void;
   className?: string;
   autoFocus?: boolean;
 }) {
@@ -37,11 +36,9 @@ export function TagListEditor({
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") {
-      e.preventDefault();
       if (inputValue.trim()) {
+        e.preventDefault();
         commitTag(inputValue);
-      } else {
-        onEnterEmpty?.();
       }
     } else if (e.key === "Backspace" && inputValue === "" && tags.length > 0) {
       removeTag(tags[tags.length - 1]);

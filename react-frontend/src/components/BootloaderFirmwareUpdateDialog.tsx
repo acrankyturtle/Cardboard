@@ -90,69 +90,71 @@ export function BootloaderFirmwareUpdateDialog({
 
   return (
     <Dialog open={open} onClose={() => !isUpdating && handleClose()}>
-      <DialogHeader>
-        <DialogHeaderTitle>
-          {showProgress
-            ? isSuccess
-              ? "Update Complete"
-              : isError
-                ? "Update Failed"
-                : "Flashing Firmware"
-            : "Flash Bootloader Device"}
-        </DialogHeaderTitle>
-        {!showProgress && (
-          <DialogHeaderDescription>
-            Flash firmware to a device in bootloader mode
-          </DialogHeaderDescription>
-        )}
-      </DialogHeader>
-      <DialogDivider />
-      <DialogBody className="w-[28rem]">
-        {showProgress ? (
-          isSuccess ? (
-            <SuccessContent />
-          ) : isError ? (
-            <ErrorContent error={state.error} />
+      <form onSubmit={(e) => { e.preventDefault(); if (canFlash) handleStartUpdate(); }}>
+        <DialogHeader>
+          <DialogHeaderTitle>
+            {showProgress
+              ? isSuccess
+                ? "Update Complete"
+                : isError
+                  ? "Update Failed"
+                  : "Flashing Firmware"
+              : "Flash Bootloader Device"}
+          </DialogHeaderTitle>
+          {!showProgress && (
+            <DialogHeaderDescription>
+              Flash firmware to a device in bootloader mode
+            </DialogHeaderDescription>
+          )}
+        </DialogHeader>
+        <DialogDivider />
+        <DialogBody className="w-[28rem]">
+          {showProgress ? (
+            isSuccess ? (
+              <SuccessContent />
+            ) : isError ? (
+              <ErrorContent error={state.error} />
+            ) : (
+              <ProgressContent stage={state.stage} />
+            )
+          ) : isFirmwareLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <LoadingIndicator className="size-8 text-stone-400" />
+            </div>
+          ) : firmware.length === 0 ? (
+            <div className="py-4 text-center text-stone-400">
+              No firmware available
+            </div>
           ) : (
-            <ProgressContent stage={state.stage} />
-          )
-        ) : isFirmwareLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <LoadingIndicator className="size-8 text-stone-400" />
-          </div>
-        ) : firmware.length === 0 ? (
-          <div className="py-4 text-center text-stone-400">
-            No firmware available
-          </div>
-        ) : (
-          <SelectionContent
-            firmware={firmware}
-            selectedKey={selectedKey}
-            selectedFirmware={selectedFirmware}
-            onSelectionChange={setSelectedKey}
-          />
-        )}
-      </DialogBody>
-      <DialogFooter className="justify-end">
-        {showProgress ? (
-          isComplete ? (
-            <DialogCancelButton onClick={handleClose}>
-              {isSuccess ? "Done" : "Close"}
-            </DialogCancelButton>
-          ) : null
-        ) : (
-          <>
-            <DialogCancelButton onClick={handleClose}>
-              Cancel
-            </DialogCancelButton>
-            <DialogConfirmButton
-              onClick={canFlash ? handleStartUpdate : undefined}
-            >
-              Flash Firmware
-            </DialogConfirmButton>
-          </>
-        )}
-      </DialogFooter>
+            <SelectionContent
+              firmware={firmware}
+              selectedKey={selectedKey}
+              selectedFirmware={selectedFirmware}
+              onSelectionChange={setSelectedKey}
+            />
+          )}
+        </DialogBody>
+        <DialogFooter className="justify-end">
+          {showProgress ? (
+            isComplete ? (
+              <DialogCancelButton onClick={handleClose}>
+                {isSuccess ? "Done" : "Close"}
+              </DialogCancelButton>
+            ) : null
+          ) : (
+            <>
+              <DialogCancelButton onClick={handleClose}>
+                Cancel
+              </DialogCancelButton>
+              <DialogConfirmButton
+                onClick={canFlash ? handleStartUpdate : undefined}
+              >
+                Flash Firmware
+              </DialogConfirmButton>
+            </>
+          )}
+        </DialogFooter>
+      </form>
     </Dialog>
   );
 }
