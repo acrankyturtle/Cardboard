@@ -4,7 +4,7 @@ import remarkGfm from "remark-gfm";
 import guideContent from "@root/GUIDE.md?raw";
 import ck130GuideContent from "@root/GUIDE-CK1-30.md?raw";
 import { ReactNode, useEffect, useRef } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import type { Components } from "react-markdown";
 
 const guideRoutes: Record<string, string> = {
@@ -32,6 +32,8 @@ function getTextContent(children: ReactNode): string {
 function GuidePage({ title, content }: { title: string; content: string }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isHelpPage = searchParams.get("ref") === "help";
 
   useEffect(() => {
     const hash = window.location.hash;
@@ -107,6 +109,7 @@ function GuidePage({ title, content }: { title: string; content: string }) {
 
   return (
     <div className="flex size-full flex-col">
+      {isHelpPage && <title>Cardboard Guide</title>}
       <Header className="flex items-center">{title}</Header>
       <div ref={scrollRef} className="grow overflow-y-auto px-10 py-6">
         <div className="prose prose-invert max-w-4xl">
