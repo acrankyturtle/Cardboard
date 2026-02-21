@@ -77,6 +77,7 @@ export function MacrosPanel({ className }: { className?: string }) {
       modal: {
         type: "editMacro",
         show: true,
+        selectName: true,
         macro: {
           id: crypto.randomUUID(),
           name: "New Macro",
