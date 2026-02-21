@@ -4,3 +4,7 @@
 .root {
   isolation: isolate;
 }
+
+[data-dragging] * {
+  pointer-events: none;
+}
