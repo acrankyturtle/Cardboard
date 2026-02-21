@@ -85,6 +85,17 @@ impl<'a> KeyboardState<'a> {
 				_ => {}
 			};
 		}
+
+		// release virtual keys beyond the bitfield
+		for i in num_keys..self.virtual_keys.len() {
+			let key = &mut self.virtual_keys[i];
+			if let Some(false) = key.update(false) {
+				Self::release_key_source(
+					self.running.iter_mut(),
+					MacroSourceKey::VirtualKey(key.id),
+				);
+			}
+		}
 	}
 
 	fn get_macros_from_key<K: KeyState<'a>>(
