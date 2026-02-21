@@ -1,6 +1,7 @@
 import { ReactNode, useEffect, useRef, forwardRef, Ref } from "react";
-import clsx, { ClassValue } from "clsx";
+import clsx from "clsx";
 import * as React from "react";
+import { VioletListItem } from "./ListItem.tsx";
 
 export interface ListBoxItem {
   label: string;
@@ -9,7 +10,6 @@ export interface ListBoxItem {
 
 interface ListBoxBaseProps<TItem extends ListBoxItem> {
   className?: string;
-  variant?: ItemVariant;
   items: readonly TItem[];
   renderItem?: (item: TItem, selected: boolean) => ReactNode;
   onDoubleClick?: (item: TItem) => void;
@@ -36,7 +36,6 @@ type ListBoxProps<TItem extends ListBoxItem> =
 function ListBoxInner<TItem extends ListBoxItem>(
   {
     className,
-    variant,
     items,
     selected,
     setSelected,
@@ -157,17 +156,14 @@ function ListBoxInner<TItem extends ListBoxItem>(
                 }
               }}
               onDoubleClick={() => onDoubleClick?.(item)}
-              className={clsx(
-                "cursor-pointer px-4 py-2 transition-colors duration-150 select-none",
-                getVariantStyle(variant ?? "violet", isSelected),
-              )}
+              className="cursor-pointer"
             >
               {renderItem ? (
                 renderItem(item, isSelected)
-              ) : item.label.length > 0 ? (
-                item.label
               ) : (
-                <EmptyListItem />
+                <VioletListItem selected={isSelected}>
+                  {item.label.length > 0 ? item.label : <EmptyListItem />}
+                </VioletListItem>
               )}
             </li>
           );
@@ -187,42 +183,3 @@ export function EmptyListItem() {
   return <div className="text-stone-50/25">(empty)</div>;
 }
 
-type ItemVariant = "violet" | "yellow" | "red" | "green" | "blue";
-
-const getVariantStyle = (
-  variant: ItemVariant,
-  selected: boolean,
-): ClassValue => {
-  switch (variant) {
-    case "violet":
-      return {
-        "bg-violet-900 hover:bg-violet-800": selected,
-        "hover:bg-stone-700 active:bg-violet-900/50 active:not-hover:bg-stone-900":
-          !selected,
-      };
-    case "yellow":
-      return {
-        "bg-yellow-900 hover:bg-yellow-800": selected,
-        "hover:bg-stone-700 active:bg-yellow-900/50 active:not-hover:bg-stone-900":
-          !selected,
-      };
-    case "red":
-      return {
-        "bg-red-900 hover:bg-red-800": selected,
-        "hover:bg-stone-700 active:bg-red-900/50 active:not-hover:bg-stone-900":
-          !selected,
-      };
-    case "green":
-      return {
-        "bg-lime-900 hover:bg-lime-800": selected,
-        "hover:bg-stone-700 active:bg-lime-900/50 active:not-hover:bg-stone-900":
-          !selected,
-      };
-    case "blue":
-      return {
-        "bg-blue-900 hover:bg-blue-800": selected,
-        "hover:bg-stone-700 active:bg-blue-900/50 active:not-hover:bg-stone-900":
-          !selected,
-      };
-  }
-};

@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { ListBox } from "../ListBox.tsx";
+import { YellowListItem } from "../ListItem.tsx";
 import {
   useEditDeviceContext,
   getTagsInProfile,
@@ -67,13 +68,14 @@ export function TagsPanel({ className }: { className?: string }) {
                 tags: items.map((i) => i.value),
               })
             }
-            variant={"yellow"}
             isMultiSelect
-            renderItem={(item) => {
+            renderItem={(item, selected) => {
               return (
-                <div className="flex size-full">
-                  <div className="grow">{item.label}</div>
-                </div>
+                <YellowListItem selected={selected}>
+                  <div className="flex size-full">
+                    <div className="grow">{item.label}</div>
+                  </div>
+                </YellowListItem>
               );
             }}
           />

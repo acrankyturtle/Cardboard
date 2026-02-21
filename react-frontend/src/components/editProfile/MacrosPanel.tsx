@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { DeviceMacro } from "../../api/devices.ts";
 import { ListBox, ListBoxItem } from "../ListBox.tsx";
+import { BlueListItem } from "../ListItem.tsx";
 import {
   deleteMacro,
   findMacroById,
@@ -222,8 +223,11 @@ export function MacrosPanel({ className }: { className?: string }) {
         <ContextMenuTrigger>
           <ListBox
             className="grow"
-            variant="blue"
-            renderItem={(item) => <MacroListItem item={item} />}
+            renderItem={(item, selected) => (
+              <BlueListItem selected={selected}>
+                <MacroListItem item={item} />
+              </BlueListItem>
+            )}
             items={macros}
             selected={selectedMacro}
             setSelected={(v) =>

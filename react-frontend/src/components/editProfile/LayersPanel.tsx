@@ -8,6 +8,7 @@ import {
   TaggedDeviceLayer,
 } from "../../api/devices.ts";
 import { EmptyListItem, ListBox, ListBoxItem } from "../ListBox.tsx";
+import { RedListItem } from "../ListItem.tsx";
 import {
   EditDeviceState,
   findKeyById,
@@ -223,17 +224,17 @@ export function LayersPanel({ className }: { className?: string }) {
         <ContextMenuTrigger>
           <ListBox
             className="grow"
-            variant="red"
             items={layers}
             selected={selectedLayer}
             setSelected={(v) =>
               dispatch({ type: "setSelectedLayer", layerId: v.value })
             }
-            renderItem={(item) => (
+            renderItem={(item, selected) => (
               <DroppableLayerItem
                 layerId={item.value}
                 keyId={state.selectedKey}
                 label={item.label}
+                selected={selected}
               />
             )}
             onDoubleClick={(item) => {
@@ -294,10 +295,12 @@ function DroppableLayerItem({
   layerId,
   keyId,
   label,
+  selected,
 }: {
   layerId: string;
   keyId: string | null;
   label: string;
+  selected?: boolean;
 }) {
   const dropData: DropTargetData = {
     type: "layer",
@@ -311,12 +314,16 @@ function DroppableLayerItem({
   });
 
   return (
-    <div
+    <RedListItem
+      selected={selected}
       ref={setNodeRef}
-      className={clsx("size-full", { "bg-blue-500/30": isOver })}
+      className={clsx(
+        "size-full outline-3 -outline-offset-3 outline-blue-400/0 transition-all duration-150",
+        { "outline-blue-400/100": isOver },
+      )}
     >
       {label || <EmptyListItem />}
-    </div>
+    </RedListItem>
   );
 }
 

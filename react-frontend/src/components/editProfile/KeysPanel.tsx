@@ -9,6 +9,7 @@ import {
   VirtualKey,
 } from "../../api/devices.ts";
 import { ListBox, ListBoxItem } from "../ListBox.tsx";
+import { GreenListItem } from "../ListItem.tsx";
 import {
   findKeyById,
   getActiveLayer,
@@ -342,19 +343,20 @@ export function KeysPanel({
         <ContextMenuTrigger>
           <ListBox
             className="grow"
-            variant="green"
             items={keys}
             selected={selectedKey}
             setSelected={(v) =>
               dispatch({ type: "setSelectedKey", keyId: v.value })
             }
-            renderItem={(item) => {
+            renderItem={(item, selected) => {
               const layerCount = getLayerCount(item.value, state.profile);
               return (
-                <div className="flex size-full">
-                  <div className="grow">{item.label}</div>
-                  {layerCount > 0 && <div>{layerCount}</div>}
-                </div>
+                <GreenListItem selected={selected}>
+                  <div className="flex size-full">
+                    <div className="grow">{item.label}</div>
+                    {layerCount > 0 && <div>{layerCount}</div>}
+                  </div>
+                </GreenListItem>
               );
             }}
           />
