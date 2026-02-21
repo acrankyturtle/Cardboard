@@ -263,6 +263,11 @@ export function EditDeviceContextProvider({
             layers: { layers: [], defaultLayer: { id: v4(), macros: [] } },
           };
     }),
+    virtualKeys: Array.from({ length: device.virtualKeyCount }, (_, i) => {
+      return originalProfile.virtualKeys[i] ?? {
+        layers: { layers: [], defaultLayer: { id: v4(), macros: [] } },
+      };
+    }),
   };
 
   const initialState: EditDeviceState = {
@@ -467,14 +472,10 @@ export const findKeyById = (
 ): DeviceKey | VirtualKey | null => {
   const index = parseVirtualKeyIndex(keyId);
   if (index !== null) {
-    return state.profile.virtualKeys[index] ?? newVirtualKey();
+    return state.profile.virtualKeys[index] ?? null;
   }
   return state.profile.keys.find((k) => k.id === keyId) ?? null;
 };
-
-const newVirtualKey = (): VirtualKey => ({
-  layers: { layers: [], defaultLayer: { id: v4(), macros: [] } },
-});
 
 export const findLayerById = (
   keyId: string,
