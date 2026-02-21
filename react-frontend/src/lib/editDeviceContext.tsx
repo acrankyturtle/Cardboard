@@ -366,6 +366,13 @@ export const useEditDeviceContext = () => {
   return context;
 };
 
+export const isProfileChanged = (
+  a: DeviceProfile,
+  b: DeviceProfile,
+): boolean => {
+  return JSON.stringify(a) !== JSON.stringify(b);
+};
+
 export const updateKeyLayers = (
   keyId: string,
   profile: DeviceProfile,

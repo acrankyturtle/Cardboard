@@ -31,6 +31,7 @@ import { InputClassName } from "../components/Input.tsx";
 import { UpdateFirmwareButton } from "../components/UpdateFirmwareButton.tsx";
 import {
   EditDeviceContextProvider,
+  isProfileChanged,
   useEditDeviceContext,
 } from "../lib/editDeviceContext.tsx";
 import {
@@ -377,8 +378,7 @@ function EditDeviceView() {
   }, [dispatch]);
 
   const hasChanges = useMemo(
-    () =>
-      JSON.stringify(state.profile) !== JSON.stringify(state.originalProfile),
+    () => isProfileChanged(state.profile, state.originalProfile),
     [state.profile, state.originalProfile],
   );
 
