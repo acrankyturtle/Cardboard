@@ -50,7 +50,7 @@ function DeviceCard({
           <SvgIcon className="size-8 rounded-md" url={device.iconUrl} />
         )}
         <div>
-          <div>{device.name}</div>
+          <div>{device.name || device.model}</div>
           <div className="ml-2">
             <DeviceCardDetail name="id" value={device.id} />
             <DeviceCardDetail name="model" value={device.model} />

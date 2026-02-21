@@ -153,7 +153,11 @@ function DeviceInfoDialog({ deviceId }: { deviceId: string | null }) {
                 <StatName>Id</StatName>
                 <StatValue>{device.id}</StatValue>
                 <StatName>Name</StatName>
-                <StatValue>{device.name}</StatValue>
+                <StatValue>
+                  {device.name || (
+                    <span className="italic opacity-40">(none)</span>
+                  )}
+                </StatValue>
                 <StatName>Type</StatName>
                 <StatValue>{device.type}</StatValue>
                 {device.variant !== undefined && (
