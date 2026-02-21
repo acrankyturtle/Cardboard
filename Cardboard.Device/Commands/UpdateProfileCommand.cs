@@ -9,6 +9,16 @@ public sealed class UpdateProfileCommand : ICommand<DeviceProfile, Unit>
 
 	public Unit Execute(DeviceProfile input, ICommandStream stream)
 	{
+		// trim empty virtual keys from the end
+		// empty keys do nothing and only take up space in the profile, so we can safely remove them before sending the profile to the device
+		input = input with
+		{
+			VirtualKeys = TrimEnd(
+				input.VirtualKeys,
+				k => k.Layers.Layers.Count == 0 && k.Layers.DefaultLayer.Macros.Count == 0
+			),
+		};
+
 		using var ms = new MemoryStream();
 		using var writer = new BinaryWriter(ms);
 		input.WriteTo(writer);
@@ -33,5 +43,16 @@ public sealed class UpdateProfileCommand : ICommand<DeviceProfile, Unit>
 			);
 
 		return Unit.Value;
+	}
+
+	private static IReadOnlyList<T> TrimEnd<T>(IReadOnlyList<T> collection, Func<T, bool> isEmpty)
+	{
+		for (var i = collection.Count - 1; i >= 0; i--)
+		{
+			if (!isEmpty(collection[i]))
+				return [.. collection.Take(i + 1)];
+		}
+
+		return collection;
 	}
 }

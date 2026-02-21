@@ -3,7 +3,7 @@ using StronglyTypedIds;
 
 namespace Cardboard.Device;
 
-public sealed class DeviceProfile : IReadable<DeviceProfile>, IWriteable
+public sealed record DeviceProfile : IReadable<DeviceProfile>, IWriteable
 {
 	private const uint Version = 1;
 
