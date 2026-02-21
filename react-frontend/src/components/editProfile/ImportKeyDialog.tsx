@@ -11,11 +11,8 @@ import {
   DialogHeaderTitle,
 } from "../Dialog.tsx";
 import { useEditDeviceContext } from "../../lib/editDeviceContext.tsx";
-import {
-  applyKeyImport,
-  MacroConflict,
-  MacroResolution,
-} from "../../lib/keyImportExport.ts";
+import { MacroConflict, MacroResolution } from "../../lib/keyImportExport.ts";
+import { importKey } from "../../lib/profileActions.ts";
 import { RadioGroup, Radio, Label, Field } from "@headlessui/react";
 
 const resolutionOptions: { value: MacroResolution; label: string }[] = [
@@ -53,17 +50,7 @@ export function ImportKeyDialog() {
 
   const handleImport = () => {
     if (!keyExport || !state.selectedKey) return;
-    const updatedProfile = applyKeyImport(
-      state.selectedKey,
-      keyExport,
-      conflicts,
-      state.profile,
-    );
-    dispatch({
-      type: "setProfile",
-      profile: updatedProfile,
-      description: "Import key",
-    });
+    dispatch(importKey(state.selectedKey, keyExport, conflicts, state.profile));
     dispatch({ type: "setModal", modal: null });
   };
 

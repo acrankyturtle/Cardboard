@@ -4,13 +4,13 @@ import {
   pickAndReadJsonFile,
 } from "../../lib/jsonFileUtils.ts";
 import {
-  applyKeyImport,
   buildKeyExport,
   detectConflicts,
   isValidKeyExport,
   KeyExport,
 } from "../../lib/keyImportExport.ts";
 import { useEditDeviceContext } from "../../lib/editDeviceContext.tsx";
+import { importKey as importKeyAction } from "../../lib/profileActions.ts";
 import { ContextMenuItem, ContextMenuIcon } from "../ContextMenu.tsx";
 
 export function useKeyImportExport() {
@@ -22,17 +22,7 @@ export function useKeyImportExport() {
     if (!data || !isValidKeyExport(data)) return;
     const conflicts = detectConflicts(data, state.profile);
     if (conflicts.length === 0) {
-      const updatedProfile = applyKeyImport(
-        state.selectedKey,
-        data,
-        [],
-        state.profile,
-      );
-      dispatch({
-        type: "setProfile",
-        profile: updatedProfile,
-        description: "Import key",
-      });
+      dispatch(importKeyAction(state.selectedKey, data, [], state.profile));
     } else {
       dispatch({
         type: "setModal",

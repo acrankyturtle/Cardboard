@@ -5,11 +5,11 @@ import { DeviceMacro } from "../../api/devices.ts";
 import { ListBox, ListBoxItem } from "../ListBox.tsx";
 import { BlueListItem } from "../ListItem.tsx";
 import {
-  deleteMacro,
   findMacroById,
   getMacroUsages,
   useEditDeviceContext,
 } from "../../lib/editDeviceContext.tsx";
+import { deleteProfileMacro } from "../../lib/profileActions.ts";
 import { MacroDragData } from "./dndTypes.ts";
 import {
   AddIcon,
@@ -139,7 +139,7 @@ export function MacrosPanel({ className }: { className?: string }) {
 
   const deleteMacroAction = () => {
     if (!state.selectedMacro) return;
-    const result = deleteMacro(state.selectedMacro, state.profile);
+    const result = deleteProfileMacro(state.selectedMacro, state.profile);
     if (result === "in use") return;
 
     const index = state.profile.macros.findIndex(
@@ -153,14 +153,7 @@ export function MacrosPanel({ className }: { className?: string }) {
           ? state.profile.macros[index + 1].id
           : state.profile.macros[index - 1].id;
 
-    const macroName =
-      state.profile.macros.find((m) => m.id === state.selectedMacro)?.name ??
-      "macro";
-    dispatch({
-      type: "setProfile",
-      profile: result,
-      description: `Delete macro '${macroName}'`,
-    });
+    dispatch(result);
 
     if (newSelectedMacro !== null) {
       dispatch({ type: "setSelectedMacro", macroId: newSelectedMacro });

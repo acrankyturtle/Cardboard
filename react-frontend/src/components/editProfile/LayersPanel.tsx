@@ -3,7 +3,6 @@ import { useMemo } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import {
   DeviceKeyLayer,
-  DeviceLayers,
   isTaggedDeviceLayer,
   TaggedDeviceLayer,
 } from "../../api/devices.ts";
@@ -15,12 +14,13 @@ import {
   findSelectedProfileLayer,
   getSelectedKeyProfileLayers,
   getTaggedLayerName,
-  insertLayer,
-  newTaggedLayer,
-  removeLayer,
-  updateKeyLayers,
   useEditDeviceContext,
 } from "../../lib/editDeviceContext.tsx";
+import {
+  addLayer as addLayerAction,
+  deleteLayer as deleteLayerAction,
+  moveLayer as moveLayerAction,
+} from "../../lib/profileActions.ts";
 import { DropTargetData } from "./dndTypes.ts";
 import { AddIcon, RemoveIcon } from "../../assets/sharedIcons.tsx";
 import {
@@ -98,21 +98,15 @@ export function LayersPanel({ className }: { className?: string }) {
 
   const addLayer = () => {
     if (!state.selectedKey) return;
-    const newLayer = newTaggedLayer();
-    const updated = insertLayer(
+    const { action, newLayerId } = addLayerAction(
       state.selectedKey,
-      state.profile,
       state.selectedLayer,
-      newLayer,
+      state.profile,
     );
-    dispatch({
-      type: "setProfile",
-      profile: updated,
-      description: "Add layer",
-    });
+    dispatch(action);
     dispatch({
       type: "setSelectedLayer",
-      layerId: newLayer.layer.id,
+      layerId: newLayerId,
     });
   };
 
@@ -132,16 +126,9 @@ export function LayersPanel({ className }: { className?: string }) {
       layers.length - 1,
     );
     const newSelected = layers[newSelectedIndex];
-    const updated = removeLayer(
-      state.selectedKey,
-      state.profile,
-      state.selectedLayer,
+    dispatch(
+      deleteLayerAction(state.selectedKey, state.selectedLayer, state.profile),
     );
-    dispatch({
-      type: "setProfile",
-      profile: updated,
-      description: "Delete layer",
-    });
     dispatch({
       type: "setSelectedLayer",
       layerId: newSelected.value,
@@ -149,18 +136,10 @@ export function LayersPanel({ className }: { className?: string }) {
   };
 
   const moveUp = () => {
-    const selectedLayer = state.selectedLayer;
-    if (!state.selectedKey || !selectedLayer) return;
-    const updatedProfile = updateKeyLayers(
-      state.selectedKey,
-      state.profile,
-      (layers) => shiftLayer(selectedLayer, layers, -1),
+    if (!state.selectedKey || !state.selectedLayer) return;
+    dispatch(
+      moveLayerAction(state.selectedKey, state.selectedLayer, "up", state.profile),
     );
-    dispatch({
-      type: "setProfile",
-      profile: updatedProfile,
-      description: "Move layer up",
-    });
     dispatch({
       type: "setSelectedLayer",
       layerId: state.selectedLayer,
@@ -168,18 +147,15 @@ export function LayersPanel({ className }: { className?: string }) {
   };
 
   const moveDown = () => {
-    const selectedLayer = state.selectedLayer;
-    if (!state.selectedKey || !selectedLayer) return;
-    const updatedProfile = updateKeyLayers(
-      state.selectedKey,
-      state.profile,
-      (layers) => shiftLayer(selectedLayer, layers, 1),
+    if (!state.selectedKey || !state.selectedLayer) return;
+    dispatch(
+      moveLayerAction(
+        state.selectedKey,
+        state.selectedLayer,
+        "down",
+        state.profile,
+      ),
     );
-    dispatch({
-      type: "setProfile",
-      profile: updatedProfile,
-      description: "Move layer down",
-    });
     dispatch({
       type: "setSelectedLayer",
       layerId: state.selectedLayer,
@@ -327,24 +303,6 @@ function DroppableLayerItem({
   );
 }
 
-export const shiftLayer = (
-  target: string,
-  layers: DeviceLayers,
-  offset: number,
-): DeviceLayers => {
-  const index = layers.layers.findIndex((l) => l.layer.id === target);
-  if (index === -1) return layers;
-
-  const newOffset = index + offset;
-  if (newOffset < 0 || newOffset >= layers.layers.length) return layers;
-
-  const updated = layers.layers.slice();
-  [updated[index + offset], updated[index]] = [
-    updated[index],
-    updated[index + offset],
-  ];
-  return { ...layers, layers: updated };
-};
 
 function LayersIcon() {
   return (

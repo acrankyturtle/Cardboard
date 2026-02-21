@@ -14,10 +14,10 @@ import {
   DialogHeaderTitle,
 } from "../Dialog.tsx";
 import {
-  findMacroById,
   getMacroUsages,
   useEditDeviceContext,
 } from "../../lib/editDeviceContext.tsx";
+import { saveMacro } from "../../lib/profileActions.ts";
 import {
   Field,
   Fieldset,
@@ -258,20 +258,7 @@ export function EditMacroDialog() {
         <DialogConfirmButton
           onClick={() => {
             if (!showModal || !macro) return;
-            const exists = findMacroById(macro.id, state.profile) !== null;
-            const updated = {
-              ...state.profile,
-              macros: exists
-                ? state.profile.macros.map((m) =>
-                    m.id === macro.id ? macro : m,
-                  )
-                : [...state.profile.macros, macro],
-            };
-            dispatch({
-              type: "setProfile",
-              profile: updated,
-              description: `${isNew ? "Create" : "Edit"} macro '${macro.name}'`,
-            });
+            dispatch(saveMacro(macro, isNew, state.profile));
             dispatch({
               type: "setModal",
               modal: null,

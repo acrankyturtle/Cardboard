@@ -5,9 +5,12 @@ import { ListBox, ListBoxItem } from "../ListBox.tsx";
 import {
   findMacroById,
   findSelectedProfileLayer,
-  updateLayerBindings,
   useEditDeviceContext,
 } from "../../lib/editDeviceContext.tsx";
+import {
+  addBinding as addBindingAction,
+  removeBindings as removeBindingsAction,
+} from "../../lib/profileActions.ts";
 import { DropTargetData } from "./dndTypes.ts";
 import { AddIcon, MacroIcon, RemoveIcon } from "../../assets/sharedIcons.tsx";
 import {
@@ -67,16 +70,14 @@ export function BindingsPanel({ className }: { className?: string }) {
 
     if (bindings.some((m) => m === state.selectedMacro)) return;
 
-    dispatch({
-      type: "setProfile",
-      profile: updateLayerBindings(
+    dispatch(
+      addBindingAction(
         state.selectedKey,
         state.selectedLayer,
+        state.selectedMacro,
         state.profile,
-        [...bindings, state.selectedMacro],
       ),
-      description: "Add binding",
-    });
+    );
 
     dispatch({
       type: "setSelectedBindings",
@@ -92,16 +93,14 @@ export function BindingsPanel({ className }: { className?: string }) {
       !bindings
     )
       return;
-    dispatch({
-      type: "setProfile",
-      profile: updateLayerBindings(
+    dispatch(
+      removeBindingsAction(
         state.selectedKey,
         state.selectedLayer,
+        state.selectedBinding.map((i) => bindings[i]),
         state.profile,
-        bindings.filter((_, i) => !state.selectedBinding.some((b) => b === i)),
       ),
-      description: "Remove binding",
-    });
+    );
     dispatch({
       type: "setSelectedBindings",
       index: [],
@@ -175,16 +174,14 @@ export function BindingsPanel({ className }: { className?: string }) {
                 !bindings
               )
                 return;
-              dispatch({
-                type: "setProfile",
-                profile: updateLayerBindings(
+              dispatch(
+                removeBindingsAction(
                   state.selectedKey,
                   state.selectedLayer,
+                  items.map((b) => b.value),
                   state.profile,
-                  bindings.filter((_, i) => !items.some((b) => b.index === i)),
                 ),
-                description: "Remove binding",
-              });
+              );
               dispatch({
                 type: "setSelectedBindings",
                 index: [],

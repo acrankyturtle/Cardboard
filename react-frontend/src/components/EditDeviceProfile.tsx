@@ -29,9 +29,9 @@ import {
   findKeyById,
   findSelectedProfileLayer,
   getActiveLayer,
-  updateLayerBindings,
   useEditDeviceContext,
 } from "../lib/editDeviceContext.tsx";
+import { addBinding } from "../lib/profileActions.ts";
 
 export function EditDeviceProfile({ className }: { className?: string }) {
   const columnRef = useRef<HTMLDivElement>(null);
@@ -80,16 +80,9 @@ export function EditDeviceProfile({ className }: { className?: string }) {
       if (!key) return;
       const activeLayer = getActiveLayer(key.layers, state.selectedTags);
       if (activeLayer.macros.includes(macroId)) return;
-      dispatch({
-        type: "setProfile",
-        profile: updateLayerBindings(
-          dropData.keyId,
-          activeLayer.id,
-          state.profile,
-          [...activeLayer.macros, macroId],
-        ),
-        description: "Add binding (drag)",
-      });
+      dispatch(
+        addBinding(dropData.keyId, activeLayer.id, macroId, state.profile),
+      );
       dispatch({ type: "setSelectedKey", keyId: dropData.keyId });
       dropSuccessRef.current = true;
     } else if (dropData.type === "layer") {
@@ -102,16 +95,9 @@ export function EditDeviceProfile({ className }: { className?: string }) {
       const layer = allLayers.find((l) => l.id === dropData.layerId);
       if (!layer) return;
       if (layer.macros.includes(macroId)) return;
-      dispatch({
-        type: "setProfile",
-        profile: updateLayerBindings(
-          dropData.keyId,
-          dropData.layerId,
-          state.profile,
-          [...layer.macros, macroId],
-        ),
-        description: "Add binding (drag)",
-      });
+      dispatch(
+        addBinding(dropData.keyId, dropData.layerId, macroId, state.profile),
+      );
       dispatch({ type: "setSelectedLayer", layerId: dropData.layerId });
       dropSuccessRef.current = true;
     } else if (dropData.type === "bindings") {
@@ -122,16 +108,14 @@ export function EditDeviceProfile({ className }: { className?: string }) {
         ? selectedLayer.layer.macros
         : selectedLayer.macros;
       if (macros.includes(macroId)) return;
-      dispatch({
-        type: "setProfile",
-        profile: updateLayerBindings(
+      dispatch(
+        addBinding(
           state.selectedKey,
           state.selectedLayer,
+          macroId,
           state.profile,
-          [...macros, macroId],
         ),
-        description: "Add binding (drag)",
-      });
+      );
       dropSuccessRef.current = true;
     }
   };

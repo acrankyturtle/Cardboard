@@ -33,6 +33,10 @@ import {
   EditDeviceContextProvider,
   useEditDeviceContext,
 } from "../lib/editDeviceContext.tsx";
+import {
+  importProfile,
+  renameProfile,
+} from "../lib/profileActions.ts";
 import { NavigationBlocker } from "../components/NavigationBlocker.tsx";
 import { EditableProfileName } from "../components/EditableProfileName.tsx";
 import { BootloaderFirmwareUpdateDialog } from "../components/BootloaderFirmwareUpdateDialog.tsx";
@@ -328,11 +332,7 @@ function EditDeviceView() {
     }
 
     setSaveError(null);
-    dispatch({
-      type: "setProfile",
-      profile: data,
-      description: "Import profile",
-    });
+    dispatch(importProfile(data));
   }, [dispatch]);
 
   const canUndo = state.undoStack.length > 0;
@@ -394,11 +394,7 @@ function EditDeviceView() {
             name={state.profile.name}
             fallback={state.device.model}
             onChange={(newName) =>
-              dispatch({
-                type: "setProfile",
-                profile: { ...state.profile, name: newName },
-                description: "Rename profile",
-              })
+              dispatch(renameProfile(newName, state.profile))
             }
             onEditing={(v) => setIsEditingProfileName(v)}
           />

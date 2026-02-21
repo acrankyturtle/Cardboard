@@ -3,9 +3,9 @@ import { TaggedDeviceLayer } from "../api/devices.ts";
 import {
   findTaggedLayerById,
   getTaggedLayerName,
-  updateTaggedLayer,
   useEditDeviceContext,
 } from "../lib/editDeviceContext.tsx";
+import { editTaggedLayer } from "../lib/profileActions.ts";
 import { useCallback, useEffect, useState } from "react";
 import {
   Dialog,
@@ -105,17 +105,14 @@ export function EditTaggedLayerDialog() {
           onClick={() => {
             if (!showModal || !layerToEdit) return;
 
-            const updated = updateTaggedLayer(
-              info.keyId,
-              info.layerId,
-              state.profile,
-              layerToEdit,
+            dispatch(
+              editTaggedLayer(
+                info.keyId,
+                info.layerId,
+                layerToEdit,
+                state.profile,
+              ),
             );
-            dispatch({
-              type: "setProfile",
-              profile: updated,
-              description: "Edit layer",
-            });
             dispatch({
               type: "setModal",
               modal: null,
