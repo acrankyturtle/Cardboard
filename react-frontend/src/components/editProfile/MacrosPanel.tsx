@@ -55,9 +55,9 @@ export function MacrosPanel({ className }: { className?: string }) {
 
   const macros: readonly ListBoxItem[] = useMemo(
     () =>
-      state.profile.macros.map((m) => {
-        return { label: m.name, value: m.id };
-      }),
+      state.profile.macros
+        .map((m) => ({ label: m.name, value: m.id }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
     [state],
   );
 
