@@ -41,12 +41,14 @@ export function BindingsPanel({ className }: { className?: string }) {
     : undefined;
 
   const macros: readonly ({ index: number } & ListBoxItem)[] =
-    bindings?.map((m, i) => {
-      const macro = findMacroById(m, state.profile);
-      return macro
-        ? { label: macro.name, value: macro.id, index: i }
-        : { label: "(unknown)", value: m, index: i };
-    }) ?? [];
+    bindings
+      ?.map((m, i) => {
+        const macro = findMacroById(m, state.profile);
+        return macro
+          ? { label: macro.name, value: macro.id, index: i }
+          : { label: "(unknown)", value: m, index: i };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label)) ?? [];
 
   const selectAll = () => {
     dispatch({
