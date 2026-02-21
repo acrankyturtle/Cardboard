@@ -166,27 +166,6 @@ export function BindingsPanel({ className }: { className?: string }) {
             onDoubleClick={(item) =>
               dispatch({ type: "setSelectedMacro", macroId: item.value })
             }
-            onDelete={(items) => {
-              if (
-                !state.selectedKey ||
-                !state.selectedLayer ||
-                state.selectedBinding === null ||
-                !bindings
-              )
-                return;
-              dispatch(
-                removeBindingsAction(
-                  state.selectedKey,
-                  state.selectedLayer,
-                  items.map((b) => b.value),
-                  state.profile,
-                ),
-              );
-              dispatch({
-                type: "setSelectedBindings",
-                index: [],
-              });
-            }}
           />
         </ContextMenuTrigger>
         <ContextMenuPopup>
