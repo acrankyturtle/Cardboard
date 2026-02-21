@@ -3,9 +3,10 @@ import { TaggedDeviceLayer } from "../api/devices.ts";
 import {
   findTaggedLayerById,
   getTaggedLayerName,
+  newTaggedLayer,
   useEditDeviceContext,
 } from "../lib/editDeviceContext.tsx";
-import { editTaggedLayer } from "../lib/profileActions.ts";
+import { addLayerWithTags, editTaggedLayer } from "../lib/profileActions.ts";
 import { useCallback, useEffect, useState } from "react";
 import {
   Dialog,
@@ -20,46 +21,71 @@ import {
 } from "./Dialog.tsx";
 import { TagListEditor } from "./TagListEditor.tsx";
 
+type DialogMode =
+  | { type: "edit"; keyId: string; layerId: string }
+  | { type: "add"; keyId: string; aboveLayerId: string | null };
+
 export function EditTaggedLayerDialog() {
   const { state, dispatch } = useEditDeviceContext();
   const [layerToEdit, setLayerToEdit] = useState<TaggedDeviceLayer>();
-
-  const [info, setInfo] = useState<
-    { keyId: string; layerId: string } | undefined
-  >(undefined);
+  const [mode, setMode] = useState<DialogMode>();
 
   const showModal =
     state.modal !== null &&
-    state.modal.type === "editTaggedLayer" &&
+    (state.modal.type === "editTaggedLayer" ||
+      state.modal.type === "addTaggedLayer") &&
     state.modal.show;
 
   useEffect(() => {
     if (
       !state.modal ||
-      state.modal.type !== "editTaggedLayer" ||
+      (state.modal.type !== "editTaggedLayer" &&
+        state.modal.type !== "addTaggedLayer") ||
       !state.modal.show
     ) {
-      setInfo(undefined);
+      setMode(undefined);
       setLayerToEdit(undefined);
       return;
     }
 
-    if (
-      info &&
-      state.modal.keyId === info.keyId &&
-      state.modal.layerId === info.layerId
-    )
-      return;
+    if (state.modal.type === "editTaggedLayer") {
+      if (
+        mode &&
+        mode.type === "edit" &&
+        state.modal.keyId === mode.keyId &&
+        state.modal.layerId === mode.layerId
+      )
+        return;
 
-    const layer = findTaggedLayerById(
-      state.modal.keyId,
-      state.modal.layerId,
-      state,
-    );
-    if (!layer) return;
+      const layer = findTaggedLayerById(
+        state.modal.keyId,
+        state.modal.layerId,
+        state,
+      );
+      if (!layer) return;
 
-    setLayerToEdit(layer);
-    setInfo({ keyId: state.modal.keyId, layerId: state.modal.layerId });
+      setLayerToEdit(layer);
+      setMode({
+        type: "edit",
+        keyId: state.modal.keyId,
+        layerId: state.modal.layerId,
+      });
+    } else if (state.modal.type === "addTaggedLayer") {
+      if (
+        mode &&
+        mode.type === "add" &&
+        state.modal.keyId === mode.keyId &&
+        state.modal.aboveLayerId === mode.aboveLayerId
+      )
+        return;
+
+      setLayerToEdit(newTaggedLayer());
+      setMode({
+        type: "add",
+        keyId: state.modal.keyId,
+        aboveLayerId: state.modal.aboveLayerId,
+      });
+    }
   }, [state.modal]);
 
   const closeModal = useCallback(
@@ -67,21 +93,27 @@ export function EditTaggedLayerDialog() {
     [dispatch],
   );
 
-  if (!info) return <></>;
+  if (!mode) return <></>;
 
   const keyInfo =
-    state.device.keyMap.find((k) => k.keyId === info.keyId) ?? null;
+    state.device.keyMap.find((k) => k.keyId === mode.keyId) ?? null;
+
+  const isAddMode = mode.type === "add";
+  const title = isAddMode ? "Add Layer" : "Edit Layer";
 
   return (
     <Dialog className="max-w-lg" open={showModal} onClose={closeModal}>
       <DialogHeader>
         <DialogHeaderTitle className="text-lg font-bold">
-          Edit Layer
+          {title}
         </DialogHeaderTitle>
-        {layerToEdit && keyInfo && (
+        {layerToEdit && keyInfo && !isAddMode && (
           <DialogHeaderDescription>
             `${getTaggedLayerName(layerToEdit)} @ ${keyInfo.name}`
           </DialogHeaderDescription>
+        )}
+        {keyInfo && isAddMode && (
+          <DialogHeaderDescription>{keyInfo.name}</DialogHeaderDescription>
         )}
       </DialogHeader>
       <DialogDivider />
@@ -105,18 +137,30 @@ export function EditTaggedLayerDialog() {
           onClick={() => {
             if (!showModal || !layerToEdit) return;
 
-            dispatch(
-              editTaggedLayer(
-                info.keyId,
-                info.layerId,
+            if (mode.type === "edit") {
+              dispatch(
+                editTaggedLayer(
+                  mode.keyId,
+                  mode.layerId,
+                  layerToEdit,
+                  state.profile,
+                ),
+              );
+            } else {
+              const { action, newLayerId } = addLayerWithTags(
+                mode.keyId,
+                mode.aboveLayerId,
                 layerToEdit,
                 state.profile,
-              ),
-            );
-            dispatch({
-              type: "setModal",
-              modal: null,
-            });
+              );
+              dispatch(action);
+              dispatch({
+                type: "setSelectedLayer",
+                layerId: newLayerId,
+              });
+            }
+
+            dispatch({ type: "setModal", modal: null });
           }}
         >
           Confirm

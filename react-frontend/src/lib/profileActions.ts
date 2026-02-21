@@ -8,7 +8,6 @@ import {
   deleteMacro as deleteMacroUtil,
   findMacroById,
   insertLayer,
-  newTaggedLayer,
   removeLayer,
   shiftLayer,
   updateKeyLayers,
@@ -53,17 +52,17 @@ export function removeBindings(
   };
 }
 
-export function addLayer(
+export function addLayerWithTags(
   keyId: string,
   aboveLayerId: string | null,
+  layer: TaggedDeviceLayer,
   profile: DeviceProfile,
 ): { action: SetProfileAction; newLayerId: string } {
-  const layer = newTaggedLayer();
   return {
     action: {
       type: "setProfile",
       profile: insertLayer(keyId, profile, aboveLayerId, layer),
-      description: "Add layer",
+      description: `Add layer '${layer.tags.join(", ")}'`,
     },
     newLayerId: layer.layer.id,
   };

@@ -17,7 +17,6 @@ import {
   useEditDeviceContext,
 } from "../../lib/editDeviceContext.tsx";
 import {
-  addLayer as addLayerAction,
   deleteLayer as deleteLayerAction,
   moveLayer as moveLayerAction,
 } from "../../lib/profileActions.ts";
@@ -98,15 +97,14 @@ export function LayersPanel({ className }: { className?: string }) {
 
   const addLayer = () => {
     if (!state.selectedKey) return;
-    const { action, newLayerId } = addLayerAction(
-      state.selectedKey,
-      state.selectedLayer,
-      state.profile,
-    );
-    dispatch(action);
     dispatch({
-      type: "setSelectedLayer",
-      layerId: newLayerId,
+      type: "setModal",
+      modal: {
+        type: "addTaggedLayer",
+        show: true,
+        keyId: state.selectedKey,
+        aboveLayerId: state.selectedLayer,
+      },
     });
   };
 

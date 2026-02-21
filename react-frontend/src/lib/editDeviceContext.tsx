@@ -116,6 +116,12 @@ type EditTaggedLayerModalOptions = {
   layerId: string;
 } & ModalBaseOptions;
 
+type AddTaggedLayerModalOptions = {
+  type: "addTaggedLayer";
+  keyId: string;
+  aboveLayerId: string | null;
+} & ModalBaseOptions;
+
 type EditMacroModalOptions = {
   type: "editMacro";
   macro: DeviceMacro;
@@ -130,6 +136,7 @@ type ImportKeyModalOptions = {
 type ModalOptions =
   | null
   | EditTaggedLayerModalOptions
+  | AddTaggedLayerModalOptions
   | EditMacroModalOptions
   | ImportKeyModalOptions;
 
