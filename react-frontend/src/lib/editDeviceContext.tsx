@@ -161,6 +161,9 @@ const editDeviceReducer = (
 ): EditDeviceState => {
   switch (action.type) {
     case "setProfile": {
+      // filter out changes that don't actually change the profile to avoid cluttering the undo stack
+      if (!isProfileChanged(state.profile, action.profile)) return state;
+
       const entry: HistoryEntry = {
         profile: state.profile,
         description: action.description,
