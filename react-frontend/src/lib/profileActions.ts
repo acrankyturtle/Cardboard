@@ -9,7 +9,6 @@ import {
   findMacroById,
   insertLayer,
   removeLayer,
-  shiftLayer,
   updateKeyLayers,
   updateLayerBindings,
   updateTaggedLayer,
@@ -80,19 +79,18 @@ export function deleteLayer(
   };
 }
 
-export function moveLayer(
+export function reorderLayers(
   keyId: string,
-  layerId: string,
-  direction: "up" | "down",
+  reorderedLayers: TaggedDeviceLayer[],
   profile: DeviceProfile,
 ): SetProfileAction {
-  const offset = direction === "up" ? -1 : 1;
   return {
     type: "setProfile",
-    profile: updateKeyLayers(keyId, profile, (layers) =>
-      shiftLayer(layerId, layers, offset),
-    ),
-    description: `Move${describeLayerTags(keyId, layerId, profile)} ${direction}`,
+    profile: updateKeyLayers(keyId, profile, (layers) => ({
+      ...layers,
+      layers: reorderedLayers,
+    })),
+    description: "Reorder layers",
   };
 }
 

@@ -1,16 +1,25 @@
 import clsx from "clsx";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
 import {
   DndContext,
   DragOverlay,
   PointerSensor,
+  KeyboardSensor,
   useSensor,
   useSensors,
   DragStartEvent,
   DragEndEvent,
   pointerWithin,
+  closestCenter,
+  type CollisionDetection,
+  type Modifier,
 } from "@dnd-kit/core";
-import { snapCenterToCursor } from "@dnd-kit/modifiers";
+import {
+  snapCenterToCursor,
+  restrictToVerticalAxis,
+  restrictToParentElement,
+} from "@dnd-kit/modifiers";
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { isTaggedDeviceLayer } from "../api/devices.ts";
 import { TagsPanel } from "./editProfile/TagsPanel.tsx";
 import {
@@ -46,7 +55,28 @@ export function EditDeviceProfile({ className }: { className?: string }) {
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
   );
+
+  const customCollisionDetection: CollisionDetection = (args) => {
+    if (args.active.data.current?.sortable) {
+      return closestCenter(args);
+    }
+    return pointerWithin(args);
+  };
+
+  const sortModifier: Modifier = (args) => {
+    if (args.active?.data.current?.sortable) {
+      let transform = restrictToVerticalAxis(args);
+      transform = restrictToParentElement({ ...args, transform });
+      return transform;
+    }
+    return args.transform;
+  };
+
+  const modifiers = useMemo(() => [sortModifier], []);
 
   useEffect(() => {
     const el = columnRef.current;
@@ -124,7 +154,8 @@ export function EditDeviceProfile({ className }: { className?: string }) {
     <>
       <DndContext
         sensors={sensors}
-        collisionDetection={pointerWithin}
+        collisionDetection={customCollisionDetection}
+        modifiers={modifiers}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >

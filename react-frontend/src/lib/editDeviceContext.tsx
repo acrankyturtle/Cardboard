@@ -641,22 +641,3 @@ export const getMacroUsages = (
 
   return layers.filter((l) => l.layer.macros.includes(macroId));
 };
-
-export const shiftLayer = (
-  target: string,
-  layers: DeviceLayers,
-  offset: number,
-): DeviceLayers => {
-  const index = layers.layers.findIndex((l) => l.layer.id === target);
-  if (index === -1) return layers;
-
-  const newOffset = index + offset;
-  if (newOffset < 0 || newOffset >= layers.layers.length) return layers;
-
-  const updated = layers.layers.slice();
-  [updated[index + offset], updated[index]] = [
-    updated[index],
-    updated[index + offset],
-  ];
-  return { ...layers, layers: updated };
-};

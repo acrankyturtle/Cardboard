@@ -1,27 +1,22 @@
 import clsx from "clsx";
-import { useMemo } from "react";
-import { useDroppable } from "@dnd-kit/core";
-import {
-  DeviceKeyLayer,
-  isTaggedDeviceLayer,
-  TaggedDeviceLayer,
-} from "../../api/devices.ts";
-import { EmptyListItem, ListBox, ListBoxItem } from "../ListBox.tsx";
+import { useState } from "react";
+import { useDroppable, useDndMonitor, useDndContext } from "@dnd-kit/core";
+import { arrayMove } from "@dnd-kit/sortable";
+import { DeviceKeyLayer, TaggedDeviceLayer } from "../../api/devices.ts";
+import { EmptyListItem, ListBoxItem } from "../ListBox.tsx";
+import { SortableList } from "./SortableList.tsx";
 import { RedListItem } from "../ListItem.tsx";
 import {
-  EditDeviceState,
-  findKeyById,
   findLayerById,
-  findSelectedProfileLayer,
   getSelectedKeyProfileLayers,
   getTaggedLayerName,
   useEditDeviceContext,
 } from "../../lib/editDeviceContext.tsx";
 import {
   deleteLayer as deleteLayerAction,
-  moveLayer as moveLayerAction,
+  reorderLayers as reorderLayersAction,
 } from "../../lib/profileActions.ts";
-import { DropTargetData } from "./dndTypes.ts";
+import { DropTargetData, isMacroDragData } from "./dndTypes.ts";
 import { AddIcon, RemoveIcon } from "../../assets/sharedIcons.tsx";
 import {
   PanelContainer,
@@ -40,61 +35,51 @@ import {
 } from "../ContextMenu.tsx";
 
 interface LayerListBoxItem extends ListBoxItem {
-  layer: TaggedDeviceLayer | DeviceKeyLayer;
+  layer: TaggedDeviceLayer;
 }
 
-const findSelectedLayerItem = (
-  state: EditDeviceState,
-): LayerListBoxItem | null => {
-  const selectedLayer = findSelectedProfileLayer(state);
-  return selectedLayer ? layerToItem(selectedLayer) : null;
-};
-
-const getSelectedKeyLayerItems = (
-  state: EditDeviceState,
-): readonly LayerListBoxItem[] => {
-  const selectedKeyLayers = getSelectedKeyProfileLayers(state);
-  return selectedKeyLayers
-    ? [
-        ...selectedKeyLayers.layers.map(layerToItem),
-        layerToItem(selectedKeyLayers.defaultLayer),
-      ]
-    : [];
-};
-
-const layerToItem = (
-  layer: TaggedDeviceLayer | DeviceKeyLayer,
-): LayerListBoxItem => {
-  if (isTaggedDeviceLayer(layer)) {
-    return {
-      label: getTaggedLayerName(layer),
-      value: layer.layer.id,
-      layer: layer,
-    };
-  }
-  return {
-    label: defaultLayerName,
-    value: layer.id,
-    layer: layer,
-  };
-};
+const layerToItem = (layer: TaggedDeviceLayer): LayerListBoxItem => ({
+  label: getTaggedLayerName(layer),
+  value: layer.layer.id,
+  layer: layer,
+});
 
 const defaultLayerName = "(default)";
+
+function MacroCount({ macros }: { macros: readonly unknown[] }) {
+  if (macros.length === 1) return null;
+  if (macros.length !== 0) return <div>{macros.length}</div>;
+  return <div className="opacity-40">(no bindings)</div>;
+}
 
 export function LayersPanel({ className }: { className?: string }) {
   const { state, dispatch } = useEditDeviceContext();
 
-  const selectedLayer = findSelectedLayerItem(state);
-  const layers = getSelectedKeyLayerItems(state);
+  const selectedKeyLayers = getSelectedKeyProfileLayers(state);
+  const taggedLayers: readonly LayerListBoxItem[] = selectedKeyLayers
+    ? selectedKeyLayers.layers.map(layerToItem)
+    : [];
+  const defaultLayerItem = selectedKeyLayers
+    ? {
+        label: defaultLayerName,
+        value: selectedKeyLayers.defaultLayer.id,
+        layer: selectedKeyLayers.defaultLayer,
+      }
+    : null;
+  const selectedLayerItem =
+    state.selectedKey && state.selectedLayer && selectedKeyLayers
+      ? (() => {
+          const tagged = selectedKeyLayers.layers.find(
+            (l) => l.layer.id === state.selectedLayer,
+          );
+          return tagged ? layerToItem(tagged) : null;
+        })()
+      : null;
 
-  const isSelectedLayerDefaultLayer = useMemo(
-    () =>
-      selectedLayer && state.selectedKey
-        ? findKeyById(state.selectedKey, state)?.layers.defaultLayer.id ===
-          selectedLayer.value
-        : undefined,
-    [state],
-  );
+  const isSelectedLayerDefaultLayer =
+    selectedLayerItem === null &&
+    defaultLayerItem !== null &&
+    state.selectedLayer === defaultLayerItem.value;
 
   const addLayer = () => {
     if (!state.selectedKey) return;
@@ -113,18 +98,23 @@ export function LayersPanel({ className }: { className?: string }) {
     if (
       !state.selectedKey ||
       !state.selectedLayer ||
-      !selectedLayer ||
-      isSelectedLayerDefaultLayer === undefined
+      isSelectedLayerDefaultLayer
     )
       return;
 
-    if (isSelectedLayerDefaultLayer) return;
-
-    const newSelectedIndex = Math.min(
-      Math.max(layers.findIndex((l) => l.value === state.selectedLayer) + 1, 0),
-      layers.length - 1,
+    // select the next layer after deletion, clamped to the last item (the default layer)
+    const allItems = [
+      ...taggedLayers,
+      ...(defaultLayerItem ? [defaultLayerItem] : []),
+    ];
+    const currentIndex = allItems.findIndex(
+      (l) => l.value === state.selectedLayer,
     );
-    const newSelected = layers[newSelectedIndex];
+    const newSelectedIndex = Math.min(
+      Math.max(currentIndex + 1, 0),
+      allItems.length - 1,
+    );
+    const newSelected = allItems[newSelectedIndex];
     dispatch(
       deleteLayerAction(state.selectedKey, state.selectedLayer, state.profile),
     );
@@ -134,40 +124,47 @@ export function LayersPanel({ className }: { className?: string }) {
     });
   };
 
-  const moveUp = () => {
-    if (!state.selectedKey || !state.selectedLayer) return;
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleReorder = (reordered: LayerListBoxItem[]) => {
+    if (!state.selectedKey) return;
     dispatch(
-      moveLayerAction(
+      reorderLayersAction(
         state.selectedKey,
-        state.selectedLayer,
-        "up",
+        reordered.map((item) => item.layer),
         state.profile,
       ),
     );
-    dispatch({
-      type: "setSelectedLayer",
-      layerId: state.selectedLayer,
-    });
   };
 
-  const moveDown = () => {
-    if (!state.selectedKey || !state.selectedLayer) return;
-    dispatch(
-      moveLayerAction(
-        state.selectedKey,
-        state.selectedLayer,
-        "down",
-        state.profile,
-      ),
-    );
-    dispatch({
-      type: "setSelectedLayer",
-      layerId: state.selectedLayer,
-    });
-  };
+  useDndMonitor({
+    onDragStart(event) {
+      if (event.active.data.current?.sortable) {
+        setIsDragging(true);
+      }
+    },
+    onDragEnd(event) {
+      if (!event.active.data.current?.sortable) return;
+      setIsDragging(false);
+      const { active, over } = event;
+      if (over && active.id !== over.id) {
+        const oldIndex = taggedLayers.findIndex((l) => l.value === active.id);
+        const newIndex = taggedLayers.findIndex((l) => l.value === over.id);
+        if (oldIndex !== -1 && newIndex !== -1) {
+          handleReorder(arrayMove([...taggedLayers], oldIndex, newIndex));
+        }
+      }
+    },
+    onDragCancel() {
+      setIsDragging(false);
+    },
+  });
 
   return (
-    <PanelContainer className={className}>
+    <PanelContainer
+      className={className}
+      data-dragging={isDragging || undefined}
+    >
       <HeaderBar>
         <div className={headerBarIconClass}>
           <LayersIcon />
@@ -184,41 +181,36 @@ export function LayersPanel({ className }: { className?: string }) {
           <button
             className={headerBarButtonClass}
             onClick={deleteLayer}
-            disabled={isSelectedLayerDefaultLayer}
+            disabled={isSelectedLayerDefaultLayer || !state.selectedLayer}
           >
             <RemoveIcon />
-          </button>
-        </Tooltip>
-        <Tooltip content="Move up">
-          <button className={headerBarButtonClass} onClick={moveUp}>
-            <MoveUpIcon />
-          </button>
-        </Tooltip>
-        <Tooltip content="Move down">
-          <button className={headerBarButtonClass} onClick={moveDown}>
-            <MoveDownIcon />
           </button>
         </Tooltip>
       </HeaderBar>
       <ContextMenu>
         <ContextMenuTrigger>
-          <ListBox
-            className="grow"
-            items={layers}
-            selected={selectedLayer}
+          <SortableList
+            items={taggedLayers}
+            selected={selectedLayerItem}
             setSelected={(v) =>
               dispatch({ type: "setSelectedLayer", layerId: v.value })
             }
-            renderItem={(item, selected) => (
-              <DroppableLayerItem
+            sortableData={(item) => ({
+              type: "layer",
+              keyId: state.selectedKey ?? "",
+              layerId: item.value,
+            })}
+            renderItem={(item, selected, isOver) => (
+              <LayerItem
                 layerId={item.value}
                 keyId={state.selectedKey}
                 label={item.label}
                 selected={selected}
+                isOver={isOver}
               />
             )}
             onDoubleClick={(item) => {
-              if ("layer" in item.layer && state.selectedKey) {
+              if (state.selectedKey) {
                 dispatch({
                   type: "setModal",
                   modal: {
@@ -228,11 +220,23 @@ export function LayersPanel({ className }: { className?: string }) {
                     layerId: item.layer.layer.id,
                   },
                 });
-              } else {
-                // todo: edit default layer
               }
             }}
           />
+          {defaultLayerItem && (
+            <DefaultLayerItem
+              layer={defaultLayerItem.layer}
+              keyId={state.selectedKey}
+              selected={isSelectedLayerDefaultLayer}
+              onClick={() =>
+                dispatch({
+                  type: "setSelectedLayer",
+                  layerId: defaultLayerItem.value,
+                })
+              }
+            />
+          )}
+          <div className="grow" />
         </ContextMenuTrigger>
         <ContextMenuPopup>
           <ContextMenuItem onClick={addLayer}>
@@ -242,10 +246,7 @@ export function LayersPanel({ className }: { className?: string }) {
             Add Layer
           </ContextMenuItem>
           <ContextMenuItem
-            disabled={
-              isSelectedLayerDefaultLayer === true ||
-              isSelectedLayerDefaultLayer === undefined
-            }
+            disabled={isSelectedLayerDefaultLayer || !state.selectedLayer}
             onClick={deleteLayer}
           >
             <ContextMenuIcon>
@@ -253,70 +254,85 @@ export function LayersPanel({ className }: { className?: string }) {
             </ContextMenuIcon>
             Delete Layer
           </ContextMenuItem>
-          <ContextMenuItem onClick={moveUp}>
-            <ContextMenuIcon>
-              <MoveUpIcon />
-            </ContextMenuIcon>
-            Move Up
-          </ContextMenuItem>
-          <ContextMenuItem onClick={moveDown}>
-            <ContextMenuIcon>
-              <MoveDownIcon />
-            </ContextMenuIcon>
-            Move Down
-          </ContextMenuItem>
         </ContextMenuPopup>
       </ContextMenu>
     </PanelContainer>
   );
 }
 
-function DroppableLayerItem({
+function LayerItem({
   layerId,
   keyId,
   label,
   selected,
+  isOver,
 }: {
   layerId: string;
   keyId: string | null;
   label: string;
   selected?: boolean;
+  isOver?: boolean;
 }) {
   const { state } = useEditDeviceContext();
-  const layer = useMemo(() => {
+  const { active } = useDndContext();
+  const layer = (() => {
     if (!keyId) return null;
     return findLayerById(keyId, layerId, state);
-  }, [keyId, layerId, state]);
+  })();
 
-  const dropData: DropTargetData = {
-    type: "layer",
-    keyId: keyId ?? "",
-    layerId,
-  };
-  const { setNodeRef, isOver } = useDroppable({
-    id: `layer-${layerId}`,
-    data: dropData,
-    disabled: !keyId,
-  });
+  const isMacroOver = isOver && isMacroDragData(active?.data.current);
 
   return (
     <RedListItem
       selected={selected}
-      ref={setNodeRef}
       className={clsx(
         "flex size-full items-center outline-3 -outline-offset-3 outline-blue-400/0 transition-all duration-150",
-        { "outline-blue-400/100": isOver },
+        { "outline-blue-400/100": isMacroOver },
       )}
     >
       <div className="grow">{label || <EmptyListItem />}</div>
-      {layer &&
-        layer.macros.length != 1 &&
-        (layer.macros.length !== 0 ? (
-          <div>{layer.macros.length}</div>
-        ) : (
-          <div className="opacity-40">(no bindings)</div>
-        ))}
+      {layer && <MacroCount macros={layer.macros} />}
     </RedListItem>
+  );
+}
+
+function DefaultLayerItem({
+  layer,
+  keyId,
+  selected,
+  onClick,
+}: {
+  layer: DeviceKeyLayer;
+  keyId: string | null;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  const dropData: DropTargetData = {
+    type: "layer",
+    keyId: keyId ?? "",
+    layerId: layer.id,
+  };
+  const { setNodeRef, isOver } = useDroppable({
+    id: `layer-${layer.id}`,
+    data: dropData,
+    disabled: !keyId,
+  });
+  const { active } = useDndContext();
+  const isMacroOver = isOver && isMacroDragData(active?.data.current);
+
+  return (
+    <div ref={setNodeRef} onClick={onClick} className="cursor-pointer">
+      <RedListItem
+        selected={selected}
+        className={clsx(
+          "flex size-full items-center outline-3 -outline-offset-3 outline-blue-400/0 transition-all duration-150",
+          { "outline-blue-400/100": isMacroOver },
+        )}
+      >
+        <div className="grow">{defaultLayerName}</div>
+        <MacroCount macros={layer.macros} />
+      </RedListItem>
+    </div>
   );
 }
 
@@ -333,42 +349,6 @@ function LayersIcon() {
     >
       <path d="M7 3m0 2a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2z" />
       <path d="M17 17v2a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2h2" />
-    </svg>
-  );
-}
-
-function MoveUpIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 5l0 14" />
-      <path d="M18 11l-6 -6" />
-      <path d="M6 11l6 -6" />
-    </svg>
-  );
-}
-
-function MoveDownIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 5l0 14" />
-      <path d="M18 13l-6 6" />
-      <path d="M6 13l6 6" />
     </svg>
   );
 }

@@ -1,20 +1,16 @@
 import clsx from "clsx";
-import { ReactNode } from "react";
+import { ComponentProps, ReactNode } from "react";
 import { getButtonClassName } from "../Button.tsx";
 
 export function PanelContainer({
   className,
   children,
-  ref,
-}: {
-  className?: string;
-  children?: ReactNode;
-  ref?: (element: HTMLElement | null) => void;
-}) {
+  ...props
+}: ComponentProps<"div">) {
   return (
     <div
-      ref={ref}
       className={clsx("flex flex-col overflow-y-auto bg-stone-800", className)}
+      {...props}
     >
       {children}
     </div>
