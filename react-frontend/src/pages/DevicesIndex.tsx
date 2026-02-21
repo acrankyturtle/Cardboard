@@ -48,6 +48,12 @@ import {
 } from "../assets/sharedIcons.tsx";
 import { HelpLink } from "../components/HelpLink.tsx";
 import { Tooltip } from "../components/Tooltip.tsx";
+import {
+  ContextMenu,
+  ContextMenuItem,
+  ContextMenuPopup,
+  ContextMenuTrigger,
+} from "../components/ContextMenu.tsx";
 
 export function DevicesIndex({
   deviceId,
@@ -411,38 +417,90 @@ function EditDeviceView() {
           Profile saved successfully
         </div>
         {saveError && <div className="text-lg text-red-500">{saveError}</div>}
-        <Tooltip
-          content={
-            undoDescription
-              ? `Undo: ${undoDescription} (ctrl+z)`
-              : "Nothing to undo"
-          }
-        >
-          <Button
-            className="px-2"
-            buttonStyle={{ variant: "ghost" }}
-            onClick={() => dispatch({ type: "undo" })}
-            disabled={!canUndo}
-          >
-            <UndoIcon className="-m-0.5 size-6" />
-          </Button>
-        </Tooltip>
-        <Tooltip
-          content={
-            redoDescription
-              ? `Redo: ${redoDescription} (ctrl+shift+z)`
-              : "Nothing to redo"
-          }
-        >
-          <Button
-            className="px-2"
-            buttonStyle={{ variant: "ghost" }}
-            onClick={() => dispatch({ type: "redo" })}
-            disabled={!canRedo}
-          >
-            <RedoIcon className="-m-0.5 size-6" />
-          </Button>
-        </Tooltip>
+        <ContextMenu>
+          <ContextMenuTrigger>
+            <Tooltip
+              content={
+                undoDescription
+                  ? `Undo: ${undoDescription} (ctrl+z)`
+                  : "Nothing to undo"
+              }
+            >
+              <Button
+                className="px-2"
+                buttonStyle={{ variant: "ghost" }}
+                onClick={() => dispatch({ type: "undo" })}
+                disabled={!canUndo}
+              >
+                <UndoIcon className="-m-0.5 size-6" />
+              </Button>
+            </Tooltip>
+          </ContextMenuTrigger>
+          <ContextMenuPopup className="max-h-48 overflow-y-auto">
+            {state.undoStack.length === 0 ? (
+              <ContextMenuItem disabled>No undo history</ContextMenuItem>
+            ) : (
+              [...state.undoStack]
+                .reverse()
+                .map((entry, reverseIndex) => {
+                  const index =
+                    state.undoStack.length - 1 - reverseIndex;
+                  return (
+                    <ContextMenuItem
+                      key={index}
+                      onClick={() =>
+                        dispatch({ type: "undoTo", index })
+                      }
+                    >
+                      {entry.description}
+                    </ContextMenuItem>
+                  );
+                })
+            )}
+          </ContextMenuPopup>
+        </ContextMenu>
+        <ContextMenu>
+          <ContextMenuTrigger>
+            <Tooltip
+              content={
+                redoDescription
+                  ? `Redo: ${redoDescription} (ctrl+shift+z)`
+                  : "Nothing to redo"
+              }
+            >
+              <Button
+                className="px-2"
+                buttonStyle={{ variant: "ghost" }}
+                onClick={() => dispatch({ type: "redo" })}
+                disabled={!canRedo}
+              >
+                <RedoIcon className="-m-0.5 size-6" />
+              </Button>
+            </Tooltip>
+          </ContextMenuTrigger>
+          <ContextMenuPopup className="max-h-48 overflow-y-auto">
+            {state.redoStack.length === 0 ? (
+              <ContextMenuItem disabled>No redo history</ContextMenuItem>
+            ) : (
+              [...state.redoStack]
+                .reverse()
+                .map((entry, reverseIndex) => {
+                  const index =
+                    state.redoStack.length - 1 - reverseIndex;
+                  return (
+                    <ContextMenuItem
+                      key={index}
+                      onClick={() =>
+                        dispatch({ type: "redoTo", index })
+                      }
+                    >
+                      {entry.description}
+                    </ContextMenuItem>
+                  );
+                })
+            )}
+          </ContextMenuPopup>
+        </ContextMenu>
         <Button
           className="gap-1 px-4"
           buttonStyle={{ variant: "ghost" }}

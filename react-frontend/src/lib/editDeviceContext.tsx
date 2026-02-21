@@ -55,6 +55,8 @@ export type EditDeviceAction = EditDeviceActionBase &
     | CleanChangesAction
     | UndoAction
     | RedoAction
+    | UndoToAction
+    | RedoToAction
   );
 
 export interface SetProfileAction {
@@ -103,6 +105,16 @@ export interface UndoAction {
 
 export interface RedoAction {
   type: "redo";
+}
+
+export interface UndoToAction {
+  type: "undoTo";
+  index: number;
+}
+
+export interface RedoToAction {
+  type: "redoTo";
+  index: number;
 }
 
 interface ModalBaseOptions {
@@ -233,6 +245,46 @@ const editDeviceReducer = (
           ...state.undoStack,
           { profile: state.profile, description: entry.description },
         ],
+      };
+    }
+    case "undoTo": {
+      const index = action.index;
+      if (index < 0 || index >= state.undoStack.length) return state;
+      let currentProfile = state.profile;
+      const newRedoEntries: HistoryEntry[] = [];
+      for (let i = state.undoStack.length - 1; i >= index; i--) {
+        const entry = state.undoStack[i];
+        newRedoEntries.push({
+          profile: currentProfile,
+          description: entry.description,
+        });
+        currentProfile = entry.profile;
+      }
+      return {
+        ...state,
+        profile: currentProfile,
+        undoStack: state.undoStack.slice(0, index),
+        redoStack: [...state.redoStack, ...newRedoEntries],
+      };
+    }
+    case "redoTo": {
+      const index = action.index;
+      if (index < 0 || index >= state.redoStack.length) return state;
+      let currentProfile = state.profile;
+      const newUndoEntries: HistoryEntry[] = [];
+      for (let i = state.redoStack.length - 1; i >= index; i--) {
+        const entry = state.redoStack[i];
+        newUndoEntries.push({
+          profile: currentProfile,
+          description: entry.description,
+        });
+        currentProfile = entry.profile;
+      }
+      return {
+        ...state,
+        profile: currentProfile,
+        redoStack: state.redoStack.slice(0, index),
+        undoStack: [...state.undoStack, ...newUndoEntries],
       };
     }
     case "cleanChanges":
