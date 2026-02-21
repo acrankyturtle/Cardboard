@@ -93,6 +93,35 @@ export function EditTaggedLayerDialog() {
     [dispatch],
   );
 
+  const handleConfirm = useCallback(() => {
+    if (!showModal || !layerToEdit || !mode) return;
+
+    if (mode.type === "edit") {
+      dispatch(
+        editTaggedLayer(
+          mode.keyId,
+          mode.layerId,
+          layerToEdit,
+          state.profile,
+        ),
+      );
+    } else {
+      const { action, newLayerId } = addLayerWithTags(
+        mode.keyId,
+        mode.aboveLayerId,
+        layerToEdit,
+        state.profile,
+      );
+      dispatch(action);
+      dispatch({
+        type: "setSelectedLayer",
+        layerId: newLayerId,
+      });
+    }
+
+    dispatch({ type: "setModal", modal: null });
+  }, [showModal, layerToEdit, mode, dispatch, state.profile]);
+
   if (!mode) return <></>;
 
   const keyInfo =
@@ -133,36 +162,7 @@ export function EditTaggedLayerDialog() {
       </DialogBody>
       <DialogFooter>
         <div className="grow" />
-        <DialogConfirmButton
-          onClick={() => {
-            if (!showModal || !layerToEdit) return;
-
-            if (mode.type === "edit") {
-              dispatch(
-                editTaggedLayer(
-                  mode.keyId,
-                  mode.layerId,
-                  layerToEdit,
-                  state.profile,
-                ),
-              );
-            } else {
-              const { action, newLayerId } = addLayerWithTags(
-                mode.keyId,
-                mode.aboveLayerId,
-                layerToEdit,
-                state.profile,
-              );
-              dispatch(action);
-              dispatch({
-                type: "setSelectedLayer",
-                layerId: newLayerId,
-              });
-            }
-
-            dispatch({ type: "setModal", modal: null });
-          }}
-        >
+        <DialogConfirmButton onClick={handleConfirm}>
           Confirm
         </DialogConfirmButton>
         <DialogCancelButton onClick={closeModal}>Cancel</DialogCancelButton>
