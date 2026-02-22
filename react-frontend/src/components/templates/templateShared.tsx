@@ -20,7 +20,7 @@ import {
   KeyboardKeySelector,
   MouseKeySelector,
 } from "../KeySelector.tsx";
-import { ActionView } from "../ActionView.tsx";
+import { CompactActionView } from "../ActionView.tsx";
 import { TemplateAction, TemplateResult } from "./templateUtils.ts";
 
 export function TemplateLayout({
@@ -383,7 +383,7 @@ function SequencePreview({
                   +{action.predelayMs}ms →
                 </span>
               )}
-              <ActionView action={action} compact />
+              <CompactActionView action={action} />
             </div>
           ))}
         </div>

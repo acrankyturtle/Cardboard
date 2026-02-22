@@ -24,6 +24,28 @@ import {
   DebugActionEventView,
 } from "./actionViews/OtherActionEventViews.tsx";
 
+export function CompactActionView({
+  className,
+  action,
+}: {
+  className?: string;
+  action: Action;
+}) {
+  const isMouseDisabledWarning = useIsMouseDisabled(action);
+  return (
+    <div
+      className={clsx(
+        "flex items-center gap-1 rounded bg-stone-800 px-2 py-1 text-xs shadow shadow-black/25",
+        isMouseDisabledWarning && "outline-2 outline-orange-600",
+        className,
+      )}
+    >
+      {isMouseDisabledWarning && <MouseDisabledWarning compact />}
+      <ActionEventView event={action.actionEvent} />
+    </div>
+  );
+}
+
 export const ActionView = forwardRef<
   HTMLDivElement,
   {
@@ -32,44 +54,9 @@ export const ActionView = forwardRef<
     setAction?: (a: Action) => void;
     onEdit?: () => void;
     onDelete?: () => void;
-    compact?: boolean;
   }
->(function ActionView(
-  { className, action, setAction, onEdit, onDelete, compact },
-  ref,
-) {
-  const editDevice = useMaybeEditDeviceContext();
-  const isMouseDisabledWarning =
-    editDevice &&
-    !editDevice.state.device.settings.isMouseEnabled &&
-    isMouseActionEvent(action.actionEvent);
-
-  if (compact) {
-    return (
-      <div
-        ref={ref}
-        className={clsx(
-          "flex items-center gap-1 rounded bg-stone-800 px-2 py-1 text-xs shadow shadow-black/25",
-          isMouseDisabledWarning && "outline-2 outline-orange-600",
-          className,
-        )}
-      >
-        {isMouseDisabledWarning && <MouseDisabledWarning compact />}
-        <ActionEventView event={action.actionEvent} />
-        {onDelete && (
-          <Tooltip content="Delete action">
-            <button
-              className="ml-1 text-stone-400 hover:text-stone-200"
-              onClick={onDelete}
-            >
-              ×
-            </button>
-          </Tooltip>
-        )}
-      </div>
-    );
-  }
-
+>(function ActionView({ className, action, setAction, onEdit, onDelete }, ref) {
+  const isMouseDisabledWarning = useIsMouseDisabled(action);
   return (
     <div
       ref={ref}
@@ -178,6 +165,15 @@ export const ActionView = forwardRef<
     </div>
   );
 });
+
+const useIsMouseDisabled = (action: Action): boolean => {
+  const editDevice = useMaybeEditDeviceContext();
+  return (
+    editDevice != undefined &&
+    !editDevice.state.device.settings.isMouseEnabled &&
+    isMouseActionEvent(action.actionEvent)
+  );
+};
 
 function MouseDisabledWarning({ compact }: { compact?: boolean }) {
   return (
