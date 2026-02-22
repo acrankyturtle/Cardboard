@@ -386,13 +386,13 @@ function ChannelSummaryLink({
 
   return (
     <>
-      <button
-        type="button"
-        className="text-xs text-violet-400 hover:text-violet-300 hover:underline"
+      <Button
+        className="text-xs"
+        buttonStyle={{ variant: "link" }}
         onClick={() => setShowDialog(true)}
       >
         (view all)
-      </button>
+      </Button>
       <Dialog
         open={showDialog}
         onClose={() => setShowDialog(false)}

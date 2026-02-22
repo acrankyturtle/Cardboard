@@ -92,7 +92,12 @@ export function KeyRenderer({
         return renderKey ? (
           renderKey(key, keyClassName, style)
         ) : (
-          <button key={key.keyId} className={keyClassName} style={style}>
+          <button
+            key={key.keyId}
+            className={keyClassName}
+            style={style}
+            type="button"
+          >
             {key.name}
           </button>
         );

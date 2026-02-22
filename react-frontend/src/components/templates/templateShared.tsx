@@ -6,7 +6,7 @@ import {
   MouseButton,
   Sequence,
 } from "../../api/devices.ts";
-import { Button, getButtonClassName } from "../Button.tsx";
+import { Button } from "../Button.tsx";
 import {
   Input,
   Menu,
@@ -22,6 +22,7 @@ import {
 } from "../KeySelector.tsx";
 import { CompactActionView } from "../ActionView.tsx";
 import { TemplateAction, TemplateResult } from "./templateUtils.ts";
+import { XIcon } from "@root/react-frontend/src/assets/sharedIcons.tsx";
 
 export function TemplateLayout({
   title,
@@ -41,15 +42,13 @@ export function TemplateLayout({
   return (
     <div className="flex size-full flex-col gap-3 rounded-md bg-stone-700 p-3 shadow-md shadow-black/25">
       <div className="flex items-center gap-2">
-        <button
-          className={clsx(
-            "size-8 p-1",
-            getButtonClassName({ variant: "ghost" }),
-          )}
+        <Button
+          className="size-8 p-1"
+          buttonStyle={{ variant: "ghost" }}
           onClick={onBack}
         >
           <BackIcon />
-        </button>
+        </Button>
         <div>
           <div className="text-lg font-semibold">{title}</div>
           <div className="text-xs text-stone-400">{description}</div>
@@ -205,16 +204,17 @@ function ActionItem({
   onRemove: () => void;
 }) {
   return (
-    <div className="flex items-center gap-2 rounded bg-stone-800 px-2 py-1.5">
+    <div className="flex items-center gap-1 rounded bg-stone-800 px-2 py-1.5">
       <div className="grow">
         <ActionEditor action={action} onChange={onChange} />
       </div>
-      <button
-        className="text-stone-400 hover:text-stone-200"
+      <Button
+        className="size-6"
         onClick={onRemove}
+        buttonStyle={{ variant: "dim-ghost", padding: "none" }}
       >
-        ×
-      </button>
+        <XIcon className="size-3" />
+      </Button>
     </div>
   );
 }
@@ -430,12 +430,12 @@ export function TemplateCard({
   showCheckmark?: boolean;
 }) {
   return (
-    <button
+    <Button
       className={clsx(
         "relative flex h-24 w-56 flex-col items-center justify-center rounded-2xl shadow-md shadow-black/25",
-        getButtonClassName({ rounded: "none", variant: "no-color" }),
         className,
       )}
+      buttonStyle={{ rounded: "none", variant: "no-color" }}
       onClick={onClick}
     >
       {showCheckmark && (
@@ -445,6 +445,6 @@ export function TemplateCard({
       )}
       <div className="text-lg font-semibold">{title}</div>
       <div className="text-xs text-stone-400">{description}</div>
-    </button>
+    </Button>
   );
 }

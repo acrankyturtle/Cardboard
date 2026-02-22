@@ -2,7 +2,7 @@ import { Sequence } from "../api/devices.ts";
 import clsx from "clsx";
 import { ActionView } from "./ActionView.tsx";
 import { ActionTypeMenu } from "./ActionTypeMenu.tsx";
-import { Button, getButtonClassName } from "./Button.tsx";
+import { Button } from "./Button.tsx";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   convertSequenceDownToUp,
@@ -117,11 +117,9 @@ export function SequenceEditor({
         <div className="grow">{name}</div>
         {type === "start" && canCopy && onCopyToOther && (
           <Tooltip content="Copy to end sequence">
-            <button
-              className={clsx(
-                getButtonClassName({ variant: "ghost", padding: "none" }),
-                "size-6 p-0.5",
-              )}
+            <Button
+              className="size-6 p-0.5"
+              buttonStyle={{ variant: "ghost", padding: "none" }}
               onClick={handleCopy}
             >
               <svg
@@ -138,16 +136,14 @@ export function SequenceEditor({
                 <path d="M18 20l3 -3l-3 -3" />
                 <path d="M21 7l-18 0" />
               </svg>
-            </button>
+            </Button>
           </Tooltip>
         )}
         {type === "end" && canCopy && onCopyToOther && (
           <Tooltip content="Copy to start sequence">
-            <button
-              className={clsx(
-                getButtonClassName({ variant: "ghost", padding: "none" }),
-                "size-6 p-0.5",
-              )}
+            <Button
+              className="size-6 p-0.5"
+              buttonStyle={{ variant: "ghost", padding: "none" }}
               onClick={handleCopy}
             >
               <svg
@@ -164,7 +160,7 @@ export function SequenceEditor({
                 <path d="M6 4l-3 3l3 3" />
                 <path d="M3 17l18 0" />
               </svg>
-            </button>
+            </Button>
           </Tooltip>
         )}
       </div>

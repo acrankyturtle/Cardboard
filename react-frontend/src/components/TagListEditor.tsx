@@ -2,6 +2,8 @@ import { Input } from "@headlessui/react";
 import clsx from "clsx";
 import { useRef, useState } from "react";
 import * as React from "react";
+import { Button } from "@root/react-frontend/src/components/Button.tsx";
+import { XIcon } from "@root/react-frontend/src/assets/sharedIcons.tsx";
 
 export function TagListEditor({
   value,
@@ -59,25 +61,16 @@ export function TagListEditor({
           className="flex items-center gap-1 rounded-full bg-stone-700 px-2.5 py-0.5 text-sm text-stone-200"
         >
           {tag}
-          <button
-            type="button"
-            className="ml-0.5 cursor-pointer text-stone-400 hover:text-stone-100"
+          <Button
+            className="ml-0.5"
+            buttonStyle={{ variant: "dim-ghost", padding: "none" }}
             onClick={(e) => {
               e.stopPropagation();
               removeTag(tag);
             }}
           >
-            <svg
-              className="h-3 w-3"
-              viewBox="0 0 12 12"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            >
-              <path d="M3 3l6 6M9 3l-6 6" />
-            </svg>
-          </button>
+            <XIcon className="h-3 w-3" />
+          </Button>
         </span>
       ))}
       <Input

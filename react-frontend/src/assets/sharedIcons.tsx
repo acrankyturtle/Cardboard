@@ -356,3 +356,18 @@ export function MacroIcon({ className }: { className?: string }) {
     </svg>
   );
 }
+
+export function XIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 12 12"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <path d="M3 3l6 6M9 3l-6 6" />
+    </svg>
+  );
+}

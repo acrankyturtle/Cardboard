@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { ReactNode } from "react";
 import { ActionEvent } from "../../api/devices.ts";
-import { Button, getButtonClassName } from "../Button.tsx";
+import { Button } from "../Button.tsx";
 import { ActionTypeMenu } from "../ActionTypeMenu.tsx";
 
 export function ActionEventIcon({
@@ -28,18 +28,16 @@ export function ActionEventIcon({
     return (
       <ActionTypeMenu onSelect={setAction}>
         {({ active }) => (
-          <button
+          <Button
             type="button"
-            className={clsx(
-              getButtonClassName({
-                padding: "none",
-                isActive: active,
-              }),
-              "size-8 cursor-pointer",
-            )}
+            className="size-8"
+            buttonStyle={{
+              padding: "none",
+              isActive: active,
+            }}
           >
             {iconContent}
-          </button>
+          </Button>
         )}
       </ActionTypeMenu>
     );

@@ -130,6 +130,7 @@ export function Key({
             onContextMenu={() =>
               dispatch({ type: "setSelectedKey", keyId: keyId })
             }
+            type="button"
           >
             <div
               className={clsx(

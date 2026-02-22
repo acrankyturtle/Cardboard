@@ -1,7 +1,7 @@
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import Header from "../components/Header.tsx";
 import clsx from "clsx";
-import { Button, getButtonClassName } from "../components/Button.tsx";
+import { Button } from "../components/Button.tsx";
 import {
   Association,
   AssociationData,
@@ -296,41 +296,35 @@ function AssociationCard({
       <AssociationDetails className="grow" association={association} />
       <div className="flex gap-2">
         <Tooltip content="Edit">
-          <button
-            className={clsx(
-              getButtonClassName({ variant: "ghost", padding: "none" }),
-            )}
+          <Button
+            buttonStyle={{ variant: "ghost", padding: "none" }}
             onClick={onEdit}
           >
             <div className="size-8 p-1.5">
               <EditIcon />
             </div>
-          </button>
+          </Button>
         </Tooltip>
         <Tooltip content="Export">
-          <button
-            className={clsx(
-              getButtonClassName({ variant: "ghost", padding: "none" }),
-            )}
+          <Button
+            buttonStyle={{ variant: "ghost", padding: "none" }}
             onClick={onExport}
           >
             <div className="size-8 p-1.5">
               <ThickExportIcon />
             </div>
-          </button>
+          </Button>
         </Tooltip>
         <Tooltip content="Delete">
-          <button
-            className={clsx(
-              getButtonClassName({ variant: "ghost", padding: "none" }),
-              "text-red-400 hover:text-red-300",
-            )}
+          <Button
+            className="text-red-400 hover:text-red-300"
+            buttonStyle={{ variant: "ghost", padding: "none" }}
             onClick={onDelete}
           >
             <div className="size-8 p-1.5">
               <DeleteIcon />
             </div>
-          </button>
+          </Button>
         </Tooltip>
       </div>
     </div>
@@ -519,13 +513,12 @@ function EditAssociationDialog({
               <span>
                 Map input keys to virtual keys when this application is focused.
               </span>
-              <button
-                type="button"
-                className="text-cyan-400 underline hover:text-cyan-300"
+              <Button
+                buttonStyle={{ variant: "link" }}
                 onClick={() => setShowInputDevices(true)}
               >
                 View attached input devices
-              </button>
+              </Button>
             </div>
           </div>
         </Fieldset>
@@ -679,15 +672,13 @@ function VirtualKeyEditor({
         </div>
       </div>
       <Tooltip content="Remove">
-        <button
-          className={clsx(
-            getButtonClassName({ variant: "ghost", padding: "none" }),
-            "size-6 self-center p-1 text-red-400 hover:text-red-300",
-          )}
+        <Button
+          className="size-6 self-center p-1 text-red-400 hover:text-red-300"
+          buttonStyle={{ variant: "ghost", padding: "none" }}
           onClick={onRemove}
         >
           <RemoveIcon />
-        </button>
+        </Button>
       </Tooltip>
     </div>
   );

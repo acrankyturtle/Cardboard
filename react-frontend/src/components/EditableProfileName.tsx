@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import { EditIcon } from "../assets/sharedIcons.tsx";
 import { InputClassName } from "./Input.tsx";
-import { getButtonClassName } from "./Button.tsx";
+import { Button } from "./Button.tsx";
 import { Tooltip } from "./Tooltip.tsx";
 
 export function EditableProfileName({
@@ -78,19 +78,16 @@ export function EditableProfileName({
     <div className={clsx("flex items-center gap-1", className)}>
       <span className="text-lg font-normal">{displayName}</span>
       <Tooltip content="Edit profile name">
-        <button
-          type="button"
+        <Button
+          className="p-1"
+          buttonStyle={{ variant: "ghost", padding: "none" }}
           onClick={() => {
             setEditValue(name);
             setIsEditing(true);
           }}
-          className={clsx(
-            getButtonClassName({ variant: "ghost", padding: "none" }),
-            "p-1",
-          )}
         >
           <EditIcon className="size-4" />
-        </button>
+        </Button>
       </Tooltip>
     </div>
   );
