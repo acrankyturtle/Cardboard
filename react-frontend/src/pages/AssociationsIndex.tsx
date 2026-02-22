@@ -45,6 +45,7 @@ import {
 } from "../assets/sharedIcons.tsx";
 import { Tooltip } from "../components/Tooltip.tsx";
 import { HelpLink } from "../components/HelpLink.tsx";
+import { TagListEditor } from "../components/TagListEditor.tsx";
 import { getInputDevices, InputDeviceInfo } from "../api/inputDevices.ts";
 import { downloadJsonFile, pickAndReadJsonFile } from "../lib/jsonFileUtils.ts";
 
@@ -385,27 +386,14 @@ function EditAssociationDialog({
   }, [devices, associations]);
 
   // Local state for input fields to allow typing without immediate filtering
-  const [tagsInput, setTagsInput] = useState(() => data.tags.join(", "));
   const [pathsInput, setPathsInput] = useState(() =>
     data.matchOnPath.join("\n"),
   );
 
   // Sync local state when data changes (e.g., when dialog opens with new data)
   useEffect(() => {
-    setTagsInput(data.tags.join(", "));
-  }, [data.tags]);
-
-  useEffect(() => {
     setPathsInput(data.matchOnPath.join("\n"));
   }, [data.matchOnPath]);
-
-  const handleTagsBlur = useCallback(() => {
-    const tags = tagsInput
-      .split(",")
-      .map((t) => t.trim())
-      .filter((t) => t.length > 0);
-    setData({ ...data, tags });
-  }, [data, setData, tagsInput]);
 
   const handlePathsBlur = useCallback(() => {
     const matchOnPath = pathsInput
@@ -447,10 +435,6 @@ function EditAssociationDialog({
 
   // Process inputs before save to ensure any pending edits are included
   const handleSaveWithProcess = useCallback(() => {
-    const tags = tagsInput
-      .split(",")
-      .map((t) => t.trim())
-      .filter((t) => t.length > 0);
     const matchOnPath = pathsInput
       .split("\n")
       .map((p) => p.trim())
@@ -458,8 +442,8 @@ function EditAssociationDialog({
     const virtualKeys = data.virtualKeys.filter((v) => {
       return v.deviceMatching.inputKey !== EMPTY_INPUT_KEY;
     });
-    onSave({ ...data, tags, matchOnPath, virtualKeys });
-  }, [data, tagsInput, pathsInput, onSave]);
+    onSave({ ...data, matchOnPath, virtualKeys });
+  }, [data, pathsInput, onSave]);
 
   return (
     <Dialog
@@ -497,17 +481,10 @@ function EditAssociationDialog({
           <DialogDivider />
           <Field className="flex flex-col gap-1">
             <Label className="text-sm font-medium">Tags</Label>
-            <Input
-              className={clsx("w-full", InputClassName)}
-              type="text"
-              placeholder="tag1, tag2, tag3"
-              value={tagsInput}
-              onChange={(e) => setTagsInput(e.target.value)}
-              onBlur={handleTagsBlur}
+            <TagListEditor
+              value={data.tags}
+              onChange={(tags) => setData({ ...data, tags })}
             />
-            <div className="text-xs text-stone-400">
-              Comma-separated list of tags to apply
-            </div>
           </Field>
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
