@@ -48,6 +48,11 @@ export function EditMacroDialog() {
     state.modal.type === "editMacro" &&
     state.modal.show;
 
+  useEffect(() => {
+    setIsTemplateEditing(false);
+    setTabIndex(0);
+  }, [showModal]);
+
   const selectName =
     state.modal !== null &&
     state.modal.type === "editMacro" &&
