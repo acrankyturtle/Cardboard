@@ -55,8 +55,6 @@ export type EditDeviceAction = EditDeviceActionBase &
     | CleanChangesAction
     | UndoAction
     | RedoAction
-    | UndoToAction
-    | RedoToAction
   );
 
 export interface SetProfileAction {
@@ -101,20 +99,12 @@ export interface CleanChangesAction {
 
 export interface UndoAction {
   type: "undo";
+  numberOfActions?: number;
 }
 
 export interface RedoAction {
   type: "redo";
-}
-
-export interface UndoToAction {
-  type: "undoTo";
-  index: number;
-}
-
-export interface RedoToAction {
-  type: "redoTo";
-  index: number;
+  numberOfActions?: number;
 }
 
 interface ModalBaseOptions {
@@ -226,33 +216,7 @@ const editDeviceReducer = (
         modal: action.modal,
       };
     case "undo": {
-      if (state.undoStack.length === 0) return state;
-      const entry = state.undoStack[state.undoStack.length - 1];
-      return {
-        ...state,
-        profile: entry.profile,
-        undoStack: state.undoStack.slice(0, -1),
-        redoStack: [
-          ...state.redoStack,
-          { profile: state.profile, description: entry.description },
-        ],
-      };
-    }
-    case "redo": {
-      if (state.redoStack.length === 0) return state;
-      const entry = state.redoStack[state.redoStack.length - 1];
-      return {
-        ...state,
-        profile: entry.profile,
-        redoStack: state.redoStack.slice(0, -1),
-        undoStack: [
-          ...state.undoStack,
-          { profile: state.profile, description: entry.description },
-        ],
-      };
-    }
-    case "undoTo": {
-      const index = action.index;
+      const index = state.undoStack.length - (action.numberOfActions ?? 1);
       if (index < 0 || index >= state.undoStack.length) return state;
       let currentProfile = state.profile;
       const newRedoEntries: HistoryEntry[] = [];
@@ -271,8 +235,8 @@ const editDeviceReducer = (
         redoStack: [...state.redoStack, ...newRedoEntries],
       };
     }
-    case "redoTo": {
-      const index = action.index;
+    case "redo": {
+      const index = state.redoStack.length - (action.numberOfActions ?? 1);
       if (index < 0 || index >= state.redoStack.length) return state;
       let currentProfile = state.profile;
       const newUndoEntries: HistoryEntry[] = [];

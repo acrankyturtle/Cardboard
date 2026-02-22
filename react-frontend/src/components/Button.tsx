@@ -31,6 +31,7 @@ export const Button = forwardRef<
     <button
       ref={ref}
       className={clsx(getButtonClassName(buttonStyle ?? {}), className)}
+      type="button"
       {...props}
     >
       {children}

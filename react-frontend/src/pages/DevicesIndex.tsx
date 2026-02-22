@@ -449,7 +449,7 @@ function EditDeviceView() {
                     <ContextMenuItem
                       key={index}
                       onClick={() =>
-                        dispatch({ type: "undoTo", index })
+                        dispatch({ type: "undo", numberOfActions: state.undoStack.length - index })
                       }
                     >
                       {entry.description}
@@ -491,7 +491,7 @@ function EditDeviceView() {
                     <ContextMenuItem
                       key={index}
                       onClick={() =>
-                        dispatch({ type: "redoTo", index })
+                        dispatch({ type: "redo", numberOfActions: state.redoStack.length - index })
                       }
                     >
                       {entry.description}
