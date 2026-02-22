@@ -16,7 +16,6 @@ import {
   ExportIcon,
   ImportIcon,
   MacroIcon,
-  PasteIcon,
   RemoveIcon,
 } from "../../assets/sharedIcons.tsx";
 import {
@@ -90,30 +89,19 @@ export function MacrosPanel({ className }: { className?: string }) {
     });
   };
 
-  const copyMacro = () => {
+  const duplicateMacro = () => {
     if (!state.selectedMacro) return;
     const macro = findMacroById(state.selectedMacro, state.profile);
     if (!macro) return;
-    const { id: _, ...macroWithoutId } = macro;
-    navigator.clipboard.writeText(JSON.stringify(macroWithoutId, null, 2));
-  };
-
-  const pasteMacro = async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      const data = JSON.parse(text);
-      if (!isValidMacro(data)) return;
-      dispatch({
-        type: "setModal",
-        modal: {
-          type: "editMacro",
-          show: true,
-          macro: { ...data, id: crypto.randomUUID() },
-        },
-      });
-    } catch {
-      // invalid clipboard content — silently ignore
-    }
+    dispatch({
+      type: "setModal",
+      modal: {
+        type: "editMacro",
+        show: true,
+        selectName: true,
+        macro: { ...macro, id: crypto.randomUUID() },
+      },
+    });
   };
 
   const importMacro = async () => {
@@ -174,18 +162,13 @@ export function MacrosPanel({ className }: { className?: string }) {
             <AddIcon />
           </button>
         </Tooltip>
-        <Tooltip content="Copy">
+        <Tooltip content="Duplicate">
           <button
             className={headerBarButtonClass}
-            onClick={copyMacro}
+            onClick={duplicateMacro}
             disabled={state.selectedMacro === null}
           >
-            <CopyIcon />
-          </button>
-        </Tooltip>
-        <Tooltip content="Paste">
-          <button className={headerBarButtonClass} onClick={pasteMacro}>
-            <PasteIcon />
+            <DuplicateIcon />
           </button>
         </Tooltip>
         <Tooltip content="Import">
@@ -249,18 +232,12 @@ export function MacrosPanel({ className }: { className?: string }) {
           </ContextMenuItem>
           <ContextMenuItem
             disabled={state.selectedMacro === null}
-            onClick={copyMacro}
+            onClick={duplicateMacro}
           >
             <ContextMenuIcon>
-              <CopyIcon />
+              <DuplicateIcon />
             </ContextMenuIcon>
-            Copy
-          </ContextMenuItem>
-          <ContextMenuItem onClick={pasteMacro}>
-            <ContextMenuIcon>
-              <PasteIcon />
-            </ContextMenuIcon>
-            Paste
+            Duplicate
           </ContextMenuItem>
           <ContextMenuItem onClick={importMacro}>
             <ContextMenuIcon>
@@ -329,7 +306,7 @@ function MacroListItem({ item }: { item: ListBoxItem }) {
   );
 }
 
-function CopyIcon() {
+function DuplicateIcon() {
   return (
     <svg
       className="p-0.5"
