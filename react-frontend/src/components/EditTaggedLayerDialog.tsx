@@ -19,7 +19,7 @@ import {
   DialogHeaderDescription,
   DialogHeaderTitle,
 } from "./Dialog.tsx";
-import { TagListEditor } from "./TagListEditor.tsx";
+import { ChipListInput } from "./ChipListInput.tsx";
 
 type DialogMode =
   | { type: "edit"; keyId: string; layerId: string }
@@ -151,8 +151,9 @@ export function EditTaggedLayerDialog() {
           <Fieldset className="w-96 space-y-8">
             <Field className="flex flex-col gap-1">
               <Label>Tags</Label>
-              <TagListEditor
+              <ChipListInput
                 autoFocus
+                placeholder="Add tag..."
                 value={layerToEdit?.tags ?? []}
                 onChange={(v) => {
                   if (layerToEdit) setLayerToEdit({ ...layerToEdit, tags: v });

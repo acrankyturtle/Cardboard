@@ -31,7 +31,7 @@ import {
   DialogHeaderDescription,
   DialogHeaderTitle,
 } from "../components/Dialog.tsx";
-import { Field, Fieldset, Input, Label, Textarea } from "@headlessui/react";
+import { Field, Fieldset, Input, Label } from "@headlessui/react";
 import { InputKeySelector } from "../components/InputKeySelector.tsx";
 import { InputClassName } from "../components/Input.tsx";
 import { ComboInput, ComboInputItem } from "../components/ComboInput.tsx";
@@ -45,7 +45,7 @@ import {
 } from "../assets/sharedIcons.tsx";
 import { Tooltip } from "../components/Tooltip.tsx";
 import { HelpLink } from "../components/HelpLink.tsx";
-import { TagListEditor } from "../components/TagListEditor.tsx";
+import { ChipListInput } from "../components/ChipListInput.tsx";
 import { getInputDevices, InputDeviceInfo } from "../api/inputDevices.ts";
 import { downloadJsonFile, pickAndReadJsonFile } from "../lib/jsonFileUtils.ts";
 
@@ -379,24 +379,6 @@ function EditAssociationDialog({
     return items;
   }, [devices, associations]);
 
-  // Local state for input fields to allow typing without immediate filtering
-  const [pathsInput, setPathsInput] = useState(() =>
-    data.matchOnPath.join("\n"),
-  );
-
-  // Sync local state when data changes (e.g., when dialog opens with new data)
-  useEffect(() => {
-    setPathsInput(data.matchOnPath.join("\n"));
-  }, [data.matchOnPath]);
-
-  const handlePathsBlur = useCallback(() => {
-    const matchOnPath = pathsInput
-      .split("\n")
-      .map((p) => p.trim())
-      .filter((p) => p.length > 0);
-    setData({ ...data, matchOnPath });
-  }, [data, setData, pathsInput]);
-
   const handleAddVirtualKey = useCallback(() => {
     const deviceId = allDeviceItems[0]?.id ?? "";
     setData({
@@ -429,15 +411,11 @@ function EditAssociationDialog({
 
   // Process inputs before save to ensure any pending edits are included
   const handleSaveWithProcess = useCallback(() => {
-    const matchOnPath = pathsInput
-      .split("\n")
-      .map((p) => p.trim())
-      .filter((p) => p.length > 0);
     const virtualKeys = data.virtualKeys.filter((v) => {
       return v.deviceMatching.inputKey !== EMPTY_INPUT_KEY;
     });
-    onSave({ ...data, matchOnPath, virtualKeys });
-  }, [data, pathsInput, onSave]);
+    onSave({ ...data, virtualKeys });
+  }, [data, onSave]);
 
   return (
     <Dialog
@@ -460,22 +438,24 @@ function EditAssociationDialog({
         <Fieldset className="space-y-4">
           <Field className="flex flex-col gap-1">
             <Label className="text-sm font-medium">Match Paths</Label>
-            <Textarea
-              className={clsx("h-24 w-full resize-none", InputClassName)}
-              placeholder="notepad.exe&#10;C:\Program Files\MyApp"
-              value={pathsInput}
-              onChange={(e) => setPathsInput(e.target.value)}
-              onBlur={handlePathsBlur}
+            <ChipListInput
+              layout="stacked"
+              placeholder="Add path..."
+              value={data.matchOnPath}
+              onChange={(matchOnPath) =>
+                setData({ ...data, matchOnPath })
+              }
             />
             <div className="text-xs text-stone-400">
-              One path per line. Tags apply when focused window path contains
-              any of these strings.
+              Tags apply when focused window path contains any of these
+              strings.
             </div>
           </Field>
           <DialogDivider />
           <Field className="flex flex-col gap-1">
             <Label className="text-sm font-medium">Tags</Label>
-            <TagListEditor
+            <ChipListInput
+              placeholder="Add tag..."
               value={data.tags}
               onChange={(tags) => setData({ ...data, tags })}
             />
@@ -523,10 +503,6 @@ function EditAssociationDialog({
           </div>
         </Fieldset>
       </DialogBody>
-      <InputDevicesDialog
-        open={showInputDevices}
-        onClose={() => setShowInputDevices(false)}
-      />
       <DialogFooter className="justify-end">
         {error && <div className="mr-auto text-red-400">{error}</div>}
         <DialogCancelButton onClick={onClose}>Cancel</DialogCancelButton>
@@ -534,6 +510,10 @@ function EditAssociationDialog({
           {isNew ? "Create" : "Save"}
         </DialogConfirmButton>
       </DialogFooter>
+      <InputDevicesDialog
+        open={showInputDevices}
+        onClose={() => setShowInputDevices(false)}
+      />
     </Dialog>
   );
 }
