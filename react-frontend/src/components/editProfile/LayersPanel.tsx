@@ -21,8 +21,8 @@ import { AddIcon, RemoveIcon } from "../../assets/sharedIcons.tsx";
 import {
   PanelContainer,
   HeaderBar,
+  HeaderBarButton,
   headerBarIconClass,
-  headerBarButtonClass,
 } from "./panelShared.tsx";
 import { Tooltip } from "../Tooltip.tsx";
 import { HelpLink } from "../HelpLink.tsx";
@@ -173,18 +173,17 @@ export function LayersPanel({ className }: { className?: string }) {
         <HelpLink className="shrink-0" section="layers" />
         <div className="grow" />
         <Tooltip content="Add layer">
-          <button className={headerBarButtonClass} onClick={addLayer}>
+          <HeaderBarButton onClick={addLayer}>
             <AddIcon />
-          </button>
+          </HeaderBarButton>
         </Tooltip>
         <Tooltip content="Delete layer">
-          <button
-            className={headerBarButtonClass}
+          <HeaderBarButton
             onClick={deleteLayer}
             disabled={isSelectedLayerDefaultLayer || !state.selectedLayer}
           >
             <RemoveIcon />
-          </button>
+          </HeaderBarButton>
         </Tooltip>
       </HeaderBar>
       <ContextMenu>

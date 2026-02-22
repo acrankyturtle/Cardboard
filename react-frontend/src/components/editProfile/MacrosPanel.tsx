@@ -22,11 +22,7 @@ import {
   downloadJsonFile,
   pickAndReadJsonFile,
 } from "../../lib/jsonFileUtils.ts";
-import {
-  PanelContainer,
-  HeaderBar,
-  headerBarButtonClass,
-} from "./panelShared.tsx";
+import { PanelContainer, HeaderBar, HeaderBarButton } from "./panelShared.tsx";
 import { Tooltip } from "../Tooltip.tsx";
 import { HelpLink } from "../HelpLink.tsx";
 import {
@@ -159,41 +155,38 @@ export function MacrosPanel({ className }: { className?: string }) {
         <HelpLink section="macros" />
         <div className="grow" />
         <Tooltip content="New macro">
-          <button className={headerBarButtonClass} onClick={newMacro}>
+          <HeaderBarButton onClick={newMacro}>
             <AddIcon />
-          </button>
+          </HeaderBarButton>
         </Tooltip>
         <Tooltip content="Duplicate">
-          <button
-            className={headerBarButtonClass}
+          <HeaderBarButton
             onClick={duplicateMacro}
             disabled={state.selectedMacro === null}
           >
             <DuplicateIcon />
-          </button>
+          </HeaderBarButton>
         </Tooltip>
         <Tooltip content="Import">
-          <button className={headerBarButtonClass} onClick={importMacro}>
+          <HeaderBarButton onClick={importMacro}>
             <ImportIcon />
-          </button>
+          </HeaderBarButton>
         </Tooltip>
         <Tooltip content="Export">
-          <button
-            className={headerBarButtonClass}
+          <HeaderBarButton
             onClick={exportMacro}
             disabled={state.selectedMacro === null}
           >
             <ExportIcon />
-          </button>
+          </HeaderBarButton>
         </Tooltip>
         <Tooltip content="Delete macro">
-          <button
-            className={headerBarButtonClass}
+          <HeaderBarButton
             onClick={deleteMacroAction}
             disabled={selectedMacroUsages !== 0}
           >
             <RemoveIcon />
-          </button>
+          </HeaderBarButton>
         </Tooltip>
       </HeaderBar>
       <ContextMenu>

@@ -8,8 +8,8 @@ import {
 import {
   PanelContainer,
   HeaderBar,
+  HeaderBarButton,
   headerBarIconClass,
-  headerBarButtonClass,
 } from "./panelShared.tsx";
 import { Tooltip } from "../Tooltip.tsx";
 import { HelpLink } from "../HelpLink.tsx";
@@ -46,14 +46,14 @@ export function TagsPanel({ className }: { className?: string }) {
         <HelpLink className="shrink-0" section="tags" />
         <div className="grow" />
         <Tooltip content="Select all">
-          <button className={headerBarButtonClass} onClick={selectAll}>
+          <HeaderBarButton onClick={selectAll}>
             <SelectAllIcon />
-          </button>
+          </HeaderBarButton>
         </Tooltip>
         <Tooltip content="Deselect all">
-          <button className={headerBarButtonClass} onClick={deselectAll}>
+          <HeaderBarButton onClick={deselectAll}>
             <DeselectIcon />
-          </button>
+          </HeaderBarButton>
         </Tooltip>
       </HeaderBar>
       <ContextMenu>

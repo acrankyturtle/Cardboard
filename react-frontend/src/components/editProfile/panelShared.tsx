@@ -1,6 +1,6 @@
 import clsx from "clsx";
 import { ComponentProps, ReactNode } from "react";
-import { getButtonClassName } from "../Button.tsx";
+import { Button } from "../Button.tsx";
 
 export function PanelContainer({
   className,
@@ -36,12 +36,23 @@ export function HeaderBar({
   );
 }
 
-export const headerBarIconClass = "size-6 text-stone-100 shrink-0";
+export function HeaderBarButton({
+  className,
+  children,
+  ...props
+}: ComponentProps<"button">) {
+  return (
+    <Button
+      className={clsx(headerBarIconClass, className)}
+      buttonStyle={{
+        variant: "toolbar",
+        padding: "none",
+      }}
+      {...props}
+    >
+      {children}
+    </Button>
+  );
+}
 
-export const headerBarButtonClass = clsx(
-  headerBarIconClass,
-  getButtonClassName({
-    variant: "toolbar",
-    padding: "none",
-  }),
-);
+export const headerBarIconClass = "size-6 text-stone-100 shrink-0";

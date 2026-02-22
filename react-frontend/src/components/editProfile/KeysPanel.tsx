@@ -26,8 +26,8 @@ import {
 import {
   PanelContainer,
   HeaderBar,
+  HeaderBarButton,
   headerBarIconClass,
-  headerBarButtonClass,
 } from "./panelShared.tsx";
 import { Tooltip } from "../Tooltip.tsx";
 import { HelpLink } from "../HelpLink.tsx";
@@ -321,22 +321,14 @@ export function KeysPanel({
         <HelpLink className="shrink-0" section="keys-bindings" />
         <div className="grow" />
         <Tooltip content="Import key">
-          <button
-            className={headerBarButtonClass}
-            disabled={!hasSelectedKey}
-            onClick={importKey}
-          >
+          <HeaderBarButton disabled={!hasSelectedKey} onClick={importKey}>
             <ImportIcon />
-          </button>
+          </HeaderBarButton>
         </Tooltip>
         <Tooltip content="Export key">
-          <button
-            className={headerBarButtonClass}
-            disabled={!hasSelectedKey}
-            onClick={exportKey}
-          >
+          <HeaderBarButton disabled={!hasSelectedKey} onClick={exportKey}>
             <ExportIcon />
-          </button>
+          </HeaderBarButton>
         </Tooltip>
       </HeaderBar>
       <ContextMenu>

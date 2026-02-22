@@ -17,7 +17,7 @@ import {
   PanelContainer,
   HeaderBar,
   headerBarIconClass,
-  headerBarButtonClass,
+  HeaderBarButton,
 } from "./panelShared.tsx";
 import { SelectAllIcon, DeselectIcon } from "./TagsPanel.tsx";
 import { Tooltip } from "../Tooltip.tsx";
@@ -126,24 +126,24 @@ export function BindingsPanel({ className }: { className?: string }) {
         <HelpLink className="shrink-0" section="keys-bindings" />
         <div className="grow" />
         <Tooltip content="Select all">
-          <button className={headerBarButtonClass} onClick={selectAll}>
+          <HeaderBarButton onClick={selectAll}>
             <SelectAllIcon />
-          </button>
+          </HeaderBarButton>
         </Tooltip>
         <Tooltip content="Deselect all">
-          <button className={headerBarButtonClass} onClick={deselectAll}>
+          <HeaderBarButton onClick={deselectAll}>
             <DeselectIcon />
-          </button>
+          </HeaderBarButton>
         </Tooltip>
         <Tooltip content="Add binding">
-          <button className={headerBarButtonClass} onClick={addBinding}>
+          <HeaderBarButton onClick={addBinding}>
             <AddIcon />
-          </button>
+          </HeaderBarButton>
         </Tooltip>
         <Tooltip content="Remove binding">
-          <button className={headerBarButtonClass} onClick={removeBinding}>
+          <HeaderBarButton onClick={removeBinding}>
             <RemoveIcon />
-          </button>
+          </HeaderBarButton>
         </Tooltip>
       </HeaderBar>
       <ContextMenu>
