@@ -33,14 +33,23 @@ export const useDeviceList = (): {
  * Automatically revalidates the device list when devices change.
  * Should be called once at the app level.
  */
-export const useDeviceEvents = () => {
+export const useDeviceEvents = (callbacks?: {
+  onConnected?: () => void;
+  onDisconnected?: () => void;
+}) => {
   const { mutate } = useSWRConfig();
   const eventSourceRef = useRef<EventSource | null>(null);
+  const callbacksRef = useRef(callbacks);
+  callbacksRef.current = callbacks;
 
   useEffect(() => {
     const connect = () => {
       const eventSource = new EventSource(getApiUrl("devices/events"));
       eventSourceRef.current = eventSource;
+
+      eventSource.onopen = () => {
+        callbacksRef.current?.onConnected?.();
+      };
 
       eventSource.addEventListener("devicesChanged", () => {
         // Revalidate device list when devices change
@@ -48,6 +57,7 @@ export const useDeviceEvents = () => {
       });
 
       eventSource.onerror = () => {
+        callbacksRef.current?.onDisconnected?.();
         eventSource.close();
         // Reconnect after a delay
         setTimeout(connect, 3000);

@@ -7,14 +7,12 @@ import { LogsIndex } from "./pages/LogsIndex.tsx";
 import { AssociationsIndex } from "./pages/AssociationsIndex.tsx";
 import { DashboardIndex } from "./pages/DashboardIndex.tsx";
 import { GuideIndex, GuideCK130 } from "./pages/GuideIndex.tsx";
-import { useDeviceEvents } from "./api/devices.ts";
+import { ConnectionStatusProvider } from "./hooks/useConnectionStatus.tsx";
+import { ConnectionLostOverlay } from "./components/ConnectionLostOverlay.tsx";
 
 // note: all icons from https://tablericons.com/
 
 function App() {
-  // Subscribe to real-time device connection events
-  useDeviceEvents();
-
   const [searchParams] = useSearchParams();
 
   return (
@@ -23,27 +21,30 @@ function App() {
         fetcher: fetcher,
       }}
     >
-      <main className="flex h-full min-w-[64rem] bg-stone-950 text-stone-100">
-        <Routes>
-          <Route element={<Layout />}>
-            <Route index element={<DashboardIndex />} />
-            <Route
-              path="/devices"
-              element={
-                <DevicesIndex
-                  deviceId={searchParams.get("deviceId")}
-                  action={searchParams.get("action")}
-                />
-              }
-            />
-            <Route path="/associations" element={<AssociationsIndex />} />
-            <Route path="/logs" element={<LogsIndex />} />
-            <Route path="/guide" element={<GuideIndex />} />
-            <Route path="/guide/ck1-30" element={<GuideCK130 />} />
-            <Route path="*" element={<NoMatch />} />
-          </Route>
-        </Routes>
-      </main>
+      <ConnectionStatusProvider>
+        <ConnectionLostOverlay />
+        <main className="flex h-full min-w-[64rem] bg-stone-950 text-stone-100">
+          <Routes>
+            <Route element={<Layout />}>
+              <Route index element={<DashboardIndex />} />
+              <Route
+                path="/devices"
+                element={
+                  <DevicesIndex
+                    deviceId={searchParams.get("deviceId")}
+                    action={searchParams.get("action")}
+                  />
+                }
+              />
+              <Route path="/associations" element={<AssociationsIndex />} />
+              <Route path="/logs" element={<LogsIndex />} />
+              <Route path="/guide" element={<GuideIndex />} />
+              <Route path="/guide/ck1-30" element={<GuideCK130 />} />
+              <Route path="*" element={<NoMatch />} />
+            </Route>
+          </Routes>
+        </main>
+      </ConnectionStatusProvider>
     </SWRConfig>
   );
 }
