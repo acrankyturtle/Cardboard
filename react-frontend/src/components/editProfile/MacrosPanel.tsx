@@ -9,7 +9,7 @@ import {
   getMacroUsages,
   useEditDeviceContext,
 } from "../../lib/editDeviceContext.tsx";
-import { deleteProfileMacro } from "../../lib/profileActions.ts";
+import { addBinding, deleteProfileMacro } from "../../lib/profileActions.ts";
 import { MacroDragData } from "./dndTypes.ts";
 import {
   AddIcon,
@@ -31,6 +31,7 @@ import {
   ContextMenuPopup,
   ContextMenuItem,
   ContextMenuIcon,
+  ContextMenuSeparator,
 } from "../ContextMenu.tsx";
 
 export function isValidMacro(data: unknown): data is DeviceMacro {
@@ -145,6 +146,20 @@ export function MacrosPanel({ className }: { className?: string }) {
     }
   };
 
+  const bindToLayerAction = () => {
+    if (!state.selectedKey || !state.selectedMacro || !state.selectedLayer)
+      return;
+
+    dispatch(
+      addBinding(
+        state.selectedKey,
+        state.selectedLayer,
+        state.selectedMacro,
+        state.profile,
+      ),
+    );
+  };
+
   return (
     <PanelContainer className={className}>
       <HeaderBar>
@@ -256,6 +271,20 @@ export function MacrosPanel({ className }: { className?: string }) {
               <RemoveIcon />
             </ContextMenuIcon>
             Delete Macro
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem
+            disabled={
+              state.selectedKey === null ||
+              state.selectedLayer === null ||
+              state.selectedMacro === null
+            }
+            onClick={bindToLayerAction}
+          >
+            <ContextMenuIcon>
+              <RemoveIcon />
+            </ContextMenuIcon>
+            Bind to selected layer
           </ContextMenuItem>
         </ContextMenuPopup>
       </ContextMenu>

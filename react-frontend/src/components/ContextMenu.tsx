@@ -79,3 +79,7 @@ export function ContextMenuItem({
     </BaseContextMenu.Item>
   );
 }
+
+export function ContextMenuSeparator() {
+  return <BaseContextMenu.Separator className="mx-3 my-1 h-px bg-stone-700" />;
+}
