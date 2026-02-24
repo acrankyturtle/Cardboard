@@ -20,7 +20,6 @@ import {
   restrictToParentElement,
 } from "@dnd-kit/modifiers";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { isTaggedDeviceLayer } from "../api/devices.ts";
 import { TagsPanel } from "./editProfile/TagsPanel.tsx";
 import {
   KeysPanel,
@@ -35,12 +34,47 @@ import { ImportKeyDialog } from "./editProfile/ImportKeyDialog.tsx";
 import { EditTaggedLayerDialog } from "./EditTaggedLayerDialog.tsx";
 import { isMacroDragData, DropTargetData } from "./editProfile/dndTypes.ts";
 import {
+  EditDeviceState,
   findKeyById,
-  findSelectedProfileLayer,
+  findLayerById,
   getActiveLayer,
   useEditDeviceContext,
 } from "../lib/editDeviceContext.tsx";
 import { addBinding } from "../lib/profileActions.ts";
+
+function resolveDropTarget(
+  dropData: DropTargetData,
+  state: EditDeviceState,
+): { keyId: string; layerId: string; macros: readonly string[] } | null {
+  if (dropData.type === "key") {
+    const key = findKeyById(dropData.keyId, state);
+    if (!key) return null;
+    const activeLayer = getActiveLayer(key.layers, state.selectedTags);
+    return {
+      keyId: dropData.keyId,
+      layerId: activeLayer.id,
+      macros: activeLayer.macros,
+    };
+  } else if (dropData.type === "layer") {
+    const layer = findLayerById(dropData.keyId, dropData.layerId, state);
+    if (!layer) return null;
+    return {
+      keyId: dropData.keyId,
+      layerId: dropData.layerId,
+      macros: layer.macros,
+    };
+  } else if (dropData.type === "bindings") {
+    if (!state.selectedKey || !state.selectedLayer) return null;
+    const layer = findLayerById(state.selectedKey, state.selectedLayer, state);
+    if (!layer) return null;
+    return {
+      keyId: state.selectedKey,
+      layerId: state.selectedLayer,
+      macros: layer.macros,
+    };
+  }
+  return null;
+}
 
 export function EditDeviceProfile({ className }: { className?: string }) {
   const columnRef = useRef<HTMLDivElement>(null);
@@ -103,50 +137,19 @@ export function EditDeviceProfile({ className }: { className?: string }) {
     const dropData = event.over?.data.current as DropTargetData | undefined;
     if (!dragData || !dropData || !isMacroDragData(dragData)) return;
 
-    const macroId = dragData.macroId;
+    const resolved = resolveDropTarget(dropData, state);
+    if (!resolved) return;
+
+    const { keyId, layerId, macros } = resolved;
+    if (macros.includes(dragData.macroId)) return;
+
+    dispatch(addBinding(keyId, layerId, dragData.macroId, state.profile));
+    dropSuccessRef.current = true;
 
     if (dropData.type === "key") {
-      const key = findKeyById(dropData.keyId, state);
-      if (!key) return;
-      const activeLayer = getActiveLayer(key.layers, state.selectedTags);
-      if (activeLayer.macros.includes(macroId)) return;
-      dispatch(
-        addBinding(dropData.keyId, activeLayer.id, macroId, state.profile),
-      );
-      dispatch({ type: "setSelectedKey", keyId: dropData.keyId });
-      dropSuccessRef.current = true;
+      dispatch({ type: "setSelectedKey", keyId });
     } else if (dropData.type === "layer") {
-      const key = findKeyById(dropData.keyId, state);
-      if (!key) return;
-      const allLayers = [
-        ...key.layers.layers.map((l) => l.layer),
-        key.layers.defaultLayer,
-      ];
-      const layer = allLayers.find((l) => l.id === dropData.layerId);
-      if (!layer) return;
-      if (layer.macros.includes(macroId)) return;
-      dispatch(
-        addBinding(dropData.keyId, dropData.layerId, macroId, state.profile),
-      );
-      dispatch({ type: "setSelectedLayer", layerId: dropData.layerId });
-      dropSuccessRef.current = true;
-    } else if (dropData.type === "bindings") {
-      if (!state.selectedKey || !state.selectedLayer) return;
-      const selectedLayer = findSelectedProfileLayer(state);
-      if (!selectedLayer) return;
-      const macros = isTaggedDeviceLayer(selectedLayer)
-        ? selectedLayer.layer.macros
-        : selectedLayer.macros;
-      if (macros.includes(macroId)) return;
-      dispatch(
-        addBinding(
-          state.selectedKey,
-          state.selectedLayer,
-          macroId,
-          state.profile,
-        ),
-      );
-      dropSuccessRef.current = true;
+      dispatch({ type: "setSelectedLayer", layerId });
     }
   };
 

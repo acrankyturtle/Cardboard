@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { useState } from "react";
+import { ReactNode, useState } from "react";
 import { useDroppable, useDndMonitor, useDndContext } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { DeviceKeyLayer, TaggedDeviceLayer } from "../../api/devices.ts";
@@ -259,6 +259,31 @@ export function LayersPanel({ className }: { className?: string }) {
   );
 }
 
+function LayerListItem({
+  selected,
+  isOver,
+  children,
+}: {
+  selected?: boolean;
+  isOver?: boolean;
+  children: ReactNode;
+}) {
+  const { active } = useDndContext();
+  const isMacroOver = isOver && isMacroDragData(active?.data.current);
+
+  return (
+    <RedListItem
+      selected={selected}
+      className={clsx(
+        "flex size-full items-center outline-3 -outline-offset-3 outline-blue-400/0 transition-all duration-150",
+        { "outline-blue-400/100": isMacroOver },
+      )}
+    >
+      {children}
+    </RedListItem>
+  );
+}
+
 function LayerItem({
   layerId,
   keyId,
@@ -273,25 +298,16 @@ function LayerItem({
   isOver?: boolean;
 }) {
   const { state } = useEditDeviceContext();
-  const { active } = useDndContext();
   const layer = (() => {
     if (!keyId) return null;
     return findLayerById(keyId, layerId, state);
   })();
 
-  const isMacroOver = isOver && isMacroDragData(active?.data.current);
-
   return (
-    <RedListItem
-      selected={selected}
-      className={clsx(
-        "flex size-full items-center outline-3 -outline-offset-3 outline-blue-400/0 transition-all duration-150",
-        { "outline-blue-400/100": isMacroOver },
-      )}
-    >
+    <LayerListItem selected={selected} isOver={isOver}>
       <div className="grow">{label || <EmptyListItem />}</div>
-      {layer && <MacroCount macros={layer.macros} />}
-    </RedListItem>
+      <MacroCount macros={layer?.macros ?? []} />
+    </LayerListItem>
   );
 }
 
@@ -316,21 +332,13 @@ function DefaultLayerItem({
     data: dropData,
     disabled: !keyId,
   });
-  const { active } = useDndContext();
-  const isMacroOver = isOver && isMacroDragData(active?.data.current);
 
   return (
     <div ref={setNodeRef} onClick={onClick} className="cursor-pointer">
-      <RedListItem
-        selected={selected}
-        className={clsx(
-          "flex size-full items-center outline-3 -outline-offset-3 outline-blue-400/0 transition-all duration-150",
-          { "outline-blue-400/100": isMacroOver },
-        )}
-      >
+      <LayerListItem selected={selected} isOver={isOver}>
         <div className="grow">{defaultLayerName}</div>
         <MacroCount macros={layer.macros} />
-      </RedListItem>
+      </LayerListItem>
     </div>
   );
 }
