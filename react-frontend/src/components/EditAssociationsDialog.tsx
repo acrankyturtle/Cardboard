@@ -64,7 +64,7 @@ export function EditAssociationDialog({
     const connectedDeviceIds = new Set(devices.map((d) => d.id));
     const items: ComboInputItem[] = devices.map((d) => ({
       id: d.id,
-      name: d.name,
+      name: d.name || `${d.model} (${d.id})`,
     }));
 
     // Collect all device IDs from all associations' virtual keys
@@ -356,7 +356,7 @@ function VirtualKeyEditor({
       </div>
       <Tooltip content="Remove">
         <Button
-          className="size-6 self-center p-1 text-red-400 hover:text-red-300"
+          className="size-6 self-center p-1"
           buttonStyle={{ variant: "ghost", padding: "none" }}
           onClick={onRemove}
         >
