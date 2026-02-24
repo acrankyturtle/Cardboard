@@ -283,7 +283,7 @@ internal partial class InputEventService : IInputEventService, IInputDeviceListS
 			if (deviceInfo is null)
 				return null;
 
-			_deviceCache.Add(handle, deviceInfo);
+			_deviceCache[handle] = deviceInfo;
 			return deviceInfo;
 		}
 		finally
