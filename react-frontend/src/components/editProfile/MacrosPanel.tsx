@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { useMemo } from "react";
 import { useDraggable } from "@dnd-kit/core";
-import { DeviceMacro } from "../../api/devices.ts";
+import { DeviceMacro, MacroType } from "../../api/devices.ts";
 import { ListBox, ListBoxItem } from "../ListBox.tsx";
 import { BlueListItem } from "../ListItem.tsx";
 import {
@@ -22,16 +22,16 @@ import {
   downloadJsonFile,
   pickAndReadJsonFile,
 } from "../../lib/jsonFileUtils.ts";
-import { PanelContainer, HeaderBar, HeaderBarButton } from "./panelShared.tsx";
+import { HeaderBar, HeaderBarButton, PanelContainer } from "./panelShared.tsx";
 import { Tooltip } from "../Tooltip.tsx";
 import { HelpLink } from "../HelpLink.tsx";
 import {
   ContextMenu,
-  ContextMenuTrigger,
-  ContextMenuPopup,
-  ContextMenuItem,
   ContextMenuIcon,
+  ContextMenuItem,
+  ContextMenuPopup,
   ContextMenuSeparator,
+  ContextMenuTrigger,
 } from "../ContextMenu.tsx";
 
 export function isValidMacro(data: unknown): data is DeviceMacro {
@@ -78,6 +78,7 @@ export function MacrosPanel({ className }: { className?: string }) {
         macro: {
           id: crypto.randomUUID(),
           name: "New Macro",
+          type: MacroType.Momentary,
           cutChannels: [],
           startSequence: { actions: [] },
           loopSequence: { actions: [] },

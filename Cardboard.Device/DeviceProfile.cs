@@ -157,6 +157,7 @@ public sealed class Macro : IReadable<Macro>, IWriteable
 {
 	public required MacroId Id { get; init; }
 	public required string Name { get; init; }
+	public MacroType Type { get; init; } = MacroType.Momentary;
 	public Channel? PlayChannel { get; init; }
 	public required IReadOnlyCollection<Channel> CutChannels { get; init; }
 	public required Sequence StartSequence { get; init; }
@@ -167,6 +168,7 @@ public sealed class Macro : IReadable<Macro>, IWriteable
 	{
 		var id = MacroId.ReadFrom(reader);
 		var name = reader.ReadStringU8();
+		var type = (MacroType)reader.ReadByte();
 		var playChannel = reader.ReadOptionValue(Channel.ReadFrom);
 		var cutChannels = reader.ReadCollectionU8<Channel>();
 		var startSequence = Sequence.ReadFrom(reader);
@@ -177,6 +179,7 @@ public sealed class Macro : IReadable<Macro>, IWriteable
 		{
 			Id = id,
 			Name = name,
+			Type = type,
 			PlayChannel = playChannel,
 			CutChannels = cutChannels,
 			StartSequence = startSequence,
@@ -189,12 +192,19 @@ public sealed class Macro : IReadable<Macro>, IWriteable
 	{
 		Id.WriteTo(writer);
 		writer.WriteStringU8(Name);
+		writer.Write((byte)Type);
 		writer.WriteOption(PlayChannel);
 		writer.WriteCollectionU8(CutChannels);
 		StartSequence.WriteTo(writer);
 		LoopSequence.WriteTo(writer);
 		EndSequence.WriteTo(writer);
 	}
+}
+
+public enum MacroType
+{
+	Momentary = 0,
+	Toggle = 1,
 }
 
 public sealed class Sequence : IReadable<Sequence>, IWriteable

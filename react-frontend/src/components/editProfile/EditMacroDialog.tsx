@@ -1,6 +1,6 @@
 import clsx from "clsx";
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
-import { DeviceMacro, DeviceProfile } from "../../api/devices.ts";
+import { DeviceMacro, DeviceProfile, MacroType } from "../../api/devices.ts";
 import { Button } from "../Button.tsx";
 import {
   Dialog,
@@ -37,6 +37,10 @@ import {
 } from "../../lib/actionEventUtils.ts";
 import { TemplatePanel } from "../MacroTemplates.tsx";
 import { HelpLink } from "../HelpLink.tsx";
+import {
+  Select,
+  SelectOption,
+} from "@root/react-frontend/src/components/SelectBox.tsx";
 
 export function EditMacroDialog() {
   const { state, dispatch } = useEditDeviceContext();
@@ -100,6 +104,13 @@ export function EditMacroDialog() {
     dispatch({ type: "setSelectedMacro", macroId: macro.id });
   }, [showModal, macro, dispatch, state.profile]);
 
+  const macroTypeList = useMemo(() => {
+    return [
+      { id: MacroType.Momentary, name: "Momentary", type: MacroType.Momentary },
+      { id: MacroType.Toggle, name: "Toggle", type: MacroType.Toggle },
+    ];
+  }, []);
+
   if (!macro) return <></>;
 
   const numberOfUsages = getMacroUsages(macro.id, state.profile).length;
@@ -154,7 +165,7 @@ export function EditMacroDialog() {
                 autoFocus
               />
             </Field>
-            <div className="grid grid-cols-[1fr_2fr] gap-x-6">
+            <div className="grid grid-cols-[1fr_2fr_auto] gap-x-6">
               <Field className="flex flex-col gap-1">
                 <Label className="flex items-center gap-2">
                   Play Channel
@@ -186,6 +197,25 @@ export function EditMacroDialog() {
                   setMacro({ ...macro, cutChannels: channels })
                 }
               />
+              <Field className="flex flex-col gap-1">
+                <Label className="flex items-center gap-2">Type</Label>
+                <Select
+                  value={macro.type}
+                  onChange={(e) => {
+                    setMacro({ ...macro, type: e.target.value as MacroType });
+                  }}
+                >
+                  {macroTypeList.map((item) => (
+                    <SelectOption
+                      key={item.id}
+                      value={item.type}
+                      selected={macro.type == item.type}
+                    >
+                      {item.name}
+                    </SelectOption>
+                  ))}
+                </Select>
+              </Field>
             </div>
           </Fieldset>
           <DialogDivider />

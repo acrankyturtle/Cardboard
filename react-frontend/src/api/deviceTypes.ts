@@ -112,11 +112,17 @@ export enum TagMatchType {
 export interface DeviceMacro {
   id: string;
   name: string;
+  type: MacroType;
   playChannel?: number;
   cutChannels: readonly number[];
   startSequence: Sequence;
   loopSequence: Sequence;
   endSequence: Sequence;
+}
+
+export enum MacroType {
+  Momentary = "Momentary",
+  Toggle = "Toggle",
 }
 
 export interface Sequence {

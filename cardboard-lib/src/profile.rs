@@ -192,6 +192,7 @@ impl Readable for DeviceKeyLayer {
 pub struct Macro {
 	pub id: MacroId,
 	pub name: String,
+	pub macro_type: MacroType,
 	pub play_channel: Option<Channel>,
 	pub cut_channels: Vec<Channel>,
 	pub start_sequence: Sequence,
@@ -211,6 +212,8 @@ impl Readable for Macro {
 			.await
 			.ok_or("Failed to read macro name")?;
 
+		let macro_type = MacroType::read_from(reader).await?;
+
 		let play_channel = reader
 			.read_option()
 			.await
@@ -227,12 +230,32 @@ impl Readable for Macro {
 		Ok(Macro {
 			id,
 			name,
+			macro_type,
 			play_channel,
 			cut_channels,
 			start_sequence,
 			loop_sequence,
 			end_sequence,
 		})
+	}
+}
+
+pub enum MacroType {
+	Momentary,
+	Toggle,
+}
+
+impl Readable for MacroType {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let macro_type = reader.read_u8().await.ok_or("Failed to read macro type")?;
+		match macro_type {
+			0 => Ok(MacroType::Momentary),
+			1 => Ok(MacroType::Toggle),
+			_ => Err("Invalid macro type"),
+		}
 	}
 }
 

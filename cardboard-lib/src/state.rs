@@ -40,14 +40,10 @@ impl<'a> KeyboardState<'a> {
 	}
 
 	pub fn press_key(&mut self, key_id: KeyId) {
-		if let Some(key) = self.get_key(key_id) {
+		if let Some(key) = self.keys.iter().find(|ks| ks.key.id == key_id) {
 			let macros = Self::get_macros_from_key(self.macros, key);
 			Self::run_macros(&mut self.running, macros);
 		};
-	}
-
-	fn get_key(&self, key_id: KeyId) -> Option<&PhysicalKeyState<'a>> {
-		self.keys.iter().find(|ks| ks.key.id == key_id)
 	}
 
 	pub fn release_key(&mut self, key_id: KeyId) {
@@ -56,7 +52,9 @@ impl<'a> KeyboardState<'a> {
 
 	fn release_key_source(running: IterMut<MacroState<'a>>, source_key: MacroSourceKey) {
 		for macro_ in running {
-			if macro_.source.key == source_key {
+			if macro_.source.key == source_key
+				&& !matches!(macro_.macro_.macro_type, MacroType::Toggle)
+			{
 				macro_.stop();
 			}
 		}
@@ -98,10 +96,10 @@ impl<'a> KeyboardState<'a> {
 		}
 	}
 
-	fn get_macros_from_key<K: KeyState<'a>>(
+	fn get_macros_from_key<'k, K: KeyState<'a>>(
 		macros: &'a Vec<Macro>,
-		key: &K,
-	) -> Vec<MacroState<'a>> {
+		key: &'k K,
+	) -> impl Iterator<Item = MacroState<'a>> + use<'a, 'k, K> {
 		key.current_layer()
 			.macros
 			.iter()
@@ -112,16 +110,30 @@ impl<'a> KeyboardState<'a> {
 					None
 				}
 			})
-			.collect()
 	}
 
-	fn run_macros(running: &mut Vec<MacroState<'a>>, macros: Vec<MacroState<'a>>) {
-		let channels_to_cut: Vec<Channel> = macros
-			.iter()
-			.flat_map(|m| m.macro_.cut_channels.iter().copied())
-			.collect();
-		Self::cut_channels(running.iter_mut(), &channels_to_cut);
-		running.extend(macros);
+	fn run_macros(running: &mut Vec<MacroState<'a>>, macros: impl Iterator<Item = MacroState<'a>>) {
+		let start_index = running.len();
+
+		for m in macros {
+			if matches!(m.macro_.macro_type, MacroType::Toggle) {
+				// for toggle macros, stop it instead of starting a new one if already running
+				let already_running = running[..start_index].iter_mut().find(|r| {
+					r.macro_.id == m.macro_.id
+						&& r.source.key == m.source.key
+						&& matches!(r.trigger, TriggerState::Running)
+				});
+				if let Some(existing) = already_running {
+					existing.stop();
+					continue;
+				}
+			}
+			running.push(m);
+		}
+
+		// cut existing macros by the cut channels of the new macros
+		let (existing, new) = running.split_at_mut(start_index);
+		Self::cut_channels(existing, new);
 	}
 
 	pub fn tick(&mut self, elapsed: Duration, mut on_event: impl FnMut(&'a ActionEvent)) {
@@ -180,12 +192,16 @@ impl<'a> KeyboardState<'a> {
 		}
 	}
 
-	fn cut_channels(running: IterMut<MacroState<'a>>, channels: &[Channel]) {
-		for macro_ in running.filter(|m| match m.macro_.play_channel {
-			Some(channel) => channels.contains(&channel),
-			None => false,
-		}) {
-			macro_.stop();
+	fn cut_channels(running: &mut [MacroState<'a>], new_macros: &[MacroState<'a>]) {
+		for macro_ in running.iter_mut() {
+			if let Some(channel) = macro_.macro_.play_channel {
+				if new_macros
+					.iter()
+					.any(|m| m.macro_.cut_channels.contains(&channel))
+				{
+					macro_.stop();
+				}
+			}
 		}
 	}
 }
@@ -764,6 +780,7 @@ mod tests {
 				}],
 			},
 			cut_channels: vec![CHANNEL_ID],
+			macro_type: MacroType::Momentary,
 			id: MACRO_ID,
 			name: "Name".to_string(),
 			play_channel: Some(CHANNEL_ID),
@@ -1195,9 +1212,119 @@ mod tests {
 				}],
 			},
 			cut_channels: cut,
+			macro_type: MacroType::Momentary,
 			id,
 			name: "Name".to_string(),
 			play_channel: channel,
 		}
+	}
+
+	fn new_test_toggle_macro(id: MacroId, channel: Option<Channel>, cut: Vec<Channel>) -> Macro {
+		Macro {
+			start_sequence: Sequence {
+				actions: vec![Action {
+					predelay_ms: 100,
+					action_event: ActionEvent::None,
+				}],
+			},
+			loop_sequence: Sequence {
+				actions: vec![Action {
+					predelay_ms: 200,
+					action_event: ActionEvent::None,
+				}],
+			},
+			end_sequence: Sequence {
+				actions: vec![Action {
+					predelay_ms: 300,
+					action_event: ActionEvent::None,
+				}],
+			},
+			cut_channels: cut,
+			macro_type: MacroType::Toggle,
+			id,
+			name: "Name".to_string(),
+			play_channel: channel,
+		}
+	}
+
+	// ------- TOGGLE MACRO TESTS --------
+
+	#[test]
+	fn toggle_macro_stays_running_after_release() {
+		let _macro = new_test_toggle_macro(MACRO_ID, Some(CHANNEL_ID), vec![CHANNEL_ID]);
+		let profile = new_test_profile(
+			vec![new_test_device_key(KEY_ID, vec![MacroIndex::new(0)])],
+			vec![_macro],
+		);
+		let mut state = KeyboardState::from(&profile);
+
+		state.press_key(KEY_ID);
+		state.tick(100.millis(), |_| {});
+		assert!(matches!(
+			state.running[0].current_sequence,
+			CurrentSequence::Loop(_)
+		));
+
+		state.release_key(KEY_ID);
+		state.tick(200.millis(), |_| {});
+		assert!(matches!(
+			state.running[0].current_sequence,
+			CurrentSequence::Loop(_)
+		));
+	}
+
+	#[test]
+	fn toggle_macro_stops_on_second_press() {
+		let _macro = new_test_toggle_macro(MACRO_ID, Some(CHANNEL_ID), vec![]);
+		let profile = new_test_profile(
+			vec![new_test_device_key(KEY_ID, vec![MacroIndex::new(0)])],
+			vec![_macro],
+		);
+		let mut state = KeyboardState::from(&profile);
+
+		state.press_key(KEY_ID);
+		state.tick(100.millis(), |_| {});
+		assert!(matches!(
+			state.running[0].current_sequence,
+			CurrentSequence::Loop(_)
+		));
+
+		// Second press should stop the macro, not start a new one
+		state.release_key(KEY_ID);
+		state.press_key(KEY_ID);
+		assert_eq!(state.running.len(), 1);
+
+		state.tick(200.millis(), |_| {});
+		assert!(matches!(
+			state.running[0].current_sequence,
+			CurrentSequence::End(_)
+		));
+	}
+
+	#[test]
+	fn toggle_macro_completes_end_sequence() {
+		let _macro = new_test_toggle_macro(MACRO_ID, Some(CHANNEL_ID), vec![]);
+		let profile = new_test_profile(
+			vec![new_test_device_key(KEY_ID, vec![MacroIndex::new(0)])],
+			vec![_macro],
+		);
+		let mut state = KeyboardState::from(&profile);
+
+		state.press_key(KEY_ID);
+		state.tick(100.millis(), |_| {});
+
+		// Second press triggers end
+		state.release_key(KEY_ID);
+		state.press_key(KEY_ID);
+		state.tick(200.millis(), |_| {});
+		assert_eq!(state.running.len(), 1);
+		assert!(matches!(
+			state.running[0].current_sequence,
+			CurrentSequence::End(_)
+		));
+
+		// End sequence completes and macro is cleaned up
+		state.tick(300.millis(), |_| {});
+		assert_eq!(state.running.len(), 0);
 	}
 }
