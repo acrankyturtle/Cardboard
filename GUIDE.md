@@ -85,6 +85,8 @@ To make a key do something, you assign one or more macros to it through **bindin
 2. Select a layer (the default layer, or a tagged layer).
 3. In the Bindings panel, click the add button and choose a macro.
 
+You can also drag a macro from the Macros panel and drop it on a layer or the Bindings panel to create a binding in one step.
+
 When multiple macros are bound to the same key on the same layer, all of them fire when the key is pressed.
 
 ### How Bindings Interact with Layers
@@ -168,7 +170,7 @@ In the Layers panel (with a key selected):
 
 - Click the add button to create a new tagged layer. You'll be asked to specify its tags and match type.
 - Click a layer to select it and view/edit its bindings.
-- Reorder layers to control matching priority — the first matching tagged layer wins.
+- Drag-and-drop layers to reorder them and control matching priority — the first matching tagged layer wins.
 - Delete tagged layers you no longer need.
 
 ### Previewing Layers
