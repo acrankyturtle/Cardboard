@@ -132,21 +132,26 @@ export function EditTaggedLayerDialog() {
 
   return (
     <Dialog className="max-w-lg" open={showModal} onClose={closeModal}>
-      <form onSubmit={(e) => { e.preventDefault(); handleConfirm(); }}>
-        <DialogHeader>
-          <DialogHeaderTitle className="text-lg font-bold">
-            {title}
-          </DialogHeaderTitle>
-          {layerToEdit && keyInfo && !isAddMode && (
-            <DialogHeaderDescription>
-              `${getTaggedLayerName(layerToEdit)} @ ${keyInfo.name}`
-            </DialogHeaderDescription>
-          )}
-          {keyInfo && isAddMode && (
-            <DialogHeaderDescription>{keyInfo.name}</DialogHeaderDescription>
-          )}
-        </DialogHeader>
-        <DialogDivider />
+      <DialogHeader>
+        <DialogHeaderTitle className="text-lg font-bold">
+          {title}
+        </DialogHeaderTitle>
+        {layerToEdit && keyInfo && !isAddMode && (
+          <DialogHeaderDescription>
+            `${getTaggedLayerName(layerToEdit)} @ ${keyInfo.name}`
+          </DialogHeaderDescription>
+        )}
+        {keyInfo && isAddMode && (
+          <DialogHeaderDescription>{keyInfo.name}</DialogHeaderDescription>
+        )}
+      </DialogHeader>
+      <DialogDivider />
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleConfirm();
+        }}
+      >
         <DialogBody>
           <Fieldset className="w-96 space-y-8">
             <Field className="flex flex-col gap-1">
@@ -162,14 +167,14 @@ export function EditTaggedLayerDialog() {
             </Field>
           </Fieldset>
         </DialogBody>
-        <DialogFooter>
-          <div className="grow" />
-          <DialogConfirmButton onClick={handleConfirm}>
-            Confirm
-          </DialogConfirmButton>
-          <DialogCancelButton onClick={closeModal}>Cancel</DialogCancelButton>
-        </DialogFooter>
       </form>
+      <DialogFooter>
+        <div className="grow" />
+        <DialogConfirmButton onClick={handleConfirm}>
+          Confirm
+        </DialogConfirmButton>
+        <DialogCancelButton onClick={closeModal}>Cancel</DialogCancelButton>
+      </DialogFooter>
     </Dialog>
   );
 }

@@ -29,14 +29,19 @@ export function FirmwareUpdateConfirmDialog({
 }: FirmwareUpdateConfirmDialogProps) {
   return (
     <Dialog open={open} onClose={() => onCancel()} closeOnBackdropClick={false}>
-      <form onSubmit={(e) => { e.preventDefault(); onConfirm(); }}>
-        <DialogHeader>
-          <DialogHeaderTitle>Update Firmware</DialogHeaderTitle>
-          <DialogHeaderDescription>
-            Confirm firmware update for {deviceName}
-          </DialogHeaderDescription>
-        </DialogHeader>
-        <DialogDivider />
+      <DialogHeader>
+        <DialogHeaderTitle>Update Firmware</DialogHeaderTitle>
+        <DialogHeaderDescription>
+          Confirm firmware update for {deviceName}
+        </DialogHeaderDescription>
+      </DialogHeader>
+      <DialogDivider />
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onConfirm();
+        }}
+      >
         <DialogBody className="w-[28rem]">
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between rounded bg-stone-800 p-3">
@@ -66,13 +71,13 @@ export function FirmwareUpdateConfirmDialog({
             </div>
           </div>
         </DialogBody>
-        <DialogFooter className="justify-end">
-          <DialogCancelButton onClick={onCancel}>Cancel</DialogCancelButton>
-          <DialogConfirmButton onClick={onConfirm}>
-            Update Now
-          </DialogConfirmButton>
-        </DialogFooter>
       </form>
+      <DialogFooter className="justify-end">
+        <DialogCancelButton onClick={onCancel}>Cancel</DialogCancelButton>
+        <DialogConfirmButton onClick={onConfirm}>
+          Update Now
+        </DialogConfirmButton>
+      </DialogFooter>
     </Dialog>
   );
 }

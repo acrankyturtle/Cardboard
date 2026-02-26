@@ -90,24 +90,29 @@ export function BootloaderFirmwareUpdateDialog({
 
   return (
     <Dialog open={open} onClose={() => !isUpdating && handleClose()}>
-      <form onSubmit={(e) => { e.preventDefault(); if (canFlash) handleStartUpdate(); }}>
-        <DialogHeader>
-          <DialogHeaderTitle>
-            {showProgress
-              ? isSuccess
-                ? "Update Complete"
-                : isError
-                  ? "Update Failed"
-                  : "Flashing Firmware"
-              : "Flash Bootloader Device"}
-          </DialogHeaderTitle>
-          {!showProgress && (
-            <DialogHeaderDescription>
-              Flash firmware to a device in bootloader mode
-            </DialogHeaderDescription>
-          )}
-        </DialogHeader>
-        <DialogDivider />
+      <DialogHeader>
+        <DialogHeaderTitle>
+          {showProgress
+            ? isSuccess
+              ? "Update Complete"
+              : isError
+                ? "Update Failed"
+                : "Flashing Firmware"
+            : "Flash Bootloader Device"}
+        </DialogHeaderTitle>
+        {!showProgress && (
+          <DialogHeaderDescription>
+            Flash firmware to a device in bootloader mode
+          </DialogHeaderDescription>
+        )}
+      </DialogHeader>
+      <DialogDivider />
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (canFlash) handleStartUpdate();
+        }}
+      >
         <DialogBody className="w-[28rem]">
           {showProgress ? (
             isSuccess ? (
@@ -134,27 +139,27 @@ export function BootloaderFirmwareUpdateDialog({
             />
           )}
         </DialogBody>
-        <DialogFooter className="justify-end">
-          {showProgress ? (
-            isComplete ? (
-              <DialogCancelButton onClick={handleClose}>
-                {isSuccess ? "Done" : "Close"}
-              </DialogCancelButton>
-            ) : null
-          ) : (
-            <>
-              <DialogCancelButton onClick={handleClose}>
-                Cancel
-              </DialogCancelButton>
-              <DialogConfirmButton
-                onClick={canFlash ? handleStartUpdate : undefined}
-              >
-                Flash Firmware
-              </DialogConfirmButton>
-            </>
-          )}
-        </DialogFooter>
       </form>
+      <DialogFooter className="justify-end">
+        {showProgress ? (
+          isComplete ? (
+            <DialogCancelButton onClick={handleClose}>
+              {isSuccess ? "Done" : "Close"}
+            </DialogCancelButton>
+          ) : null
+        ) : (
+          <>
+            <DialogCancelButton onClick={handleClose}>
+              Cancel
+            </DialogCancelButton>
+            <DialogConfirmButton
+              onClick={canFlash ? handleStartUpdate : undefined}
+            >
+              Flash Firmware
+            </DialogConfirmButton>
+          </>
+        )}
+      </DialogFooter>
     </Dialog>
   );
 }

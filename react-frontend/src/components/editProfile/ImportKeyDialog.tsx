@@ -56,15 +56,20 @@ export function ImportKeyDialog() {
 
   return (
     <Dialog className="w-2xl" open={isOpen} onClose={closeModal}>
-      <form onSubmit={(e) => { e.preventDefault(); handleImport(); }}>
-        <DialogHeader>
-          <DialogHeaderTitle>Import Key</DialogHeaderTitle>
-          <DialogHeaderDescription>
-            {conflicts.length} macro{conflicts.length !== 1 ? "s" : ""} with
-            conflicting IDs found. Choose how to resolve each.
-          </DialogHeaderDescription>
-        </DialogHeader>
-        <DialogDivider />
+      <DialogHeader>
+        <DialogHeaderTitle>Import Key</DialogHeaderTitle>
+        <DialogHeaderDescription>
+          {conflicts.length} macro{conflicts.length !== 1 ? "s" : ""} with
+          conflicting IDs found. Choose how to resolve each.
+        </DialogHeaderDescription>
+      </DialogHeader>
+      <DialogDivider />
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleImport();
+        }}
+      >
         <DialogBody className="max-h-96 overflow-y-auto">
           {conflicts.map((conflict, index) => (
             <ConflictItem
@@ -74,11 +79,11 @@ export function ImportKeyDialog() {
             />
           ))}
         </DialogBody>
-        <DialogFooter className="justify-end">
-          <DialogConfirmButton onClick={handleImport}>Import</DialogConfirmButton>
-          <DialogCancelButton onClick={closeModal}>Cancel</DialogCancelButton>
-        </DialogFooter>
       </form>
+      <DialogFooter className="justify-end">
+        <DialogConfirmButton onClick={handleImport}>Import</DialogConfirmButton>
+        <DialogCancelButton onClick={closeModal}>Cancel</DialogCancelButton>
+      </DialogFooter>
     </Dialog>
   );
 }

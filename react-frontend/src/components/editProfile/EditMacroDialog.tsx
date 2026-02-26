@@ -125,32 +125,32 @@ export function EditMacroDialog() {
       onClose={closeModal}
       closeOnBackdropClick={false}
     >
+      <DialogHeader>
+        <DialogHeaderTitle className="flex items-center gap-2">
+          Edit Macro
+          <HelpLink section="macros" />
+        </DialogHeaderTitle>
+        <DialogHeaderDescription>
+          {isNew ? (
+            "New macro"
+          ) : numberOfUsages > 1 ? (
+            <div className="font-semibold text-sky-300">
+              {numberOfUsages} usages
+            </div>
+          ) : numberOfUsages === 1 ? (
+            "1 usage"
+          ) : (
+            "Unused"
+          )}
+        </DialogHeaderDescription>
+      </DialogHeader>
+      <DialogDivider />
       <form
         onSubmit={(e) => {
           e.preventDefault();
           handleConfirm();
         }}
       >
-        <DialogHeader>
-          <DialogHeaderTitle className="flex items-center gap-2">
-            Edit Macro
-            <HelpLink section="macros" />
-          </DialogHeaderTitle>
-          <DialogHeaderDescription>
-            {isNew ? (
-              "New macro"
-            ) : numberOfUsages > 1 ? (
-              <div className="font-semibold text-sky-300">
-                {numberOfUsages} usages
-              </div>
-            ) : numberOfUsages === 1 ? (
-              "1 usage"
-            ) : (
-              "Unused"
-            )}
-          </DialogHeaderDescription>
-        </DialogHeader>
-        <DialogDivider />
         <DialogBody className="gap-y-5">
           <Fieldset className="space-y-4">
             <Field className="flex flex-col gap-1">
@@ -323,14 +323,14 @@ export function EditMacroDialog() {
             </TabPanels>
           </TabGroup>
         </DialogBody>
-        <DialogFooter>
-          <div className="grow" />
-          <DialogConfirmButton onClick={handleConfirm}>
-            Confirm
-          </DialogConfirmButton>
-          <DialogCancelButton onClick={closeModal}>Cancel</DialogCancelButton>
-        </DialogFooter>
       </form>
+      <DialogFooter>
+        <div className="grow" />
+        <DialogConfirmButton onClick={handleConfirm}>
+          Confirm
+        </DialogConfirmButton>
+        <DialogCancelButton onClick={closeModal}>Cancel</DialogCancelButton>
+      </DialogFooter>
     </Dialog>
   );
 }
