@@ -1,28 +1,7 @@
 import clsx from "clsx";
-import { useRef, useState, useEffect, useMemo } from "react";
-import {
-  DndContext,
-  DragOverlay,
-  PointerSensor,
-  KeyboardSensor,
-  useSensor,
-  useSensors,
-  DragStartEvent,
-  DragEndEvent,
-  pointerWithin,
-  closestCenter,
-  defaultDropAnimationSideEffects,
-  type CollisionDetection,
-  type DropAnimation,
-  type Modifier,
-} from "@dnd-kit/core";
-import {
-  snapCenterToCursor,
-  restrictToVerticalAxis,
-  restrictToParentElement,
-  restrictToWindowEdges,
-} from "@dnd-kit/modifiers";
-import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { useRef, useState, useEffect } from "react";
+import { DndContext, DragOverlay } from "@dnd-kit/core";
+import { snapCenterToCursor, restrictToWindowEdges } from "@dnd-kit/modifiers";
 import { TagsPanel } from "./editProfile/TagsPanel.tsx";
 import {
   KeysPanel,
@@ -35,86 +14,23 @@ import { MacrosPanel } from "./editProfile/MacrosPanel.tsx";
 import { EditMacroDialog } from "./editProfile/EditMacroDialog.tsx";
 import { ImportKeyDialog } from "./editProfile/ImportKeyDialog.tsx";
 import { EditTaggedLayerDialog } from "./EditTaggedLayerDialog.tsx";
-import { isMacroDragData, DropTargetData } from "./editProfile/dndTypes.ts";
-import {
-  EditDeviceState,
-  findKeyById,
-  findLayerById,
-  getActiveLayer,
-  useEditDeviceContext,
-} from "../lib/editDeviceContext.tsx";
-import { addBinding } from "../lib/profileActions.ts";
-
-function resolveDropTarget(
-  dropData: DropTargetData,
-  state: EditDeviceState,
-): { keyId: string; layerId: string; macros: readonly string[] } | null {
-  if (dropData.type === "key") {
-    const key = findKeyById(dropData.keyId, state);
-    if (!key) return null;
-    const activeLayer = getActiveLayer(key.layers, state.selectedTags);
-    return {
-      keyId: dropData.keyId,
-      layerId: activeLayer.id,
-      macros: activeLayer.macros,
-    };
-  } else if (dropData.type === "layer") {
-    const layer = findLayerById(dropData.keyId, dropData.layerId, state);
-    if (!layer) return null;
-    return {
-      keyId: dropData.keyId,
-      layerId: dropData.layerId,
-      macros: layer.macros,
-    };
-  } else if (dropData.type === "bindings") {
-    if (!state.selectedKey || !state.selectedLayer) return null;
-    const layer = findLayerById(state.selectedKey, state.selectedLayer, state);
-    if (!layer) return null;
-    return {
-      keyId: state.selectedKey,
-      layerId: state.selectedLayer,
-      macros: layer.macros,
-    };
-  }
-  return null;
-}
+import { useMacroDragDrop } from "../hooks/useMacroDragDrop.ts";
 
 export function EditDeviceProfile({ className }: { className?: string }) {
   const columnRef = useRef<HTMLDivElement>(null);
-  const dropSuccessRef = useRef(false);
   const [showVirtualPanel, setShowVirtualPanel] = useState(true);
-  const [activeDrag, setActiveDrag] = useState<{
-    macroId: string;
-    macroName: string;
-  } | null>(null);
 
-  const { state, dispatch } = useEditDeviceContext();
+  const {
+    sensors,
+    collisionDetection,
+    modifiers,
+    onDragStart,
+    onDragEnd,
+    activeDrag,
+    dropAnimation,
+  } = useMacroDragDrop();
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
-
-  const customCollisionDetection: CollisionDetection = (args) => {
-    if (args.active.data.current?.sortable) {
-      return closestCenter(args);
-    }
-    return pointerWithin(args);
-  };
-
-  const sortModifier: Modifier = (args) => {
-    if (args.active?.data.current?.sortable) {
-      let transform = restrictToVerticalAxis(args);
-      transform = restrictToParentElement({ ...args, transform });
-      return transform;
-    }
-    return args.transform;
-  };
-
-  const modifiers = useMemo(() => [sortModifier], []);
-
+  // show the virtual key panel if the column is tall enough to accommodate it, otherwise hide it to save space
   useEffect(() => {
     const el = columnRef.current;
     if (!el) return;
@@ -125,45 +41,14 @@ export function EditDeviceProfile({ className }: { className?: string }) {
     return () => observer.disconnect();
   }, []);
 
-  const handleDragStart = (event: DragStartEvent) => {
-    const data = event.active.data.current;
-    if (isMacroDragData(data)) {
-      setActiveDrag({ macroId: data.macroId, macroName: data.macroName });
-    }
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    dropSuccessRef.current = false;
-    setActiveDrag(null);
-
-    const dragData = event.active.data.current;
-    const dropData = event.over?.data.current as DropTargetData | undefined;
-    if (!dragData || !dropData || !isMacroDragData(dragData)) return;
-
-    const resolved = resolveDropTarget(dropData, state);
-    if (!resolved) return;
-
-    const { keyId, layerId, macros } = resolved;
-    if (macros.includes(dragData.macroId)) return;
-
-    dispatch(addBinding(keyId, layerId, dragData.macroId, state.profile));
-    dropSuccessRef.current = true;
-
-    if (dropData.type === "key") {
-      dispatch({ type: "setSelectedKey", keyId });
-    } else if (dropData.type === "layer") {
-      dispatch({ type: "setSelectedLayer", layerId });
-    }
-  };
-
   return (
     <>
       <DndContext
         sensors={sensors}
-        collisionDetection={customCollisionDetection}
+        collisionDetection={collisionDetection}
         modifiers={modifiers}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
+        onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
       >
         <div
           className={clsx(
@@ -189,7 +74,7 @@ export function EditDeviceProfile({ className }: { className?: string }) {
           <MacrosPanel className="shrink grow basis-80" />
         </div>
         <DragOverlay
-          dropAnimation={dropSuccessRef.current ? null : cancelDropAnimation}
+          dropAnimation={dropAnimation}
           modifiers={[snapCenterToCursor, restrictToWindowEdges]}
         >
           {activeDrag && (
@@ -205,11 +90,3 @@ export function EditDeviceProfile({ className }: { className?: string }) {
     </>
   );
 }
-
-const cancelDropAnimation: DropAnimation = {
-  duration: 200,
-  easing: "ease",
-  sideEffects: defaultDropAnimationSideEffects({
-    styles: { active: { opacity: "1" } },
-  }),
-};
