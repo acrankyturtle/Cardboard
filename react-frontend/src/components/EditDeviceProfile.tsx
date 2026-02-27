@@ -11,7 +11,9 @@ import {
   DragEndEvent,
   pointerWithin,
   closestCenter,
+  defaultDropAnimationSideEffects,
   type CollisionDetection,
+  type DropAnimation,
   type Modifier,
 } from "@dnd-kit/core";
 import {
@@ -187,7 +189,7 @@ export function EditDeviceProfile({ className }: { className?: string }) {
           <MacrosPanel className="shrink grow basis-80" />
         </div>
         <DragOverlay
-          dropAnimation={dropSuccessRef.current ? null : undefined}
+          dropAnimation={dropSuccessRef.current ? null : cancelDropAnimation}
           modifiers={[snapCenterToCursor, restrictToWindowEdges]}
         >
           {activeDrag && (
@@ -203,3 +205,11 @@ export function EditDeviceProfile({ className }: { className?: string }) {
     </>
   );
 }
+
+const cancelDropAnimation: DropAnimation = {
+  duration: 200,
+  easing: "ease",
+  sideEffects: defaultDropAnimationSideEffects({
+    styles: { active: { opacity: "1" } },
+  }),
+};
