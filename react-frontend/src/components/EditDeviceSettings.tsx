@@ -134,7 +134,7 @@ export function EditDeviceSettings({
                 description="The minimum key press duration and time between key presses. Default is 10,000 μs (10 ms). Lower values might feel more responsive, but may cause accidental double presses. Consult your key switch manufacturer's specifications for recommended debounce times."
               >
                 <input
-                  className={InputClassName}
+                  className={clsx(InputClassName)}
                   type="number"
                   min={0}
                   step={1000}
