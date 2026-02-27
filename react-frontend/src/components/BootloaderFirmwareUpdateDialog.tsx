@@ -1,7 +1,7 @@
-import clsx from "clsx";
 import { useCallback, useEffect, useState } from "react";
 import { useBootloaderFirmwareUpdate } from "../hooks/useBootloaderFirmwareUpdate";
 import { FirmwareListEntry, useFirmwareList } from "../api/devices";
+import { FirmwareUpdateStage } from "../types/firmwareUpdate";
 import {
   Dialog,
   DialogBody,
@@ -14,11 +14,12 @@ import {
   DialogHeaderTitle,
 } from "./Dialog";
 import { LoadingIndicator } from "./LoadingIndicator";
-import { FirmwareUpdateStage, STAGE_LABELS } from "../types/firmwareUpdate";
 import {
-  CheckIcon,
-  RemoveIcon,
-} from "@root/react-frontend/src/assets/sharedIcons.tsx";
+  useAutoDismiss,
+  FirmwareUpdateProgressSteps,
+  FirmwareUpdateSuccess,
+  FirmwareUpdateError,
+} from "./firmwareUpdateShared";
 
 interface BootloaderFirmwareUpdateDialogProps {
   open: boolean;
@@ -30,8 +31,6 @@ const BOOTLOADER_UPDATE_STAGES: FirmwareUpdateStage[] = [
   "bootloader",
   "flashing",
 ];
-
-const AUTO_DISMISS_DELAY_MS = 5000;
 
 function getFirmwareKey(entry: FirmwareListEntry): string {
   return `${entry.deviceTypeId}:${entry.variant ?? ""}`;
@@ -75,15 +74,7 @@ export function BootloaderFirmwareUpdateDialog({
     onClose();
   }, [reset, onClose]);
 
-  // Auto-dismiss on success
-  useEffect(() => {
-    if (isSuccess) {
-      const timer = setTimeout(() => {
-        handleClose();
-      }, AUTO_DISMISS_DELAY_MS);
-      return () => clearTimeout(timer);
-    }
-  }, [isSuccess, handleClose]);
+  useAutoDismiss(isSuccess, handleClose);
 
   const handleStartUpdate = () => {
     setShowProgress(true);
@@ -120,11 +111,17 @@ export function BootloaderFirmwareUpdateDialog({
         <DialogBody className="w-[28rem]">
           {showProgress ? (
             isSuccess ? (
-              <SuccessContent />
+              <FirmwareUpdateSuccess
+                title="Firmware flashed successfully"
+                subtitle="The device will now restart"
+              />
             ) : isError ? (
-              <ErrorContent error={state.error} />
+              <FirmwareUpdateError error={state.error} title="Flash failed" />
             ) : (
-              <ProgressContent stage={state.stage} />
+              <FirmwareUpdateProgressSteps
+                stage={state.stage}
+                stages={BOOTLOADER_UPDATE_STAGES}
+              />
             )
           ) : isFirmwareLoading ? (
             <div className="flex items-center justify-center py-8">
@@ -217,89 +214,6 @@ function SelectionContent({
             Do not disconnect the device during the flash process.
           </span>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function ProgressContent({ stage }: { stage: FirmwareUpdateStage }) {
-  const currentIndex = BOOTLOADER_UPDATE_STAGES.indexOf(stage);
-
-  return (
-    <div className="flex flex-col gap-3 py-2">
-      {BOOTLOADER_UPDATE_STAGES.map((s, index) => {
-        const isComplete = index < currentIndex;
-        const isCurrent = s === stage;
-        const isPending = index > currentIndex;
-
-        return (
-          <div key={s} className="flex items-center gap-3">
-            <div className="flex w-6 items-center justify-center">
-              {isComplete ? (
-                <CheckIcon className="size-5 text-lime-400" />
-              ) : isCurrent ? (
-                <LoadingIndicator className="size-5 text-stone-200" />
-              ) : (
-                <div className="size-2 rounded-full bg-stone-600" />
-              )}
-            </div>
-            <span
-              className={clsx("text-sm", {
-                "text-lime-400": isComplete,
-                "font-medium text-stone-200": isCurrent,
-                "text-stone-500": isPending,
-              })}
-            >
-              {STAGE_LABELS[s]}
-            </span>
-          </div>
-        );
-      })}
-      <div className="mt-2 text-center text-xs text-stone-500">
-        Do not disconnect the device
-      </div>
-    </div>
-  );
-}
-
-function SuccessContent() {
-  return (
-    <div className="flex flex-col items-center gap-4 py-4">
-      <div className="flex size-16 items-center justify-center rounded-full bg-lime-500/20">
-        <CheckIcon className="size-10 text-lime-400" />
-      </div>
-      <div className="text-center">
-        <div className="font-medium text-stone-200">
-          Firmware flashed successfully
-        </div>
-        <div className="mt-1 text-sm text-stone-400">
-          The device will now restart
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ErrorContent({
-  error,
-}: {
-  error?: { code: string; message: string };
-}) {
-  return (
-    <div className="flex flex-col items-center gap-4 py-4">
-      <div className="flex size-16 items-center justify-center rounded-full bg-red-500/20">
-        <RemoveIcon className="size-10 text-red-400" />
-      </div>
-      <div className="text-center">
-        <div className="font-medium text-stone-200">Flash failed</div>
-        <div className="mt-1 text-sm text-stone-400">
-          {error?.message || "An unknown error occurred"}
-        </div>
-        {error?.code && (
-          <div className="mt-2 font-mono text-xs text-stone-600">
-            {error.code}
-          </div>
-        )}
       </div>
     </div>
   );
