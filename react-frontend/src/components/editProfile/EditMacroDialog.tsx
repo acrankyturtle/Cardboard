@@ -37,6 +37,7 @@ import {
 } from "../../lib/actionEventUtils.ts";
 import { TemplatePanel } from "../MacroTemplates.tsx";
 import { HelpLink } from "../HelpLink.tsx";
+import { ChipListInput } from "../ChipListInput.tsx";
 import {
   Select,
   SelectOption,
@@ -191,12 +192,23 @@ export function EditMacroDialog() {
                   placeholder="None"
                 />
               </Field>
-              <CutChannelsField
-                value={macro.cutChannels}
-                onChange={(channels) =>
-                  setMacro({ ...macro, cutChannels: channels })
-                }
-              />
+              <Field className="flex flex-col gap-1">
+                <Label>Cut Channels</Label>
+                <ChipListInput<number>
+                  value={macro.cutChannels}
+                  onChange={(channels) =>
+                    setMacro({ ...macro, cutChannels: [...channels] })
+                  }
+                  parseItem={(text) => {
+                    const n = parseInt(text, 10);
+                    return !isNaN(n)
+                      ? Math.min(Math.max(n, 0), 255)
+                      : undefined;
+                  }}
+                  sortItem={(a, b) => a - b}
+                  placeholder="Add channel..."
+                />
+              </Field>
               <Field className="flex flex-col gap-1">
                 <Label className="flex items-center gap-2">Type</Label>
                 <Select
@@ -332,50 +344,6 @@ export function EditMacroDialog() {
         <DialogCancelButton onClick={closeModal}>Cancel</DialogCancelButton>
       </DialogFooter>
     </Dialog>
-  );
-}
-
-function CutChannelsField({
-  value,
-  onChange,
-}: {
-  value: readonly number[];
-  onChange: (channels: number[]) => void;
-}) {
-  const [inputValue, setInputValue] = useState(value.join(", "));
-
-  // Sync input when external value changes (e.g., when switching macros)
-  useEffect(() => {
-    setInputValue(value.join(", "));
-  }, [value]);
-
-  const parseAndUpdate = () => {
-    const channels = inputValue
-      .split(/[,\s]+/)
-      .map((s) => parseInt(s.trim(), 10))
-      .filter((n) => !isNaN(n) && n >= 0 && n <= 255);
-    onChange(channels);
-    // Also normalize the display
-    setInputValue(channels.join(", "));
-  };
-
-  return (
-    <Field className="flex flex-col gap-1">
-      <Label>Cut Channels</Label>
-      <Input
-        className={clsx("w-full", InputClassName)}
-        type="text"
-        value={inputValue}
-        onChange={(e) => setInputValue(e.target.value)}
-        onBlur={parseAndUpdate}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            parseAndUpdate();
-          }
-        }}
-        placeholder="e.g. 1, 2, 3"
-      />
-    </Field>
   );
 }
 
