@@ -17,6 +17,10 @@ import {
 } from "./Dialog";
 import { LoadingIndicator } from "./LoadingIndicator";
 import { HelpLink } from "./HelpLink.tsx";
+import {
+  CheckIcon,
+  RemoveIcon,
+} from "@root/react-frontend/src/assets/sharedIcons.tsx";
 
 interface FirmwareUpdateDialogProps {
   open: boolean;
@@ -144,7 +148,7 @@ function ErrorContent({
   return (
     <div className="flex flex-col items-center gap-4 py-4">
       <div className="flex size-16 items-center justify-center rounded-full bg-red-500/20">
-        <XIcon className="size-10 text-red-400" />
+        <RemoveIcon className="size-10 text-red-400" />
       </div>
       <div className="text-center">
         <div className="font-medium text-stone-200">Update failed</div>
@@ -158,37 +162,5 @@ function ErrorContent({
         )}
       </div>
     </div>
-  );
-}
-
-function CheckIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={2.5}
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-    </svg>
-  );
-}
-
-function XIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={2.5}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M6 18L18 6M6 6l12 12"
-      />
-    </svg>
   );
 }

@@ -22,7 +22,10 @@ import {
 } from "../KeySelector.tsx";
 import { CompactActionView } from "../ActionView.tsx";
 import { TemplateAction, TemplateResult } from "./templateUtils.ts";
-import { XIcon } from "@root/react-frontend/src/assets/sharedIcons.tsx";
+import {
+  CheckIcon,
+  ThickRemoveIcon,
+} from "@root/react-frontend/src/assets/sharedIcons.tsx";
 
 export function TemplateLayout({
   title,
@@ -213,7 +216,7 @@ function ActionItem({
         onClick={onRemove}
         buttonStyle={{ variant: "dim-ghost", padding: "none" }}
       >
-        <XIcon className="size-3" />
+        <ThickRemoveIcon className="size-3" />
       </Button>
     </div>
   );
@@ -404,14 +407,6 @@ function BackIcon() {
       strokeLinejoin="round"
     >
       <path d="M15 6l-6 6l6 6" />
-    </svg>
-  );
-}
-
-export function CheckIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-      <path d="M5 12l5 5L20 7" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

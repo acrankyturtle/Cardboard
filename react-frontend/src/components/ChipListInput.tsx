@@ -3,7 +3,7 @@ import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import * as React from "react";
 import { Button } from "@root/react-frontend/src/components/Button.tsx";
-import { XIcon } from "@root/react-frontend/src/assets/sharedIcons.tsx";
+import { ThickRemoveIcon } from "@root/react-frontend/src/assets/sharedIcons.tsx";
 import { InputClassName } from "@root/react-frontend/src/components/Input.tsx";
 
 export function ChipListInput({
@@ -170,7 +170,7 @@ export function ChipListInput({
                   removeItem(item);
                 }}
               >
-                <XIcon className="h-3 w-3" />
+                <ThickRemoveIcon className="h-3 w-3" />
               </Button>
             </span>,
           );

@@ -53,6 +53,21 @@ export function RemoveIcon({ className }: { className?: string }) {
   );
 }
 
+export function ThickRemoveIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 12 12"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <path d="M3 3l6 6M9 3l-6 6" />
+    </svg>
+  );
+}
+
 export function ImportIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -357,17 +372,16 @@ export function MacroIcon({ className }: { className?: string }) {
   );
 }
 
-export function XIcon({ className }: { className?: string }) {
+export function CheckIcon({ className }: { className?: string }) {
   return (
     <svg
       className={className}
-      viewBox="0 0 12 12"
+      viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
+      strokeWidth="3"
     >
-      <path d="M3 3l6 6M9 3l-6 6" />
+      <path d="M5 12l5 5L20 7" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
