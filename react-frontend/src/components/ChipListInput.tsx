@@ -6,25 +6,36 @@ import { Button } from "@root/react-frontend/src/components/Button.tsx";
 import { ThickRemoveIcon } from "@root/react-frontend/src/assets/sharedIcons.tsx";
 import { InputClassName } from "@root/react-frontend/src/components/Input.tsx";
 
-export function ChipListInput({
+export function ChipListInput<T>({
   value,
   onChange,
   className,
   autoFocus,
   placeholder = "Add item...",
   layout = "inline",
+  parseItem,
+  formatItem = String as (item: T) => string,
+  getItemKey = String as (item: T) => string,
+  sortItem,
 }: {
-  value?: readonly string[];
-  onChange?: (value: readonly string[]) => void;
+  value?: readonly T[];
+  onChange?: (value: readonly T[]) => void;
   className?: string;
   autoFocus?: boolean;
   placeholder?: string;
   layout?: "inline" | "stacked";
+  parseItem?: (text: string) => T | undefined;
+  formatItem?: (item: T) => string;
+  getItemKey?: (item: T) => string;
+  sortItem?: (a: T, b: T) => number;
 }) {
   const items = value ?? [];
   const [inputValue, setInputValue] = useState("");
   const [cursorIndex, setCursorIndex] = useState(items.length);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const parse = parseItem ?? defaultParseItem;
+  const sort = sortItem ?? defaultSortItems;
 
   useEffect(
     () => setCursorIndex((prev) => Math.min(prev, items.length)),
@@ -41,19 +52,18 @@ export function ChipListInput({
   }, [cursorIndex, navigating]);
 
   function commitItem(text: string) {
-    const trimmed = text.trim();
-    if (!trimmed) return;
-    if (items.includes(trimmed)) {
+    const parsed = parse(text.trim());
+    if (parsed === undefined || items.includes(parsed)) {
       setInputValue("");
       return;
     }
-    const updated = [...items, trimmed];
+    const updated = [...items, parsed];
     setInputValue("");
     setCursorIndex(updated.length);
     onChange?.(updated);
   }
 
-  function removeItem(item: string) {
+  function removeItem(item: T) {
     onChange?.(items.filter((t) => t !== item));
   }
 
@@ -104,9 +114,9 @@ export function ChipListInput({
     if (inputValue.trim()) {
       commitItem(inputValue);
     }
-    // sort alphabetically on blur
+    // sort on blur
     if (items.length > 1) {
-      const sorted = [...items].sort((a, b) => a.localeCompare(b));
+      const sorted = [...items].sort(sort);
       if (sorted.some((s, i) => s !== items[i])) {
         onChange?.(sorted);
       }
@@ -155,13 +165,13 @@ export function ChipListInput({
           const item = items[i];
           elements.push(
             <span
-              key={item}
+              key={getItemKey(item)}
               className={clsx(
                 "flex items-center gap-1 rounded-full bg-stone-700 px-2.5 py-0.5 text-sm text-stone-200",
                 { "self-start": stacked },
               )}
             >
-              {item}
+              {formatItem(item)}
               <Button
                 className="ml-0.5"
                 buttonStyle={{ variant: "dim-ghost", padding: "none" }}
@@ -181,3 +191,10 @@ export function ChipListInput({
     </div>
   );
 }
+
+const defaultParseItem = <T,>(text: string): T | undefined => {
+  const trimmed = text.trim();
+  return trimmed ? (trimmed as T) : undefined;
+};
+const defaultSortItems = <T,>(a: T, b: T): number =>
+  String(a).localeCompare(String(b));
