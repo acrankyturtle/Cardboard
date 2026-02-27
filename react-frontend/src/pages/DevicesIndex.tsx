@@ -351,6 +351,19 @@ function EditDeviceView() {
     ? state.redoStack[state.redoStack.length - 1].description
     : undefined;
 
+  // initialize selections
+  useEffect(() => {
+    const firstKeyId = state.profile.keys[0]?.id;
+    if (firstKeyId) {
+      dispatch({ type: "setSelectedKey", keyId: firstKeyId });
+    }
+
+    const firstMacroId = state.profile.macros[0]?.id;
+    if (firstMacroId) {
+      dispatch({ type: "setSelectedMacro", macroId: firstMacroId });
+    }
+  }, []);
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
