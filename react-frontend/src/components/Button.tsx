@@ -75,10 +75,10 @@ const ButtonTextColor = (isActive: boolean): ClassValue =>
 const Padding: ClassValue = "p-2";
 
 const DarkFocusRing: ClassValue =
-  "focus:ring-1 focus:ring-stone-600/50 focus:ring-offset-1 focus:ring-offset-stone-700/50 focus:outline-none";
+  "focus:ring-1 focus:ring-stone-600/50 focus:ring-offset-1 focus:ring-offset-stone-700/50 focus:outline-none data-focus:ring-1 data-focus:ring-stone-600/50 data-focus:ring-offset-1 data-focus:ring-offset-stone-700/50 data-focus:outline-none";
 
 const FocusRing: ClassValue =
-  "focus:ring-1 focus:ring-stone-500/50 focus:ring-offset-1 focus:ring-offset-stone-400/50 focus:outline-none";
+  "focus:ring-1 focus:ring-stone-500/50 focus:ring-offset-1 focus:ring-offset-stone-400/50 focus:outline-none data-focus:ring-1 data-focus:ring-stone-500/50 data-focus:ring-offset-1 data-focus:ring-offset-stone-400/50 data-focus:outline-none";
 
 const LinkBase = (isActive: boolean): ClassValue =>
   clsx(
