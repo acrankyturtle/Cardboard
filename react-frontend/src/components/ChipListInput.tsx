@@ -73,6 +73,9 @@ export function ChipListInput<T>({
         e.preventDefault();
         commitItem(inputValue);
       }
+    } else if (e.key == "Escape" && inputValue.trim().length > 0) {
+      e.preventDefault();
+      setInputValue("");
     } else if (e.key === "ArrowLeft" && inputValue === "") {
       e.preventDefault();
       setCursorIndex((prev) => Math.max(0, prev - 1));
