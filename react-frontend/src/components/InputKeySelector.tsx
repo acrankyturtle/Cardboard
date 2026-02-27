@@ -158,7 +158,7 @@ export function InputKeySelector({
   return (
     <div className={clsx("flex items-center gap-1", className)}>
       <Select
-        className="min-w-32 grow"
+        className="min-w-32 grow text-sm"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={isBinding}

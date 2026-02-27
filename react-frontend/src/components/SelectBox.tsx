@@ -1,21 +1,24 @@
 import { Select as HeadlessSelect } from "@headlessui/react";
 import clsx from "clsx";
 import { OptionHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
+import {
+  DarkInputClassName,
+  InputClassName,
+} from "@root/react-frontend/src/components/Input.tsx";
 
 export function Select({
   className,
   children,
+  dark,
   ...props
 }: {
   className?: string;
   children?: ReactNode;
+  dark?: boolean;
 } & SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <HeadlessSelect
-      className={clsx(
-        "rounded-xl bg-stone-800 px-2 py-1 text-sm text-stone-100 shadow-sm outline-0 focus:border-stone-600 focus:ring-1 focus:ring-stone-500 data-hover:bg-stone-900",
-        className,
-      )}
+      className={clsx(dark ? DarkInputClassName : InputClassName, className)}
       {...props}
     >
       {children}

@@ -148,6 +148,7 @@ function Selector<T extends string>({
     >
       <Select
         className="min-w-0 grow"
+        dark
         value={selected.value}
         onChange={(s) => onChange(s.target.value as T)}
       >
