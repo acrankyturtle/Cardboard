@@ -225,12 +225,13 @@ function ActionTypeMenuItem({
   onClick?: () => void;
 }) {
   return (
-    <MenuItem
-      as="div"
-      className={getButtonClassName({ variant: "navbar" })}
-      onClick={onClick}
-    >
-      {children}
+    <MenuItem>
+      <button
+        className={clsx(getButtonClassName({ variant: "navbar" }))}
+        onClick={onClick}
+      >
+        {children}
+      </button>
     </MenuItem>
   );
 }
