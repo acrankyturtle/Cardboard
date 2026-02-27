@@ -70,16 +70,15 @@ export function BindingsPanel({ className }: { className?: string }) {
     )
       return;
 
-    if (bindings.some((m) => m === state.selectedMacro)) return;
-
-    dispatch(
-      addBindingAction(
-        state.selectedKey,
-        state.selectedLayer,
-        state.selectedMacro,
-        state.profile,
-      ),
+    const result = addBindingAction(
+      state.selectedKey,
+      state.selectedLayer,
+      state.selectedMacro,
+      state.profile,
     );
+    if (result === "duplicate") return;
+
+    dispatch(result);
 
     dispatch({
       type: "setSelectedBindings",

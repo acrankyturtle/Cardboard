@@ -151,14 +151,14 @@ export function MacrosPanel({ className }: { className?: string }) {
     if (!state.selectedKey || !state.selectedMacro || !state.selectedLayer)
       return;
 
-    dispatch(
-      addBinding(
-        state.selectedKey,
-        state.selectedLayer,
-        state.selectedMacro,
-        state.profile,
-      ),
+    const result = addBinding(
+      state.selectedKey,
+      state.selectedLayer,
+      state.selectedMacro,
+      state.profile,
     );
+    if (result === "duplicate") return;
+    dispatch(result);
   };
 
   return (

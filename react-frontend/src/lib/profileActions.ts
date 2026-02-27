@@ -20,7 +20,10 @@ export function addBinding(
   layerId: string,
   macroId: string,
   profile: DeviceProfile,
-): SetProfileAction {
+): SetProfileAction | "duplicate" {
+  if (getLayerMacros(keyId, layerId, profile).includes(macroId)) {
+    return "duplicate";
+  }
   return {
     type: "setProfile",
     profile: updateLayerBindings(keyId, layerId, profile, [

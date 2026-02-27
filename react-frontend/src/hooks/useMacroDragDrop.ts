@@ -80,10 +80,12 @@ export function useMacroDragDrop() {
     const resolved = resolveDropTarget(dropData, state);
     if (!resolved) return;
 
-    const { keyId, layerId, macros } = resolved;
-    if (macros.includes(dragData.macroId)) return;
+    const { keyId, layerId } = resolved;
 
-    dispatch(addBinding(keyId, layerId, dragData.macroId, state.profile));
+    const result = addBinding(keyId, layerId, dragData.macroId, state.profile);
+    if (result === "duplicate") return;
+
+    dispatch(result);
     dropSuccessRef.current = true;
 
     if (dropData.type === "key") {
