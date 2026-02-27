@@ -1,6 +1,6 @@
 import clsx from "clsx";
-import { useFirmwareUpdate } from "../hooks/useFirmwareUpdate";
-import { Button } from "./Button";
+import { useFirmwareUpdate } from "../../hooks/useFirmwareUpdate";
+import { Button } from "../Button";
 import { FirmwareUpdateConfirmDialog } from "./FirmwareUpdateConfirmDialog";
 import { FirmwareUpdateDialog } from "./FirmwareUpdateDialog";
 

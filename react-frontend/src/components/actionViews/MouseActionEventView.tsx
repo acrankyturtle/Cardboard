@@ -12,7 +12,7 @@ import {
 import { Input } from "@headlessui/react";
 import { InputClassName } from "../Input.tsx";
 import { MouseIcon } from "../../assets/sharedIcons.tsx";
-import { MouseKeySelector } from "../KeySelector.tsx";
+import { MouseKeySelector } from "../keySelectors/MouseKeySelector.tsx";
 import {
   ActionEventIcon,
   KeyUpDownToggle,

@@ -4,7 +4,7 @@ import {
   DebugActionEvent,
 } from "../../api/devices.ts";
 import { ConsumerControlIcon, DebugIcon } from "../../assets/sharedIcons.tsx";
-import { ConsumerControlKeySelector } from "../KeySelector.tsx";
+import { ConsumerControlKeySelector } from "../keySelectors/ConsumerControlKeySelector.tsx";
 import { ActionEventIcon } from "./shared.tsx";
 
 export function ConsumerControlActionEventView({

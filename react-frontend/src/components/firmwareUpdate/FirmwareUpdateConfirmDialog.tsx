@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogHeaderDescription,
   DialogHeaderTitle,
-} from "./Dialog";
+} from "../Dialog";
 
 interface FirmwareUpdateConfirmDialogProps {
   open: boolean;
@@ -54,7 +54,7 @@ export function FirmwareUpdateConfirmDialog({
                 </span>
               </div>
             </div>
-  
+
             <div className="flex flex-col gap-2 text-sm">
               <div className="flex items-start gap-2">
                 <span className="text-amber-400">!</span>

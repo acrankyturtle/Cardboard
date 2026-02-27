@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { useBootloaderFirmwareUpdate } from "../hooks/useBootloaderFirmwareUpdate";
-import { FirmwareListEntry, useFirmwareList } from "../api/devices";
-import { FirmwareUpdateStage } from "../types/firmwareUpdate";
+import { useBootloaderFirmwareUpdate } from "../../hooks/useBootloaderFirmwareUpdate";
+import { FirmwareListEntry, useFirmwareList } from "../../api/devices";
+import { FirmwareUpdateStage } from "../../types/firmwareUpdate";
 import {
   Dialog,
   DialogBody,
@@ -12,8 +12,8 @@ import {
   DialogHeader,
   DialogHeaderDescription,
   DialogHeaderTitle,
-} from "./Dialog";
-import { LoadingIndicator } from "./LoadingIndicator";
+} from "../Dialog";
+import { LoadingIndicator } from "../LoadingIndicator";
 import {
   useAutoDismiss,
   FirmwareUpdateProgressSteps,

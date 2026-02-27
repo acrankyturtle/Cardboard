@@ -6,7 +6,7 @@ import {
   LayerActionEvent,
 } from "../../api/devices.ts";
 import { LayerIcon } from "../../assets/sharedIcons.tsx";
-import { LayerTagSelector } from "../KeySelector.tsx";
+import { LayerTagSelector } from "../keySelectors/LayerTagSelector.tsx";
 import {
   getTagsInProfile,
   useMaybeEditDeviceContext,

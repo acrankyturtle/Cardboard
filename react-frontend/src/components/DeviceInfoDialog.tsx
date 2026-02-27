@@ -13,7 +13,7 @@ import {
 } from "./Dialog.tsx";
 import { SvgIcon } from "./SvgIcon.tsx";
 import { InputClassName } from "./Input.tsx";
-import { UpdateFirmwareButton } from "./UpdateFirmwareButton.tsx";
+import { UpdateFirmwareButton } from "./firmwareUpdate/UpdateFirmwareButton.tsx";
 import { DataProvider } from "./DataProvider.tsx";
 import { StatTable, StatName, StatValue } from "../pages/DevicesIndex.tsx";
 

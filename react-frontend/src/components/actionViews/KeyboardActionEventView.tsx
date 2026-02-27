@@ -7,7 +7,7 @@ import {
   KeyboardKeyUpActionEvent,
 } from "../../api/devices.ts";
 import { KeyboardIcon } from "../../assets/sharedIcons.tsx";
-import { KeyboardKeySelector } from "../KeySelector.tsx";
+import { KeyboardKeySelector } from "../keySelectors/KeyboardKeySelector.tsx";
 import {
   ActionEventIcon,
   KeyUpDownToggle,

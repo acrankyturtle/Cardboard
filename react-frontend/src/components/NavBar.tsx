@@ -1,10 +1,10 @@
-import { getButtonClassName } from "./components/Button.tsx";
+import { getButtonClassName } from "./Button.tsx";
 import clsx from "clsx";
 import { forwardRef, ReactElement, ReactNode } from "react";
 import { NavLink, To } from "react-router";
-import logo from "./assets/key.png";
-import { useControllerUpdate } from "./api/controller.ts";
-import { Tooltip } from "./components/Tooltip.tsx";
+import logo from "../assets/key.png";
+import { useControllerUpdate } from "../api/controller.ts";
+import { Tooltip } from "./Tooltip.tsx";
 
 export function NavBar({ className }: { className?: string }) {
   return (

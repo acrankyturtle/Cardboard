@@ -15,11 +15,9 @@ import {
   MenuItems,
 } from "@headlessui/react";
 import { InputClassName } from "../Input.tsx";
-import {
-  ConsumerControlKeySelector,
-  KeyboardKeySelector,
-  MouseKeySelector,
-} from "../KeySelector.tsx";
+import { ConsumerControlKeySelector } from "../keySelectors/ConsumerControlKeySelector.tsx";
+import { KeyboardKeySelector } from "../keySelectors/KeyboardKeySelector.tsx";
+import { MouseKeySelector } from "../keySelectors/MouseKeySelector.tsx";
 import { CompactActionView } from "../ActionView.tsx";
 import { TemplateAction, TemplateResult } from "./templateUtils.ts";
 import {

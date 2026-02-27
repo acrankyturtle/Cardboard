@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { useEffect } from "react";
-import { FirmwareUpdateStage, STAGE_LABELS } from "../types/firmwareUpdate";
-import { LoadingIndicator } from "./LoadingIndicator";
+import { FirmwareUpdateStage, STAGE_LABELS } from "../../types/firmwareUpdate";
+import { LoadingIndicator } from "../LoadingIndicator";
 import {
   CheckIcon,
   ThickRemoveIcon,

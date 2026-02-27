@@ -5,7 +5,7 @@ import { useBootloaderStatus } from "../api/devices.ts";
 import { ReactNode, useState } from "react";
 import clsx from "clsx";
 import { Button } from "../components/Button.tsx";
-import { BootloaderFirmwareUpdateDialog } from "../components/BootloaderFirmwareUpdateDialog.tsx";
+import { BootloaderFirmwareUpdateDialog } from "../components/firmwareUpdate/BootloaderFirmwareUpdateDialog.tsx";
 import { HelpLink } from "../components/HelpLink.tsx";
 import {
   EditDeviceContextProvider,

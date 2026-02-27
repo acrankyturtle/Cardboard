@@ -1,5 +1,5 @@
-import { UPDATE_STAGES_IN_ORDER } from "../types/firmwareUpdate";
-import { FirmwareUpdateState } from "../types/firmwareUpdate";
+import { UPDATE_STAGES_IN_ORDER } from "../../types/firmwareUpdate";
+import { FirmwareUpdateState } from "../../types/firmwareUpdate";
 import {
   Dialog,
   DialogBody,
@@ -8,8 +8,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogHeaderTitle,
-} from "./Dialog";
-import { HelpLink } from "./HelpLink.tsx";
+} from "../Dialog";
+import { HelpLink } from "../HelpLink.tsx";
 import {
   useAutoDismiss,
   FirmwareUpdateProgressSteps,

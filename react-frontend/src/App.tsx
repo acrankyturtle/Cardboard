@@ -1,4 +1,4 @@
-import { NavBar } from "./NavBar.tsx";
+import { NavBar } from "./components/NavBar.tsx";
 import { SWRConfig } from "swr";
 import { fetcher } from "./api/cardboardApi.ts";
 import { Outlet, Route, Routes, useSearchParams } from "react-router";
