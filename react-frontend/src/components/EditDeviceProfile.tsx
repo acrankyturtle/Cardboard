@@ -18,6 +18,7 @@ import {
   snapCenterToCursor,
   restrictToVerticalAxis,
   restrictToParentElement,
+  restrictToWindowEdges,
 } from "@dnd-kit/modifiers";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { TagsPanel } from "./editProfile/TagsPanel.tsx";
@@ -187,7 +188,7 @@ export function EditDeviceProfile({ className }: { className?: string }) {
         </div>
         <DragOverlay
           dropAnimation={dropSuccessRef.current ? null : undefined}
-          modifiers={[snapCenterToCursor]}
+          modifiers={[snapCenterToCursor, restrictToWindowEdges]}
         >
           {activeDrag && (
             <div className="w-fit cursor-none rounded-full bg-blue-500 px-3 py-1 text-sm text-white shadow-lg select-none">
