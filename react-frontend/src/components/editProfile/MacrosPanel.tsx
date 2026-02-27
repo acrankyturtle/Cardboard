@@ -210,9 +210,7 @@ export function MacrosPanel({ className }: { className?: string }) {
           <ListBox
             className="grow"
             renderItem={(item, selected) => (
-              <BlueListItem selected={selected}>
-                <MacroListItem item={item} />
-              </BlueListItem>
+              <MacroListItem item={item} selected={selected} />
             )}
             items={macros}
             selected={selectedMacro}
@@ -293,7 +291,13 @@ export function MacrosPanel({ className }: { className?: string }) {
   );
 }
 
-function MacroListItem({ item }: { item: ListBoxItem }) {
+function MacroListItem({
+  item,
+  selected,
+}: {
+  item: ListBoxItem;
+  selected: boolean;
+}) {
   const { state } = useEditDeviceContext();
   const usageCount = useMemo(() => {
     return getMacroUsages(item.value, state.profile).length;
@@ -314,18 +318,19 @@ function MacroListItem({ item }: { item: ListBoxItem }) {
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className={clsx("flex", { "opacity-50": isDragging })}
+      className={clsx({ "opacity-50": isDragging })}
     >
-      <div
-        className={clsx("grow", {
-          "text-stone-400": usageCount < 1,
+      <BlueListItem
+        className={clsx("flex items-center", {
+          "text-stone-400 italic": usageCount < 1,
         })}
+        selected={selected}
       >
-        {item.label}
-      </div>
-      <div className="text-stone-400 italic">
-        {usageCount < 1 ? "(no usages)" : null}
-      </div>
+        <div className={clsx("grow")}>{item.label}</div>
+        <div className="text-sm">
+          {usageCount < 1 ? "(no usages)" : usageCount > 1 ? usageCount : null}
+        </div>
+      </BlueListItem>
     </div>
   );
 }
