@@ -7,6 +7,8 @@ import { useControllerUpdate } from "../api/controller.ts";
 import { Tooltip } from "./Tooltip.tsx";
 
 export function NavBar({ className }: { className?: string }) {
+  const showLogButton = false;
+
   return (
     <nav className={clsx("bg-stone-800", className)}>
       <div className="flex h-full w-16 flex-col items-center">
@@ -30,11 +32,13 @@ export function NavBar({ className }: { className?: string }) {
             </NavBarButton>
           </Tooltip>
           <div className="grow" />
-          <Tooltip content="Logs" side="right">
-            <NavBarButton to="/logs">
-              {(selected) => <LogIcon selected={selected} />}
-            </NavBarButton>
-          </Tooltip>
+          {showLogButton && (
+            <Tooltip content="Logs" side="right">
+              <NavBarButton to="/logs">
+                {(selected) => <LogIcon selected={selected} />}
+              </NavBarButton>
+            </Tooltip>
+          )}
           <Tooltip content="Guide" side="right">
             <NavBarButton to="/guide">
               {(selected) => <GuideIcon selected={selected} />}
