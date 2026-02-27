@@ -14,7 +14,7 @@ import { Dialog, DialogBody, DialogDivider, DialogHeader } from "./Dialog.tsx";
 import { Checkbox } from "@headlessui/react";
 import { NavigationBlocker } from "./NavigationBlocker.tsx";
 import { HelpLink } from "./HelpLink.tsx";
-import { InputClassName } from "@root/react-frontend/src/components/Input.tsx";
+import { DarkInputClassName } from "@root/react-frontend/src/components/Input.tsx";
 
 export function EditDeviceSettings({
   device,
@@ -133,22 +133,30 @@ export function EditDeviceSettings({
                 label="Debounce Time (μs)"
                 description="The minimum key press duration and time between key presses. Default is 10,000 μs (10 ms). Lower values might feel more responsive, but may cause accidental double presses. Consult your key switch manufacturer's specifications for recommended debounce times."
               >
-                <input
-                  className={clsx(InputClassName)}
-                  type="number"
-                  min={0}
-                  step={1000}
-                  value={settings.debounceTimeUs}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      debounceTimeUs: Math.max(
-                        0,
-                        Math.round(Number(e.target.value)),
-                      ),
-                    })
-                  }
-                />
+                <div className="flex flex-col items-center gap-0.5">
+                  <div className="flex items-center">
+                    <input
+                      className={clsx("w-32", DarkInputClassName)}
+                      type="number"
+                      min={0}
+                      step={1000}
+                      value={settings.debounceTimeUs}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          debounceTimeUs: Math.max(
+                            0,
+                            Math.round(Number(e.target.value)),
+                          ),
+                        })
+                      }
+                    />
+                    <span>&nbsp;μs</span>
+                  </div>
+                  <div className="text-stone-400 italic">
+                    ({settings.debounceTimeUs / 1000} ms)
+                  </div>
+                </div>
               </SettingsRow>
             </SettingsSection>
             <SettingsSection title="Mouse">
