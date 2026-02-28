@@ -1,0 +1,1763 @@
+(kicad_sch
+	(version 20231120)
+	(generator "eeschema")
+	(generator_version "8.0")
+	(uuid "fee5c16b-41ff-4856-bdfa-2d3143a8f5d8")
+	(paper "A4")
+	(lib_symbols
+		(symbol "CherryMX:CherryMX"
+			(pin_names
+				(offset 0.254)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "SW"
+				(at 2.54 3.175 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "CherryMX"
+				(at 0 -1.905 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0.635 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0.635 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "CherryMX_1_1"
+				(circle
+					(center -2.032 0)
+					(radius 0.508)
+					(stroke
+						(width 0)
+						(type solid)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0 1.27) (xy 0 3.048)
+					)
+					(stroke
+						(width 0)
+						(type solid)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 2.54 1.27) (xy -2.54 1.27)
+					)
+					(stroke
+						(width 0)
+						(type solid)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(circle
+					(center 2.032 0)
+					(radius 0.508)
+					(stroke
+						(width 0)
+						(type solid)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(pin passive line
+					(at -5.08 0 0)
+					(length 2.54)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 5.08 0 180)
+					(length 2.54)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+		)
+		(symbol "Device:D"
+			(pin_numbers hide)
+			(pin_names
+				(offset 1.016) hide)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "D"
+				(at 0 2.54 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "D"
+				(at 0 -2.54 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "~"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "Diode"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Sim.Device" "D"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Sim.Pins" "1=K 2=A"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "diode"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_fp_filters" "TO-???* *_Diode_* *SingleDiode* D_*"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "D_0_1"
+				(polyline
+					(pts
+						(xy -1.27 1.27) (xy -1.27 -1.27)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 1.27 0) (xy -1.27 0)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 1.27 1.27) (xy 1.27 -1.27) (xy -1.27 0) (xy 1.27 1.27)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "D_1_1"
+				(pin passive line
+					(at -3.81 0 0)
+					(length 2.54)
+					(name "K"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 3.81 0 180)
+					(length 2.54)
+					(name "A"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+		)
+	)
+	(junction
+		(at 78.74 50.8)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "01499d6e-a91b-4775-8019-a33765649daa")
+	)
+	(junction
+		(at 86.36 50.8)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "069627c3-6e79-486a-bb22-4910277439a5")
+	)
+	(junction
+		(at 81.28 50.8)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "390e8ac0-7062-46d3-a696-5827601cf63c")
+	)
+	(junction
+		(at 83.82 50.8)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "a56b7787-0e13-409e-81f3-9ddeab077c15")
+	)
+	(junction
+		(at 88.9 50.8)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "adb6f9da-ffdc-4f7f-9c2f-48eba7cd5d79")
+	)
+	(wire
+		(pts
+			(xy 88.9 50.8) (xy 88.9 63.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0a99a826-776c-47f6-985a-544116876a7d")
+	)
+	(wire
+		(pts
+			(xy 83.82 50.8) (xy 86.36 50.8)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0ef08741-d563-440d-ae78-c617dbe06573")
+	)
+	(wire
+		(pts
+			(xy 88.9 50.8) (xy 91.44 50.8)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "160a7c8f-3232-4747-a878-92079ffd5ab9")
+	)
+	(wire
+		(pts
+			(xy 109.22 114.3) (xy 121.92 114.3)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1c86429e-da29-4698-954c-069a4a412d34")
+	)
+	(wire
+		(pts
+			(xy 81.28 50.8) (xy 83.82 50.8)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "2376a46c-9571-46b0-93f5-ed756b1c0f8f")
+	)
+	(wire
+		(pts
+			(xy 83.82 50.8) (xy 83.82 88.9)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "368755bb-3bb3-4a7c-8846-8800632bc1dc")
+	)
+	(wire
+		(pts
+			(xy 109.22 50.8) (xy 121.92 50.8)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4931b403-906d-4423-8dbe-3b722e6d2749")
+	)
+	(wire
+		(pts
+			(xy 86.36 76.2) (xy 91.44 76.2)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4ce94ac2-767b-444c-a475-fd603a9dd924")
+	)
+	(wire
+		(pts
+			(xy 109.22 101.6) (xy 121.92 101.6)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4d442778-1567-4b2e-b50a-c7ebe1da5aad")
+	)
+	(wire
+		(pts
+			(xy 83.82 88.9) (xy 91.44 88.9)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "63a48622-ab86-44cc-bc5f-72bfe8e48242")
+	)
+	(wire
+		(pts
+			(xy 76.2 50.8) (xy 78.74 50.8)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7511bd29-7cc8-406f-810b-1f6000e671ce")
+	)
+	(wire
+		(pts
+			(xy 109.22 88.9) (xy 121.92 88.9)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "78b32836-1b0b-47dc-b074-b0ac171543c9")
+	)
+	(wire
+		(pts
+			(xy 78.74 50.8) (xy 78.74 114.3)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7e030f6d-fb42-4dec-ac25-d485b65f3c92")
+	)
+	(wire
+		(pts
+			(xy 81.28 50.8) (xy 81.28 101.6)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "975fcf54-44bc-4151-bc68-360f42242858")
+	)
+	(wire
+		(pts
+			(xy 109.22 63.5) (xy 121.92 63.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a0105cdc-ecbd-421b-9096-39b0830cb0cd")
+	)
+	(wire
+		(pts
+			(xy 109.22 76.2) (xy 121.92 76.2)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a45bba2c-436a-4b4a-8794-a9e59ffadd80")
+	)
+	(wire
+		(pts
+			(xy 81.28 101.6) (xy 91.44 101.6)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "bce61ca3-3007-4039-a05c-8728a0716797")
+	)
+	(wire
+		(pts
+			(xy 78.74 50.8) (xy 81.28 50.8)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ce4e3753-655d-4995-bec4-5f472957d13c")
+	)
+	(wire
+		(pts
+			(xy 86.36 50.8) (xy 86.36 76.2)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e8cab089-eb3c-48a6-bd5a-1280a53dd6a5")
+	)
+	(wire
+		(pts
+			(xy 86.36 50.8) (xy 88.9 50.8)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "f9f7e88f-175f-433f-8a02-bb5be1ecb311")
+	)
+	(wire
+		(pts
+			(xy 88.9 63.5) (xy 91.44 63.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "fbc763b0-27f5-4451-8079-806ecf728c7d")
+	)
+	(wire
+		(pts
+			(xy 78.74 114.3) (xy 91.44 114.3)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "fced82c4-af52-4df2-acd6-e3745fd64532")
+	)
+	(hierarchical_label "ROW"
+		(shape input)
+		(at 76.2 50.8 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "373ff687-11ed-4a46-a3eb-450703436673")
+	)
+	(hierarchical_label "COL2"
+		(shape output)
+		(at 121.92 63.5 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "86925dc8-c133-4c89-a443-c7c4434bbb8a")
+	)
+	(hierarchical_label "COL6"
+		(shape output)
+		(at 121.92 114.3 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "8e9d3771-d69b-4d50-b7fe-9960335b7ab3")
+	)
+	(hierarchical_label "COL3"
+		(shape output)
+		(at 121.92 76.2 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "a243f758-6b8b-4290-8ba3-8a9e5c14f7b7")
+	)
+	(hierarchical_label "COL1"
+		(shape output)
+		(at 121.92 50.8 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "b8fd5916-c07f-4e4b-93d0-388bbc20f415")
+	)
+	(hierarchical_label "COL5"
+		(shape output)
+		(at 121.92 101.6 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "c0c73033-1d36-494f-ade1-45f58c526f78")
+	)
+	(hierarchical_label "COL4"
+		(shape output)
+		(at 121.92 88.9 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "da0e31a8-b644-4cf8-b21a-958ba97f3fdc")
+	)
+	(symbol
+		(lib_id "Device:D")
+		(at 105.41 88.9 0)
+		(mirror y)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "168499a9-d775-42ce-aafb-9b7bb5b5fa98")
+		(property "Reference" "D16"
+			(at 105.41 82.55 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "D"
+			(at 105.41 85.09 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Diode_THT:D_DO-35_SOD27_P7.62mm_Horizontal"
+			(at 105.41 88.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 105.41 88.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Diode"
+			(at 105.41 88.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Sim.Device" "D"
+			(at 105.41 88.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Sim.Pins" "1=K 2=A"
+			(at 105.41 88.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "2"
+			(uuid "7c3c9e25-1822-4390-9c50-81f6cc81d6aa")
+		)
+		(pin "1"
+			(uuid "dc75ae91-b74a-4873-9132-1a27263f6419")
+		)
+		(instances
+			(project "Keypad AIO"
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/48238cef-e27b-4b6a-921d-2b007ed9b930"
+					(reference "D16")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/69229173-93bf-410b-9c71-785878a1d093"
+					(reference "D4")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/d6fcf53d-ea12-4272-b752-a0e2bbd4a8f5"
+					(reference "D22")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/f5f3cf6d-d522-4870-a834-a43780be9375"
+					(reference "D28")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/f90c3067-daa9-42f9-99f9-cd9d2750499d"
+					(reference "D10")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "CherryMX:CherryMX")
+		(at 96.52 88.9 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "1b3ed5a8-e775-4803-8a7f-d7012dff5ea3")
+		(property "Reference" "SW16"
+			(at 96.52 81.28 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "CherryMX"
+			(at 96.52 83.82 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "PCM_Switch_Keyboard_Hotswap_Kailh:SW_Hotswap_Kailh_MX_1.00u"
+			(at 96.52 88.265 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 96.52 88.265 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 96.52 88.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "2"
+			(uuid "5f07d7f3-0ab2-4b34-a860-1aa2d836b1ab")
+		)
+		(pin "1"
+			(uuid "6fb9fe19-2dcb-4ccf-ba71-a4af85ac3089")
+		)
+		(instances
+			(project "Keypad AIO"
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/48238cef-e27b-4b6a-921d-2b007ed9b930"
+					(reference "SW16")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/69229173-93bf-410b-9c71-785878a1d093"
+					(reference "SW4")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/d6fcf53d-ea12-4272-b752-a0e2bbd4a8f5"
+					(reference "SW22")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/f5f3cf6d-d522-4870-a834-a43780be9375"
+					(reference "SW28")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/f90c3067-daa9-42f9-99f9-cd9d2750499d"
+					(reference "SW10")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:D")
+		(at 105.41 114.3 0)
+		(mirror y)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "420d05e6-1b54-47ab-a55b-7ce89253fa62")
+		(property "Reference" "D18"
+			(at 105.41 107.95 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "D"
+			(at 105.41 110.49 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Diode_THT:D_DO-35_SOD27_P7.62mm_Horizontal"
+			(at 105.41 114.3 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 105.41 114.3 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Diode"
+			(at 105.41 114.3 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Sim.Device" "D"
+			(at 105.41 114.3 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Sim.Pins" "1=K 2=A"
+			(at 105.41 114.3 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "2"
+			(uuid "435e9a27-c0b5-435f-b9de-4a18628a4b7d")
+		)
+		(pin "1"
+			(uuid "ad7f297e-744f-4639-af63-ea653cbe942b")
+		)
+		(instances
+			(project "Keypad AIO"
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/48238cef-e27b-4b6a-921d-2b007ed9b930"
+					(reference "D18")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/69229173-93bf-410b-9c71-785878a1d093"
+					(reference "D6")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/d6fcf53d-ea12-4272-b752-a0e2bbd4a8f5"
+					(reference "D24")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/f5f3cf6d-d522-4870-a834-a43780be9375"
+					(reference "D30")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/f90c3067-daa9-42f9-99f9-cd9d2750499d"
+					(reference "D12")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "CherryMX:CherryMX")
+		(at 96.52 50.8 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "4b834114-a154-403a-b731-1c91c7cd6e0e")
+		(property "Reference" "SW13"
+			(at 96.52 43.18 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "CherryMX"
+			(at 96.52 45.72 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "PCM_Switch_Keyboard_Hotswap_Kailh:SW_Hotswap_Kailh_MX_1.00u"
+			(at 96.52 50.165 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 96.52 50.165 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 96.52 50.8 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "2"
+			(uuid "c87ace5f-d664-4fd2-a746-941ae9229264")
+		)
+		(pin "1"
+			(uuid "107fd4b3-ac69-4826-949b-02b68e21dadf")
+		)
+		(instances
+			(project "Keypad AIO"
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/48238cef-e27b-4b6a-921d-2b007ed9b930"
+					(reference "SW13")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/69229173-93bf-410b-9c71-785878a1d093"
+					(reference "SW1")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/d6fcf53d-ea12-4272-b752-a0e2bbd4a8f5"
+					(reference "SW19")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/f5f3cf6d-d522-4870-a834-a43780be9375"
+					(reference "SW25")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/f90c3067-daa9-42f9-99f9-cd9d2750499d"
+					(reference "SW7")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "CherryMX:CherryMX")
+		(at 96.52 63.5 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "6775792b-6473-4cf2-b3f6-03244a78df63")
+		(property "Reference" "SW14"
+			(at 96.52 55.88 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "CherryMX"
+			(at 96.52 58.42 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "PCM_Switch_Keyboard_Hotswap_Kailh:SW_Hotswap_Kailh_MX_1.00u"
+			(at 96.52 62.865 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 96.52 62.865 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 96.52 63.5 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "2"
+			(uuid "9d7ce83a-b98d-45b9-83f5-8a988595879a")
+		)
+		(pin "1"
+			(uuid "2169ad8c-25ab-41e4-aab7-be136af58bfb")
+		)
+		(instances
+			(project "Keypad AIO"
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/48238cef-e27b-4b6a-921d-2b007ed9b930"
+					(reference "SW14")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/69229173-93bf-410b-9c71-785878a1d093"
+					(reference "SW2")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/d6fcf53d-ea12-4272-b752-a0e2bbd4a8f5"
+					(reference "SW20")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/f5f3cf6d-d522-4870-a834-a43780be9375"
+					(reference "SW26")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/f90c3067-daa9-42f9-99f9-cd9d2750499d"
+					(reference "SW8")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:D")
+		(at 105.41 50.8 0)
+		(mirror y)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "838c5f3b-1e11-437c-bd65-e1dcda01ec3e")
+		(property "Reference" "D13"
+			(at 105.41 44.45 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "D"
+			(at 105.41 46.99 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Diode_THT:D_DO-35_SOD27_P7.62mm_Horizontal"
+			(at 105.41 50.8 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 105.41 50.8 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Diode"
+			(at 105.41 50.8 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Sim.Device" "D"
+			(at 105.41 50.8 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Sim.Pins" "1=K 2=A"
+			(at 105.41 50.8 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "2"
+			(uuid "0b98f770-b2dc-432d-866e-76b97e545884")
+		)
+		(pin "1"
+			(uuid "fd55442c-7702-40e8-901e-550cf71e7f53")
+		)
+		(instances
+			(project "Keypad AIO"
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/48238cef-e27b-4b6a-921d-2b007ed9b930"
+					(reference "D13")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/69229173-93bf-410b-9c71-785878a1d093"
+					(reference "D1")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/d6fcf53d-ea12-4272-b752-a0e2bbd4a8f5"
+					(reference "D19")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/f5f3cf6d-d522-4870-a834-a43780be9375"
+					(reference "D25")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/f90c3067-daa9-42f9-99f9-cd9d2750499d"
+					(reference "D7")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "CherryMX:CherryMX")
+		(at 96.52 101.6 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "8b0e67bc-0a11-4f06-8f02-0bc2d69558f7")
+		(property "Reference" "SW17"
+			(at 96.52 93.98 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "CherryMX"
+			(at 96.52 96.52 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "PCM_Switch_Keyboard_Hotswap_Kailh:SW_Hotswap_Kailh_MX_1.00u"
+			(at 96.52 100.965 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 96.52 100.965 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 96.52 101.6 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "2"
+			(uuid "68224b0d-c071-442b-affe-d87396427e50")
+		)
+		(pin "1"
+			(uuid "c77db392-16f5-4f98-beff-ad9db8c7dc66")
+		)
+		(instances
+			(project "Keypad AIO"
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/48238cef-e27b-4b6a-921d-2b007ed9b930"
+					(reference "SW17")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/69229173-93bf-410b-9c71-785878a1d093"
+					(reference "SW5")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/d6fcf53d-ea12-4272-b752-a0e2bbd4a8f5"
+					(reference "SW23")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/f5f3cf6d-d522-4870-a834-a43780be9375"
+					(reference "SW29")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/f90c3067-daa9-42f9-99f9-cd9d2750499d"
+					(reference "SW11")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "CherryMX:CherryMX")
+		(at 96.52 76.2 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "8f9d8f31-182d-4948-87e8-11f8f99da318")
+		(property "Reference" "SW15"
+			(at 96.52 68.58 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "CherryMX"
+			(at 96.52 71.12 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "PCM_Switch_Keyboard_Hotswap_Kailh:SW_Hotswap_Kailh_MX_1.00u"
+			(at 96.52 75.565 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 96.52 75.565 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 96.52 76.2 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "2"
+			(uuid "21f550b8-4b96-4815-b8f4-848637cb0e74")
+		)
+		(pin "1"
+			(uuid "fd78aec3-b132-4338-bc14-b116ac4a3201")
+		)
+		(instances
+			(project "Keypad AIO"
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/48238cef-e27b-4b6a-921d-2b007ed9b930"
+					(reference "SW15")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/69229173-93bf-410b-9c71-785878a1d093"
+					(reference "SW3")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/d6fcf53d-ea12-4272-b752-a0e2bbd4a8f5"
+					(reference "SW21")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/f5f3cf6d-d522-4870-a834-a43780be9375"
+					(reference "SW27")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/f90c3067-daa9-42f9-99f9-cd9d2750499d"
+					(reference "SW9")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:D")
+		(at 105.41 63.5 0)
+		(mirror y)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "92eed39f-05a5-40a9-9cbc-0e446d074821")
+		(property "Reference" "D14"
+			(at 105.41 57.15 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "D"
+			(at 105.41 59.69 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Diode_THT:D_DO-35_SOD27_P7.62mm_Horizontal"
+			(at 105.41 63.5 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 105.41 63.5 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Diode"
+			(at 105.41 63.5 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Sim.Device" "D"
+			(at 105.41 63.5 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Sim.Pins" "1=K 2=A"
+			(at 105.41 63.5 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "2"
+			(uuid "d3c9a1a1-e039-4b0f-b773-fdc245cda145")
+		)
+		(pin "1"
+			(uuid "a88ca5a7-412f-4cfb-9d7a-3c85f16ce3c4")
+		)
+		(instances
+			(project "Keypad AIO"
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/48238cef-e27b-4b6a-921d-2b007ed9b930"
+					(reference "D14")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/69229173-93bf-410b-9c71-785878a1d093"
+					(reference "D2")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/d6fcf53d-ea12-4272-b752-a0e2bbd4a8f5"
+					(reference "D20")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/f5f3cf6d-d522-4870-a834-a43780be9375"
+					(reference "D26")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/f90c3067-daa9-42f9-99f9-cd9d2750499d"
+					(reference "D8")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:D")
+		(at 105.41 76.2 0)
+		(mirror y)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "9ecb854a-a026-48f0-bca3-31789e8bad2b")
+		(property "Reference" "D15"
+			(at 105.41 69.85 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "D"
+			(at 105.41 72.39 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Diode_THT:D_DO-35_SOD27_P7.62mm_Horizontal"
+			(at 105.41 76.2 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 105.41 76.2 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Diode"
+			(at 105.41 76.2 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Sim.Device" "D"
+			(at 105.41 76.2 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Sim.Pins" "1=K 2=A"
+			(at 105.41 76.2 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "2"
+			(uuid "95a3437f-04f1-489b-8cea-f3a9dbceb4e6")
+		)
+		(pin "1"
+			(uuid "fa1ff095-b808-49a6-a8d2-a7433e9a7c3b")
+		)
+		(instances
+			(project "Keypad AIO"
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/48238cef-e27b-4b6a-921d-2b007ed9b930"
+					(reference "D15")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/69229173-93bf-410b-9c71-785878a1d093"
+					(reference "D3")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/d6fcf53d-ea12-4272-b752-a0e2bbd4a8f5"
+					(reference "D21")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/f5f3cf6d-d522-4870-a834-a43780be9375"
+					(reference "D27")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/f90c3067-daa9-42f9-99f9-cd9d2750499d"
+					(reference "D9")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "CherryMX:CherryMX")
+		(at 96.52 114.3 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "cb6f5c6a-0dd6-44ba-ad70-48045d49b221")
+		(property "Reference" "SW18"
+			(at 96.52 106.68 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "CherryMX"
+			(at 96.52 109.22 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "PCM_Switch_Keyboard_Hotswap_Kailh:SW_Hotswap_Kailh_MX_1.00u"
+			(at 96.52 113.665 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 96.52 113.665 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 96.52 114.3 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "2"
+			(uuid "43b443c1-a42c-41cc-bf66-456a882c1a61")
+		)
+		(pin "1"
+			(uuid "0807d7ff-1962-4d5f-bef4-ba5edec336fe")
+		)
+		(instances
+			(project "Keypad AIO"
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/48238cef-e27b-4b6a-921d-2b007ed9b930"
+					(reference "SW18")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/69229173-93bf-410b-9c71-785878a1d093"
+					(reference "SW6")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/d6fcf53d-ea12-4272-b752-a0e2bbd4a8f5"
+					(reference "SW24")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/f5f3cf6d-d522-4870-a834-a43780be9375"
+					(reference "SW30")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/f90c3067-daa9-42f9-99f9-cd9d2750499d"
+					(reference "SW12")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:D")
+		(at 105.41 101.6 0)
+		(mirror y)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "f3c7b60b-cbce-41fa-8a3c-453fe079a8d2")
+		(property "Reference" "D17"
+			(at 105.41 95.25 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "D"
+			(at 105.41 97.79 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Diode_THT:D_DO-35_SOD27_P7.62mm_Horizontal"
+			(at 105.41 101.6 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 105.41 101.6 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Diode"
+			(at 105.41 101.6 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Sim.Device" "D"
+			(at 105.41 101.6 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Sim.Pins" "1=K 2=A"
+			(at 105.41 101.6 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "2"
+			(uuid "d427f4d7-795a-405a-846f-c0ebd43cad96")
+		)
+		(pin "1"
+			(uuid "101d3770-4a8b-4889-8c77-8d599c94ecb1")
+		)
+		(instances
+			(project "Keypad AIO"
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/48238cef-e27b-4b6a-921d-2b007ed9b930"
+					(reference "D17")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/69229173-93bf-410b-9c71-785878a1d093"
+					(reference "D5")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/d6fcf53d-ea12-4272-b752-a0e2bbd4a8f5"
+					(reference "D23")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/f5f3cf6d-d522-4870-a834-a43780be9375"
+					(reference "D29")
+					(unit 1)
+				)
+				(path "/ed4653ce-7727-4394-948f-485d9793129b/0bfc0dc4-0697-4b0d-8bc3-4895e8b0fd22/f90c3067-daa9-42f9-99f9-cd9d2750499d"
+					(reference "D11")
+					(unit 1)
+				)
+			)
+		)
+	)
+)
