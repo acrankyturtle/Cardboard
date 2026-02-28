@@ -280,11 +280,14 @@ The profile is serialized as a versioned blob and stored in flash memory. The on
 |-------|------|
 | id | UUID (MacroId) |
 | name | StringU8 |
+| macro_type | MacroType |
 | play_channel | Option\<Channel\> |
 | cut_channels | CollectionU8\<Channel\> |
 | start_sequence | Sequence |
 | loop_sequence | Sequence |
 | end_sequence | Sequence |
+
+`MacroType` is a `u8` where `0` = `Momentary` and `1` = `Toggle`.
 
 `Channel` is a `u32` on wire (C# side) / `u8` on firmware side.
 
