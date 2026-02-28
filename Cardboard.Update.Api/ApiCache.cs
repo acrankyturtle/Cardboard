@@ -42,35 +42,7 @@ internal class ApiCache<TKey, TValue>(
 	{
 		// check in-memory cache
 		if (_cache.TryGetValue(key, out var cached) && !cached.IsExpired)
-		{
-			if (cached.IsStale)
-			{
-				_ = _refreshTasks.GetOrAdd(
-					key,
-					k =>
-						Task.Run(
-							async () =>
-							{
-								try
-								{
-									_ = await Fetch(k, CancellationToken.None);
-								}
-								catch (Exception ex)
-								{
-									logger.LogWarning(ex, "Background refresh of {Name} failed", Name);
-								}
-								finally
-								{
-									_refreshTasks.TryRemove(k, out _);
-								}
-							},
-							CancellationToken.None
-						)
-				);
-			}
-
-			return cached.Value;
-		}
+			return HandleCacheHit(key, cached);
 
 		// check negative cache
 		if (_negativeCacheEntries.TryGetValue(key, out var negativeEntry))
@@ -82,6 +54,23 @@ internal class ApiCache<TKey, TValue>(
 				logger.LogDebug("Skipping fetch of {Name} due to negative cache", Name);
 				return default;
 			}
+		}
+
+		// try seeding from fallback (e.g. disk cache)
+		try
+		{
+			var seedValue = await FetchFallback(key, cancellationToken);
+
+			// add as stale
+			var createdAt = DateTimeOffset.MinValue;
+			_cache.TryAdd(key, new(seedValue, timings.Ttl, timings.StaleRefresh, createdAt));
+
+			var seedEntry = _cache[key];
+			return HandleCacheHit(key, seedEntry);
+		}
+		catch (Exception fallbackEx) when (fallbackEx is not OperationCanceledException)
+		{
+			logger.LogInformation(fallbackEx, "Failed to seed {Name} from fallback", Name);
 		}
 
 		// fetch
@@ -150,12 +139,43 @@ internal class ApiCache<TKey, TValue>(
 		throw new NotSupportedException();
 	}
 
+	private TValue HandleCacheHit(TKey key, CacheEntry<TValue> entry)
+	{
+		if (entry.IsStale)
+		{
+			_ = _refreshTasks.GetOrAdd(
+				key,
+				k =>
+					Task.Run(
+						async () =>
+						{
+							try
+							{
+								_ = await Fetch(k, CancellationToken.None);
+							}
+							catch (Exception ex)
+							{
+								logger.LogWarning(ex, "Background refresh of {Name} failed", Name);
+							}
+							finally
+							{
+								_refreshTasks.TryRemove(k, out _);
+							}
+						},
+						CancellationToken.None
+					)
+			);
+		}
+
+		return entry.Value;
+	}
+
 	private void CacheValue(TKey key, TValue value)
 	{
 		_cache.AddOrUpdate(
 			key,
-			_ => new(value, timings.Ttl, timings.StaleRefresh),
-			(_, _) => new(value, timings.Ttl, timings.StaleRefresh)
+			_ => new(value, timings.Ttl, timings.StaleRefresh, DateTimeOffset.UtcNow),
+			(_, _) => new(value, timings.Ttl, timings.StaleRefresh, DateTimeOffset.UtcNow)
 		);
 	}
 }
@@ -417,12 +437,11 @@ internal class CacheTimings
 	public TimeSpan NegativeTtl { get; init; } = TimeSpan.FromMinutes(1);
 }
 
-internal sealed class CacheEntry<T>(T value, TimeSpan ttl, TimeSpan staleThreshold)
+internal sealed class CacheEntry<T>(T value, TimeSpan ttl, TimeSpan staleThreshold, DateTimeOffset createdAt)
 {
-	private readonly DateTimeOffset _createdAt = DateTimeOffset.UtcNow;
 	public T Value => value;
-	public bool IsExpired => DateTimeOffset.UtcNow - _createdAt > ttl;
-	public bool IsStale => DateTimeOffset.UtcNow - _createdAt > staleThreshold;
+	public bool IsExpired => DateTimeOffset.UtcNow - createdAt > ttl;
+	public bool IsStale => DateTimeOffset.UtcNow - createdAt > staleThreshold;
 }
 
 internal sealed class NegativeCacheEntry(TimeSpan ttl)
