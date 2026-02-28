@@ -3,11 +3,9 @@ import { useRef, useState, useEffect } from "react";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { snapCenterToCursor, restrictToWindowEdges } from "@dnd-kit/modifiers";
 import { TagsPanel } from "./editProfile/TagsPanel.tsx";
-import {
-  KeysPanel,
-  KeyViewPanel,
-  VirtualKeyPanel,
-} from "./editProfile/KeysPanel.tsx";
+import { KeysPanel } from "./editProfile/KeysPanel.tsx";
+import { KeyViewPanel } from "./editProfile/KeyViewPanel.tsx";
+import { VirtualKeyPanel } from "./editProfile/VirtualKeyPanel.tsx";
 import { LayersPanel } from "./editProfile/LayersPanel.tsx";
 import { BindingsPanel } from "./editProfile/BindingsPanel.tsx";
 import { MacrosPanel } from "./editProfile/MacrosPanel.tsx";
