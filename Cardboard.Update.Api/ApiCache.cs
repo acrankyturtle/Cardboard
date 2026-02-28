@@ -68,6 +68,10 @@ internal class ApiCache<TKey, TValue>(
 			var seedEntry = _cache[key];
 			return HandleCacheHit(key, seedEntry);
 		}
+		catch (NotSupportedException)
+		{
+			// fallback not supported
+		}
 		catch (Exception fallbackEx) when (fallbackEx is not OperationCanceledException)
 		{
 			logger.LogInformation(fallbackEx, "Failed to seed {Name} from fallback", Name);
@@ -95,6 +99,11 @@ internal class ApiCache<TKey, TValue>(
 			{
 				fallback = await FetchFallback(key, cancellationToken);
 				logger.LogDebug("Returning fallback {Name}", Name);
+			}
+			catch (NotSupportedException)
+			{
+				// fallback not supported
+				return default;
 			}
 			catch (Exception fallbackEx) when (fallbackEx is not OperationCanceledException)
 			{
