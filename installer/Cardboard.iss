@@ -22,7 +22,7 @@
 
 ; Source paths (relative to this .iss file location)
 #define PublishDir "..\Cardboard.Controller\bin\Release\net9.0-windows\publish"
-#define IconPath "..\Cardboard.Controller\key.ico"
+#define IconPath "..\react-frontend\public\key.ico"
 
 [Setup]
 ; Application identity - preserve upgrade code for compatibility with previous WixSharp installer
