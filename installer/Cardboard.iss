@@ -21,7 +21,7 @@
 #define MyAppDescription "Cardboard - Programmable Keyboard Controller"
 
 ; Source paths (relative to this .iss file location)
-#define PublishDir "..\Cardboard.Controller\bin\Release\net9.0-windows\publish"
+#define PublishDir "..\Cardboard.Controller\bin\Release\net10.0-windows\publish"
 #define IconPath "..\react-frontend\public\key.ico"
 
 [Setup]
@@ -166,22 +166,33 @@ begin
   end;
 end;
 
-function IsDotNet9Installed(): Boolean;
+function IsDotNet10Installed(): Boolean;
 var
+  TempFile: String;
   ResultCode: Integer;
+  Lines: TArrayOfString;
+  I: Integer;
 begin
   Result := False;
 
-  // Check registry for .NET 9 Desktop Runtime
-  if RegKeyExists(HKLM, 'SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App') then
+  // Run 'dotnet --list-runtimes' and capture output to a temp file
+  TempFile := ExpandConstant('{tmp}\dotnet_runtimes.txt');
+  Exec('cmd.exe', '/C dotnet --list-runtimes > "' + TempFile + '" 2>&1', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+
+  if LoadStringsFromFile(TempFile, Lines) then
   begin
-    // Use dotnet command to verify 9.x is available
-    if Exec('cmd.exe', '/c dotnet --list-runtimes 2>nul | findstr /C:"Microsoft.WindowsDesktop.App 9." >nul',
-            '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+    for I := 0 to GetArrayLength(Lines) - 1 do
     begin
-      Result := (ResultCode = 0);
+      // Look for the required ASP.NET Core runtime (e.g. "Microsoft.AspNetCore.App 10.0.3")
+      if Pos('Microsoft.AspNetCore.App 10.', Lines[I]) > 0 then
+      begin
+        Result := True;
+        Exit;
+      end;
     end;
   end;
+
+  DeleteFile(TempFile);
 end;
 
 function InitializeSetup(): Boolean;
@@ -190,9 +201,9 @@ var
 begin
   Result := True;
 
-  if not IsDotNet9Installed() then
+  if not IsDotNet10Installed() then
   begin
-    case MsgBox('.NET 9.0 Desktop Runtime is required but was not detected.' + #13#10 + #13#10 +
+    case MsgBox('ASP.NET Core 10.0 Runtime is required but was not detected.' + #13#10 + #13#10 +
                 'Would you like to open the download page?' + #13#10 + #13#10 +
                 'Click Yes to open the download page' + #13#10 +
                 'Click No to continue anyway' + #13#10 +
@@ -200,8 +211,8 @@ begin
                 mbConfirmation, MB_YESNOCANCEL) of
       IDYES:
         begin
-          ShellExec('open', 'https://dotnet.microsoft.com/download/dotnet/9.0', '', '', SW_SHOW, ewNoWait, ResultCode);
-          MsgBox('Please install .NET 9.0 Desktop Runtime, then run this installer again.',
+          ShellExec('open', 'https://dotnet.microsoft.com/download/dotnet/10.0', '', '', SW_SHOW, ewNoWait, ResultCode);
+          MsgBox('Please install ASP.NET Core 10.0 Runtime, then run this installer again.',
                  mbInformation, MB_OK);
           Result := False;
         end;

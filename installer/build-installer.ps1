@@ -63,7 +63,7 @@ if (-not $SkipPublish) {
 }
 
 # Step 2: Verify publish output exists
-$PublishDir = Join-Path $SolutionDir "Cardboard.Controller\bin\$Configuration\net9.0-windows\publish"
+$PublishDir = Join-Path $SolutionDir "Cardboard.Controller\bin\$Configuration\net10.0-windows\publish"
 if (-not (Test-Path $PublishDir)) {
     Write-Error "Publish directory not found: $PublishDir"
     exit 1
