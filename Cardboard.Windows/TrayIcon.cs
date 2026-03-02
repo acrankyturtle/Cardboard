@@ -44,6 +44,7 @@ file class TrayIconService(
 				Text = "Cardboard",
 				Visible = true,
 			};
+			notifyIcon.DoubleClick += (_, _) => frontendService.Open();
 
 			var contextMenu = new ContextMenuStrip();
 			contextMenu.Items.Add("Open", null, (_, _) => frontendService.Open());
