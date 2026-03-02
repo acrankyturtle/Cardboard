@@ -20,9 +20,12 @@ COPY --from=publish /app/publish .
 
 RUN mkdir -p /app/files
 
-EXPOSE 8080
+EXPOSE 7969
 
-ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_URLS=http://+:7969
 ENV Paths__Firmware=/app/files/firmware
+ENV Paths__Controller=/app/files/controller
+ENV Paths__Metadata=/app/files/metadata
+ENV Paths__DeviceIcons=/app/files/device-icons
 
 ENTRYPOINT ["dotnet", "Cardboard.UpdateServer.dll"]
