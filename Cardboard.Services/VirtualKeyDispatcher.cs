@@ -22,6 +22,7 @@ internal class VirtualKeyDispatcher(
 ) : IHostedService
 {
 	private readonly object _inputLock = new();
+	private readonly SemaphoreSlim _processingLock = new(1, 1);
 	private readonly VirtualKeyTrackers _trackers = new(deviceService);
 	private volatile IReadOnlyList<VirtualKeyAssociation> _associations = [];
 	private IDisposable? _associationSubscription;
@@ -75,21 +76,49 @@ internal class VirtualKeyDispatcher(
 
 	private async Task OnInput(InputEvent inputEvent)
 	{
-		var associations = _associations.Where(x =>
-			IsMatch(inputEvent.Device, inputEvent.Key, x.DeviceMatching)
-		);
-		await Task.WhenAll(associations.Select(async x => await UpdateDeviceVirtualKey(x, inputEvent)));
+		await _processingLock.WaitAsync();
+		try
+		{
+			var associations = _associations
+				.Where(x => IsMatch(inputEvent.Device, inputEvent.Key, x.DeviceMatching))
+				.ToList();
+
+			if (inputEvent.State == InputKeyState.PressAndRelease)
+			{
+				foreach (var association in associations)
+					await UpdateDeviceVirtualKey(
+						association,
+						inputEvent with
+						{
+							State = InputKeyState.Press,
+						}
+					);
+
+				await Task.Delay(5);
+
+				foreach (var association in associations)
+					await UpdateDeviceVirtualKey(
+						association,
+						inputEvent with
+						{
+							State = InputKeyState.Release,
+						}
+					);
+			}
+			else
+			{
+				foreach (var association in associations)
+					await UpdateDeviceVirtualKey(association, inputEvent);
+			}
+		}
+		finally
+		{
+			_processingLock.Release();
+		}
 	}
 
 	private async Task UpdateDeviceVirtualKey(VirtualKeyAssociation association, InputEvent inputEvent)
 	{
-		if (inputEvent.State == InputKeyState.PressAndRelease)
-		{
-			await UpdateDeviceVirtualKey(association, inputEvent with { State = InputKeyState.Press });
-			await UpdateDeviceVirtualKey(association, inputEvent with { State = InputKeyState.Release });
-			return;
-		}
-
 		var keyState = inputEvent.State switch
 		{
 			InputKeyState.Press => true,
