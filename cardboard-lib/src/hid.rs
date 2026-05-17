@@ -17,18 +17,6 @@ pub trait ReportHid {
 	fn reset(&mut self);
 }
 
-pub trait HidKeyboard {
-	fn report(&mut self, event: &KeyboardEvent);
-}
-
-pub trait HidMouse {
-	fn report(&mut self, event: &MouseEvent);
-}
-
-pub trait HidConsumerControl {
-	fn report(&mut self, event: &ConsumerControlEvent);
-}
-
 pub trait HidDevice<I> {
 	fn create_report(&mut self) -> Option<[u8; Self::SIZE]>;
 
