@@ -311,9 +311,9 @@ where
 	}
 
 	fn flush(&mut self) {
-		let keyboard = self.keyboard.create_report();
-		let mouse = self.mouse.create_report();
-		let consumer = self.consumer.create_report();
+		let keyboard = self.keyboard.create_report(false);
+		let mouse = self.mouse.create_report(false);
+		let consumer = self.consumer.create_report(false);
 
 		self.signal.signal(HidReport {
 			keyboard,

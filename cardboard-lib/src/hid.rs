@@ -18,7 +18,7 @@ pub trait ReportHid {
 }
 
 pub trait HidDevice<I> {
-	fn create_report(&mut self) -> Option<[u8; Self::SIZE]>;
+	fn create_report(&mut self, force: bool) -> Option<[u8; Self::SIZE]>;
 
 	fn input(&mut self, input: &I);
 
@@ -30,6 +30,7 @@ pub trait HidDevice<I> {
 }
 pub struct NKROKeyboard {
 	state: [u8; NKROKeyboard::REPORT_SIZE],
+	dirty: bool,
 }
 
 impl NKROKeyboard {
@@ -37,18 +38,26 @@ impl NKROKeyboard {
 	pub fn new() -> Self {
 		NKROKeyboard {
 			state: [0; NKROKeyboard::REPORT_SIZE],
+			dirty: true,
 		}
 	}
 }
 
 impl HidDevice<KeyboardEvent> for NKROKeyboard {
-	fn create_report(&mut self) -> Option<[u8; NKROKeyboard::REPORT_SIZE]> {
+	fn create_report(&mut self, force: bool) -> Option<[u8; NKROKeyboard::REPORT_SIZE]> {
+		if !self.dirty && !force {
+			return None;
+		}
+
+		self.dirty = false;
 		let mut report = [0; NKROKeyboard::REPORT_SIZE];
 		report.copy_from_slice(&self.state);
 		Some(report)
 	}
 
 	fn input(&mut self, input: &KeyboardEvent) {
+		self.dirty = true;
+
 		let (key, state) = match input {
 			KeyboardEvent::KeyDown(k) => (k, KeyState::Pressed),
 			KeyboardEvent::KeyUp(k) => (k, KeyState::Released),
@@ -96,6 +105,7 @@ impl HidDevice<KeyboardEvent> for NKROKeyboard {
 
 	fn reset(&mut self) {
 		self.state = [0; NKROKeyboard::REPORT_SIZE];
+		self.dirty = true;
 	}
 
 	fn report_descriptor() -> &'static [u8] {
@@ -144,6 +154,7 @@ pub struct Mouse {
 	buttons: HidMouseButtons,
 	cursor: (i32, i32),
 	scroll: (i32, i32),
+	dirty: bool,
 }
 
 impl Mouse {
@@ -154,6 +165,7 @@ impl Mouse {
 			buttons: HidMouseButtons::empty(),
 			cursor: (0, 0),
 			scroll: (0, 0),
+			dirty: true,
 		}
 	}
 
@@ -177,7 +189,12 @@ impl Mouse {
 }
 
 impl HidDevice<MouseEvent> for Mouse {
-	fn create_report(&mut self) -> Option<[u8; Mouse::REPORT_SIZE]> {
+	fn create_report(&mut self, force: bool) -> Option<[u8; Mouse::REPORT_SIZE]> {
+		if !self.dirty && !force {
+			return None;
+		}
+
+		self.dirty = false;
 		let buttons = self.buttons.bits();
 		let x = self.cursor.0.clamp(-128, 127) as i8;
 		let y = self.cursor.1.clamp(-128, 127) as i8;
@@ -188,6 +205,7 @@ impl HidDevice<MouseEvent> for Mouse {
 	}
 
 	fn input(&mut self, input: &MouseEvent) {
+		self.dirty = true;
 		match input {
 			MouseEvent::ButtonDown(button) => self.button_down(map_button(&button)),
 			MouseEvent::ButtonUp(button) => self.button_up(map_button(&button)),
@@ -255,6 +273,7 @@ impl HidDevice<MouseEvent> for Mouse {
 pub struct Scroll {
 	buttons: HidMouseButtons,
 	scroll: (i32, i32),
+	dirty: bool,
 }
 
 impl Scroll {
@@ -264,6 +283,7 @@ impl Scroll {
 		Scroll {
 			buttons: HidMouseButtons::empty(),
 			scroll: (0, 0),
+			dirty: true,
 		}
 	}
 
@@ -282,7 +302,12 @@ impl Scroll {
 }
 
 impl HidDevice<MouseEvent> for Scroll {
-	fn create_report(&mut self) -> Option<[u8; Scroll::REPORT_SIZE]> {
+	fn create_report(&mut self, force: bool) -> Option<[u8; Scroll::REPORT_SIZE]> {
+		if !self.dirty && !force {
+			return None;
+		}
+
+		self.dirty = false;
 		let buttons = self.buttons.bits();
 		let scroll_x = self.scroll.0.clamp(-128, 127) as i8;
 		let scroll_y = self.scroll.1.clamp(-128, 127) as i8;
@@ -291,6 +316,7 @@ impl HidDevice<MouseEvent> for Scroll {
 	}
 
 	fn input(&mut self, input: &MouseEvent) {
+		self.dirty = true;
 		match input {
 			MouseEvent::ButtonDown(button) => self.button_down(map_button(&button)),
 			MouseEvent::ButtonUp(button) => self.button_up(map_button(&button)),
@@ -370,11 +396,15 @@ const CONSUMER_CONTROL_REPORT_SIZE: usize = 32;
 
 pub struct ConsumerControl {
 	state: Option<[u8; CONSUMER_CONTROL_REPORT_SIZE]>,
+	dirty: bool,
 }
 
 impl ConsumerControl {
 	pub fn new() -> Self {
-		ConsumerControl { state: None }
+		ConsumerControl {
+			state: None,
+			dirty: true,
+		}
 	}
 
 	fn get_state_or_new(&mut self) -> &mut [u8; CONSUMER_CONTROL_REPORT_SIZE] {
@@ -383,7 +413,12 @@ impl ConsumerControl {
 }
 
 impl HidDevice<ConsumerControlEvent> for ConsumerControl {
-	fn create_report(&mut self) -> Option<[u8; CONSUMER_CONTROL_REPORT_SIZE]> {
+	fn create_report(&mut self, force: bool) -> Option<[u8; CONSUMER_CONTROL_REPORT_SIZE]> {
+		if !self.dirty && !force {
+			return None;
+		}
+
+		self.dirty = false;
 		match self.state {
 			Some(state) => {
 				let mut report = [0; CONSUMER_CONTROL_REPORT_SIZE];
@@ -396,6 +431,8 @@ impl HidDevice<ConsumerControlEvent> for ConsumerControl {
 	}
 
 	fn input(&mut self, input: &ConsumerControlEvent) {
+		self.dirty = true;
+
 		let state = self.get_state_or_new();
 
 		let cc = map_cc(&input);
@@ -408,6 +445,7 @@ impl HidDevice<ConsumerControlEvent> for ConsumerControl {
 
 	fn reset(&mut self) {
 		self.state = None;
+		self.dirty = true;
 	}
 
 	fn report_descriptor() -> &'static [u8] {
