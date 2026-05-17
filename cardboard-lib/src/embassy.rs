@@ -327,10 +327,6 @@ where
 		self.mouse.reset();
 		self.consumer.reset();
 
-		self.signal.signal(HidReport {
-			keyboard: None,
-			mouse: None,
-			consumer: None,
-		});
+		self.flush();
 	}
 }
