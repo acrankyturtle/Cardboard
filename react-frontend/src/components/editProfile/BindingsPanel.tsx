@@ -115,6 +115,15 @@ export function BindingsPanel({ className }: { className?: string }) {
     disabled: !state.selectedKey || !state.selectedLayer,
   });
 
+  const defaultBindingName = "Add binding";
+  const bindingName =
+    state.selectedMacro !== null
+      ? `Bind ${
+          findMacroById(state.selectedMacro, state.profile)?.name ??
+          defaultBindingName
+        }`
+      : defaultBindingName;
+
   return (
     <PanelContainer className={className}>
       <HeaderBar>
@@ -134,7 +143,7 @@ export function BindingsPanel({ className }: { className?: string }) {
             <DeselectIcon />
           </HeaderBarButton>
         </Tooltip>
-        <Tooltip content="Add binding">
+        <Tooltip content={bindingName}>
           <HeaderBarButton onClick={addBinding}>
             <AddIcon />
           </HeaderBarButton>
@@ -194,7 +203,7 @@ export function BindingsPanel({ className }: { className?: string }) {
             <ContextMenuIcon>
               <AddIcon />
             </ContextMenuIcon>
-            Add Binding
+            {bindingName}
           </ContextMenuItem>
           <ContextMenuItem
             disabled={
