@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using JsonOptions = Microsoft.AspNetCore.Http.Json.JsonOptions;
 
@@ -351,6 +352,7 @@ public static class Devices
 		HttpContext context,
 		[FromServices] IDeviceService deviceService,
 		[FromServices] IOptions<JsonOptions> jsonOptions,
+		[FromServices] IHostApplicationLifetime lifetime,
 		CancellationToken cancellationToken
 	)
 	{
@@ -358,7 +360,10 @@ public static class Devices
 		context.Response.Headers.CacheControl = "no-cache";
 		context.Response.Headers.Connection = "keep-alive";
 
-		using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+		using var cts = CancellationTokenSource.CreateLinkedTokenSource(
+			cancellationToken,
+			lifetime.ApplicationStopping
+		);
 		var linkedToken = cts.Token;
 
 		// Send initial keepalive to confirm connection
