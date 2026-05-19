@@ -73,7 +73,7 @@ pub async fn keypad_task<
 		}
 
 		// check for virtual keys
-		if let Some(virtual_keys) = virtual_keys_changed.try_get_virtual_keys() {
+		while let Some(virtual_keys) = virtual_keys_changed.try_get_virtual_keys() {
 			state.set_virtual_key_state(&virtual_keys);
 		}
 

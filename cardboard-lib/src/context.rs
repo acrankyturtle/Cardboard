@@ -9,7 +9,9 @@ use crate::{
 	storage::{BlockFlash, BlockFlashExt, FlashPartition, PartitionedFlashMemory},
 	stream::{ReadAsync, WriteAsync},
 };
+use alloc::boxed::Box;
 use alloc::vec::Vec;
+use async_trait::async_trait;
 
 /// Main context struct holding all runtime dependencies.
 pub struct Context<
@@ -126,8 +128,9 @@ pub trait ContextTags {
 	fn set_external_tags(&mut self, tags: Vec<LayerTag>);
 }
 
+#[async_trait(?Send)]
 pub trait ContextVirtualKeys<const VIRTUAL_KEY_BITFIELD_BYTES: usize> {
-	fn set_virtual_keys(&mut self, state: [u8; VIRTUAL_KEY_BITFIELD_BYTES]);
+	async fn set_virtual_keys(&mut self, state: [u8; VIRTUAL_KEY_BITFIELD_BYTES]);
 }
 
 pub trait ContextAllocator {
@@ -270,6 +273,7 @@ where
 	}
 }
 
+#[async_trait(?Send)]
 impl<Flash, SerialRx, SerialTx, const VIRTUAL_KEY_BITFIELD_BYTES: usize, Allocator, Errors, Clock>
 	ContextVirtualKeys<VIRTUAL_KEY_BITFIELD_BYTES>
 	for Context<Flash, SerialRx, SerialTx, VIRTUAL_KEY_BITFIELD_BYTES, Allocator, Errors, Clock>
@@ -281,8 +285,8 @@ where
 	Errors: ErrorLog,
 	Clock: crate::time::Clock + 'static,
 {
-	fn set_virtual_keys(&mut self, state: [u8; VIRTUAL_KEY_BITFIELD_BYTES]) {
-		self.virtual_keys_signal.set_virtual_keys(state);
+	async fn set_virtual_keys(&mut self, state: [u8; VIRTUAL_KEY_BITFIELD_BYTES]) {
+		self.virtual_keys_signal.set_virtual_keys(state).await;
 	}
 }
 
@@ -374,8 +378,9 @@ pub trait ExternalTagsSignalRx {
 	fn try_get_external_tags(&self) -> Option<Vec<LayerTag>>;
 }
 
+#[async_trait(?Send)]
 pub trait VirtualKeySignalTx<const SIZE: usize> {
-	fn set_virtual_keys(&self, state: [u8; SIZE]);
+	async fn set_virtual_keys(&self, state: [u8; SIZE]);
 }
 
 pub trait VirtualKeySignalRx<const SIZE: usize> {

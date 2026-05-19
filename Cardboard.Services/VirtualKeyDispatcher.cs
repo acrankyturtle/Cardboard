@@ -79,37 +79,12 @@ internal class VirtualKeyDispatcher(
 		await _processingLock.WaitAsync();
 		try
 		{
-			var associations = _associations
-				.Where(x => IsMatch(inputEvent.Device, inputEvent.Key, x.DeviceMatching))
-				.ToList();
+			var associations = _associations.Where(x =>
+				IsMatch(inputEvent.Device, inputEvent.Key, x.DeviceMatching)
+			);
 
-			if (inputEvent.State == InputKeyState.PressAndRelease)
-			{
-				foreach (var association in associations)
-					await UpdateDeviceVirtualKey(
-						association,
-						inputEvent with
-						{
-							State = InputKeyState.Press,
-						}
-					);
-
-				await Task.Delay(5);
-
-				foreach (var association in associations)
-					await UpdateDeviceVirtualKey(
-						association,
-						inputEvent with
-						{
-							State = InputKeyState.Release,
-						}
-					);
-			}
-			else
-			{
-				foreach (var association in associations)
-					await UpdateDeviceVirtualKey(association, inputEvent);
-			}
+			foreach (var association in associations)
+				await UpdateDeviceVirtualKey(association, inputEvent);
 		}
 		finally
 		{
@@ -119,13 +94,21 @@ internal class VirtualKeyDispatcher(
 
 	private async Task UpdateDeviceVirtualKey(VirtualKeyAssociation association, InputEvent inputEvent)
 	{
-		var keyState = inputEvent.State switch
+		switch (inputEvent.State)
 		{
-			InputKeyState.Press => true,
-			InputKeyState.Release => false,
-			_ => throw new ArgumentOutOfRangeException(nameof(inputEvent), "Unsupported input key state."),
-		};
-		await _trackers.UpdateDevice(association.DeviceId, association.VirtualKey, keyState);
+			case InputKeyState.Press:
+				await _trackers.UpdateDevice(association.DeviceId, association.VirtualKey, true);
+				break;
+			case InputKeyState.Release:
+				await _trackers.UpdateDevice(association.DeviceId, association.VirtualKey, false);
+				break;
+			case InputKeyState.PressAndRelease:
+				await _trackers.UpdateDevice(association.DeviceId, association.VirtualKey, true);
+				await _trackers.UpdateDevice(association.DeviceId, association.VirtualKey, false);
+				break;
+			default:
+				throw new ArgumentOutOfRangeException(nameof(inputEvent), "Unsupported input key state.");
+		}
 	}
 
 	private static bool IsMatch(InputDeviceInfo inputDevice, InputKey key, VirtualKeyDeviceMatch match)

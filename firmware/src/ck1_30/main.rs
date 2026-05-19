@@ -89,12 +89,15 @@ type ConsumerImpl = cardboard_lib::hid::ConsumerControl;
 
 type Mutex = embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
 type Signal<T> = embassy_sync::signal::Signal<Mutex, T>;
+type VirtualKeyChannel =
+	embassy_sync::channel::Channel<Mutex, [u8; VIRTUAL_KEY_BITFIELD_SIZE], VIRTUAL_KEY_CHANNEL_CAP>;
+const VIRTUAL_KEY_CHANNEL_CAP: usize = 8;
 static HID_SIGNAL: Signal<
 	HidReport<{ KeyboardImpl::SIZE }, { MouseImpl::SIZE }, { ConsumerImpl::SIZE }>,
 > = Signal::new();
 static PROFILE_CHANGED_SIGNAL: Signal<KeyboardProfile> = Signal::new();
 static EXTERNAL_TAGS_CHANGED_SIGNAL: Signal<Vec<LayerTag>> = Signal::new();
-static VIRTUAL_KEY_SIGNAL: Signal<[u8; VIRTUAL_KEY_BITFIELD_SIZE]> = Signal::new();
+static VIRTUAL_KEY_CHANNEL: VirtualKeyChannel = embassy_sync::channel::Channel::new();
 
 type Matrix = KeyMatrix<ROWS, COLS>;
 
@@ -312,7 +315,7 @@ async fn main(spawner: Spawner) -> () {
 		serial_rx,
 		serial_tx,
 		&EXTERNAL_TAGS_CHANGED_SIGNAL,
-		&VIRTUAL_KEY_SIGNAL,
+		&VIRTUAL_KEY_CHANNEL,
 		&ALLOCATOR,
 		reboot,
 		bootloader,
@@ -330,7 +333,7 @@ async fn main(spawner: Spawner) -> () {
 			hid,
 			&PROFILE_CHANGED_SIGNAL,
 			&EXTERNAL_TAGS_CHANGED_SIGNAL,
-			&VIRTUAL_KEY_SIGNAL,
+			&VIRTUAL_KEY_CHANNEL,
 			bootloader_key,
 			bootloader,
 			tick_interval,
@@ -350,7 +353,7 @@ async fn keypad_task(
 	hid: EmbassyKeypadHid<KeyboardImpl, MouseImpl, ConsumerImpl, Mutex>,
 	profile_changed: &'static Signal<KeyboardProfile>,
 	tags_changed: &'static Signal<Vec<LayerTag>>,
-	virtual_keys_changed: &'static Signal<[u8; VIRTUAL_KEY_BITFIELD_SIZE]>,
+	virtual_keys_changed: &'static VirtualKeyChannel,
 	bootloader_key: KeyId,
 	bootloader: &'static EmbassyRp2040RebootToBootloader,
 	interval: Duration,

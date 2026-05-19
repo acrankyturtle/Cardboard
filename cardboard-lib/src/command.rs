@@ -294,7 +294,7 @@ where
 	) -> Result<(), &'static str> {
 		let mut buffer = [0u8; VIRTUAL_KEY_BITFIELD_BYTES];
 		ctx.serial_rx().read_exact(&mut buffer).await?;
-		ctx.set_virtual_keys(buffer);
+		ctx.set_virtual_keys(buffer).await;
 		Ok(())
 	}
 }

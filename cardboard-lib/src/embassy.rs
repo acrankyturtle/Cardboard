@@ -1,3 +1,4 @@
+use alloc::boxed::Box;
 use alloc::vec::Vec;
 use defmt::error;
 use embassy_futures::select::{Either, select};
@@ -9,7 +10,8 @@ use embassy_rp::{
 	peripherals::FLASH,
 };
 
-use embassy_sync::{blocking_mutex::raw::RawMutex, signal::Signal};
+use async_trait::async_trait;
+use embassy_sync::{blocking_mutex::raw::RawMutex, channel::Channel, signal::Signal};
 use embassy_time::Timer;
 use embassy_usb::class::cdc_acm::{Receiver, Sender};
 
@@ -49,17 +51,20 @@ impl<M: RawMutex> ExternalTagsSignalRx for Signal<M, Vec<LayerTag>> {
 	}
 }
 
-impl<M: RawMutex, const SIZE: usize> VirtualKeySignalTx<SIZE> for Signal<M, [u8; SIZE]> {
-	fn set_virtual_keys(&self, state: [u8; SIZE]) {
-		self.signal(state);
+#[async_trait(?Send)]
+impl<M: RawMutex, const SIZE: usize, const CAP: usize> VirtualKeySignalTx<SIZE>
+	for Channel<M, [u8; SIZE], CAP>
+{
+	async fn set_virtual_keys(&self, state: [u8; SIZE]) {
+		self.send(state).await;
 	}
 }
 
-impl<M: RawMutex, const SIZE: usize> crate::context::VirtualKeySignalRx<SIZE>
-	for Signal<M, [u8; SIZE]>
+impl<M: RawMutex, const SIZE: usize, const CAP: usize> crate::context::VirtualKeySignalRx<SIZE>
+	for Channel<M, [u8; SIZE], CAP>
 {
 	fn try_get_virtual_keys(&self) -> Option<[u8; SIZE]> {
-		self.try_take()
+		self.try_receive().ok()
 	}
 }
 
