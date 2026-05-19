@@ -156,6 +156,7 @@ public static class Devices
 		[FromRoute(Name = "id")] DeviceId deviceId,
 		[FromQuery(Name = "migrate")] bool migrateData,
 		[FromQuery] string? version,
+		[FromQuery] bool? force,
 		CancellationToken cancellationToken
 	)
 	{
@@ -172,6 +173,7 @@ public static class Devices
 					deviceId,
 					parsedVersion,
 					migrateData,
+					force ?? false,
 					cancellationToken
 				)
 			)

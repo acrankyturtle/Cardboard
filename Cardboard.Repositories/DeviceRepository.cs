@@ -35,6 +35,7 @@ public interface IDeviceRepository
 		DeviceId deviceId,
 		Version? version,
 		bool migrateData,
+		bool force,
 		CancellationToken cancellationToken = default
 	);
 }
@@ -411,6 +412,7 @@ file sealed class DeviceRepository(
 		DeviceId deviceId,
 		Version? version,
 		bool migrateData,
+		bool force,
 		[System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default
 	)
 	{
@@ -433,7 +435,7 @@ file sealed class DeviceRepository(
 			}
 		}
 
-		if (version <= device.Version)
+		if (!force && version <= device.Version)
 		{
 			yield return new FirmwareUpdateComplete { Result = UpdateFirmwareResult.AlreadyUpToDate };
 			yield break;
