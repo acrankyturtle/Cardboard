@@ -13,87 +13,6 @@ use alloc::boxed::Box;
 use alloc::vec::Vec;
 use async_trait::async_trait;
 
-/// Main context struct holding all runtime dependencies.
-pub struct Context<
-	Flash,
-	SerialRx,
-	SerialTx,
-	const VIRTUAL_KEY_BITFIELD_BYTES: usize,
-	Allocator,
-	Errors,
-	Clock,
-> where
-	Flash: BlockFlash,
-	SerialRx: ReadAsync,
-	SerialTx: WriteAsync,
-	Allocator: GlobalAlloc + 'static,
-	Errors: ErrorLog,
-	Clock: crate::time::Clock + 'static,
-{
-	pub device_info: &'static DeviceInfo,
-	pub flash: Flash,
-	pub settings_partition: FlashPartition<Flash>,
-	pub profile_partition: FlashPartition<Flash>,
-	pub update_profile_signal: &'static dyn UpdateProfileSignalTx,
-	pub serial_rx: SerialRx,
-	pub serial_tx: SerialTx,
-	pub external_tags_signal: &'static dyn ExternalTagsSignalTx,
-	pub virtual_keys_signal: &'static dyn VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES>,
-	pub allocator: &'static TrackingAllocator<Allocator>,
-	pub reboot: &'static mut dyn Reboot,
-	pub bootloader: &'static dyn RebootToBootloader,
-	pub errors: Errors,
-	pub clock: &'static Clock,
-}
-
-impl<Flash, SerialRx, SerialTx, const VIRTUAL_KEY_BITFIELD_BYTES: usize, Allocator, Errors, Clock>
-	Context<Flash, SerialRx, SerialTx, VIRTUAL_KEY_BITFIELD_BYTES, Allocator, Errors, Clock>
-where
-	Flash: BlockFlash,
-	SerialRx: ReadAsync,
-	SerialTx: WriteAsync,
-	Allocator: GlobalAlloc + 'static,
-	Errors: ErrorLog,
-	Clock: crate::time::Clock + 'static,
-{
-	#[allow(clippy::too_many_arguments)]
-	pub fn new(
-		device_info: &'static DeviceInfo,
-		flash: Flash,
-		settings_partition: FlashPartition<Flash>,
-		profile_partition: FlashPartition<Flash>,
-		update_profile_signal: &'static dyn UpdateProfileSignalTx,
-		serial_rx: SerialRx,
-		serial_tx: SerialTx,
-		external_tags_signal: &'static dyn ExternalTagsSignalTx,
-		virtual_keys_signal: &'static dyn VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_BYTES>,
-		allocator: &'static TrackingAllocator<Allocator>,
-		reboot: &'static mut dyn Reboot,
-		bootloader: &'static dyn RebootToBootloader,
-		errors: Errors,
-		clock: &'static Clock,
-	) -> Self {
-		Self {
-			device_info,
-			flash,
-			settings_partition,
-			profile_partition,
-			update_profile_signal,
-			serial_rx,
-			serial_tx,
-			external_tags_signal,
-			virtual_keys_signal,
-			allocator,
-			reboot,
-			bootloader,
-			errors,
-			clock,
-		}
-	}
-}
-
-// Context capability traits - these define what features a context provides
-// Commands use these as trait bounds to specify their requirements
 
 pub trait ContextDeviceInfo {
 	fn device_info(&self) -> &'static DeviceInfo;
@@ -152,214 +71,6 @@ pub trait ContextClock {
 	fn clock(&self) -> &impl crate::time::Clock;
 }
 
-// Trait implementations for Context
-
-impl<Flash, SerialRx, SerialTx, const VIRTUAL_KEY_BITFIELD_BYTES: usize, Allocator, Errors, Clock>
-	ContextDeviceInfo
-	for Context<Flash, SerialRx, SerialTx, VIRTUAL_KEY_BITFIELD_BYTES, Allocator, Errors, Clock>
-where
-	Flash: BlockFlash,
-	SerialRx: ReadAsync + SerialDrain,
-	SerialTx: WriteAsync,
-	Allocator: GlobalAlloc + 'static,
-	Errors: ErrorLog,
-	Clock: crate::time::Clock + 'static,
-{
-	fn device_info(&self) -> &'static DeviceInfo {
-		self.device_info
-	}
-}
-
-impl<Flash, SerialRx, SerialTx, const VIRTUAL_KEY_BITFIELD_BYTES: usize, Allocator, Errors, Clock>
-	ContextSerialRx
-	for Context<Flash, SerialRx, SerialTx, VIRTUAL_KEY_BITFIELD_BYTES, Allocator, Errors, Clock>
-where
-	Flash: BlockFlash,
-	SerialRx: ReadAsync + SerialDrain,
-	SerialTx: WriteAsync,
-	Allocator: GlobalAlloc + 'static,
-	Errors: ErrorLog,
-	Clock: crate::time::Clock + 'static,
-{
-	type SerialRx = SerialRx;
-	fn serial_rx(&mut self) -> &mut Self::SerialRx {
-		&mut self.serial_rx
-	}
-}
-
-impl<Flash, SerialRx, SerialTx, const VIRTUAL_KEY_BITFIELD_BYTES: usize, Allocator, Errors, Clock>
-	ContextSerialTx
-	for Context<Flash, SerialRx, SerialTx, VIRTUAL_KEY_BITFIELD_BYTES, Allocator, Errors, Clock>
-where
-	Flash: BlockFlash,
-	SerialRx: ReadAsync,
-	SerialTx: WriteAsync,
-	Allocator: GlobalAlloc + 'static,
-	Errors: ErrorLog,
-	Clock: crate::time::Clock + 'static,
-{
-	type SerialTx = SerialTx;
-	fn serial_tx(&mut self) -> &mut Self::SerialTx {
-		&mut self.serial_tx
-	}
-}
-
-impl<Flash, SerialRx, SerialTx, const VIRTUAL_KEY_BITFIELD_BYTES: usize, Allocator, Errors, Clock>
-	ContextSettingsFlash
-	for Context<Flash, SerialRx, SerialTx, VIRTUAL_KEY_BITFIELD_BYTES, Allocator, Errors, Clock>
-where
-	Flash: BlockFlash,
-	SerialRx: ReadAsync,
-	SerialTx: WriteAsync,
-	Allocator: GlobalAlloc + 'static,
-	Errors: ErrorLog,
-	Clock: crate::time::Clock + 'static,
-{
-	type Flash = Flash;
-
-	fn settings_flash(&mut self) -> PartitionedFlashMemory<Flash> {
-		self.flash.partition(&self.settings_partition)
-	}
-}
-
-impl<Flash, SerialRx, SerialTx, const VIRTUAL_KEY_BITFIELD_BYTES: usize, Allocator, Errors, Clock>
-	ContextProfileFlash
-	for Context<Flash, SerialRx, SerialTx, VIRTUAL_KEY_BITFIELD_BYTES, Allocator, Errors, Clock>
-where
-	Flash: BlockFlash,
-	SerialRx: ReadAsync,
-	SerialTx: WriteAsync,
-	Allocator: GlobalAlloc + 'static,
-	Errors: ErrorLog,
-	Clock: crate::time::Clock + 'static,
-{
-	type Flash = Flash;
-
-	fn profile_flash(&mut self) -> PartitionedFlashMemory<Flash> {
-		self.flash.partition(&self.profile_partition)
-	}
-}
-
-impl<Flash, SerialRx, SerialTx, const VIRTUAL_KEY_BITFIELD_BYTES: usize, Allocator, Errors, Clock>
-	ContextUpdateProfile
-	for Context<Flash, SerialRx, SerialTx, VIRTUAL_KEY_BITFIELD_BYTES, Allocator, Errors, Clock>
-where
-	Flash: BlockFlash,
-	SerialRx: ReadAsync,
-	SerialTx: WriteAsync,
-	Allocator: GlobalAlloc + 'static,
-	Errors: ErrorLog,
-	Clock: crate::time::Clock + 'static,
-{
-	type UpdateProfileSignal = dyn UpdateProfileSignalTx;
-	fn profile_signal(&mut self) -> &Self::UpdateProfileSignal {
-		self.update_profile_signal
-	}
-}
-
-impl<Flash, SerialRx, SerialTx, const VIRTUAL_KEY_BITFIELD_BYTES: usize, Allocator, Errors, Clock>
-	ContextTags
-	for Context<Flash, SerialRx, SerialTx, VIRTUAL_KEY_BITFIELD_BYTES, Allocator, Errors, Clock>
-where
-	Flash: BlockFlash,
-	SerialRx: ReadAsync,
-	SerialTx: WriteAsync,
-	Allocator: GlobalAlloc + 'static,
-	Errors: ErrorLog,
-	Clock: crate::time::Clock + 'static,
-{
-	fn set_external_tags(&mut self, tags: Vec<LayerTag>) {
-		self.external_tags_signal.set_external_tags(tags);
-	}
-}
-
-#[async_trait(?Send)]
-impl<Flash, SerialRx, SerialTx, const VIRTUAL_KEY_BITFIELD_BYTES: usize, Allocator, Errors, Clock>
-	ContextVirtualKeys<VIRTUAL_KEY_BITFIELD_BYTES>
-	for Context<Flash, SerialRx, SerialTx, VIRTUAL_KEY_BITFIELD_BYTES, Allocator, Errors, Clock>
-where
-	Flash: BlockFlash,
-	SerialRx: ReadAsync,
-	SerialTx: WriteAsync,
-	Allocator: GlobalAlloc + 'static,
-	Errors: ErrorLog,
-	Clock: crate::time::Clock + 'static,
-{
-	async fn set_virtual_keys(&mut self, state: [u8; VIRTUAL_KEY_BITFIELD_BYTES]) {
-		self.virtual_keys_signal.set_virtual_keys(state).await;
-	}
-}
-
-impl<Flash, SerialRx, SerialTx, const VIRTUAL_KEY_BITFIELD_BYTES: usize, Allocator, Errors, Clock>
-	ContextAllocator
-	for Context<Flash, SerialRx, SerialTx, VIRTUAL_KEY_BITFIELD_BYTES, Allocator, Errors, Clock>
-where
-	Flash: BlockFlash,
-	SerialRx: ReadAsync,
-	SerialTx: WriteAsync,
-	Allocator: GlobalAlloc + 'static,
-	Errors: ErrorLog,
-	Clock: crate::time::Clock + 'static,
-{
-	type A = Allocator;
-	fn allocator(&self) -> &TrackingAllocator<Self::A> {
-		self.allocator
-	}
-}
-
-impl<Flash, SerialRx, SerialTx, const VIRTUAL_KEY_BITFIELD_BYTES: usize, Allocator, Errors, Clock>
-	ContextReboot
-	for Context<Flash, SerialRx, SerialTx, VIRTUAL_KEY_BITFIELD_BYTES, Allocator, Errors, Clock>
-where
-	Flash: BlockFlash,
-	SerialRx: ReadAsync,
-	SerialTx: WriteAsync,
-	Allocator: GlobalAlloc + 'static,
-	Errors: ErrorLog,
-	Clock: crate::time::Clock + 'static,
-{
-	fn reboot(&mut self) -> ! {
-		self.reboot.reboot()
-	}
-
-	fn reboot_to_bootloader(&mut self) -> ! {
-		self.bootloader.reboot_to_bootloader()
-	}
-}
-
-impl<Flash, SerialRx, SerialTx, const VIRTUAL_KEY_BITFIELD_BYTES: usize, Allocator, Errors, Clock>
-	ContextErrorLog
-	for Context<Flash, SerialRx, SerialTx, VIRTUAL_KEY_BITFIELD_BYTES, Allocator, Errors, Clock>
-where
-	Flash: BlockFlash,
-	SerialRx: ReadAsync,
-	SerialTx: WriteAsync,
-	Allocator: GlobalAlloc + 'static,
-	Errors: ErrorLog,
-	Clock: crate::time::Clock + 'static,
-{
-	type Errors = Errors;
-	fn errors(&mut self) -> &mut Self::Errors {
-		&mut self.errors
-	}
-}
-
-impl<Flash, SerialRx, SerialTx, const VIRTUAL_KEY_BITFIELD_BYTES: usize, Allocator, Errors, Clock>
-	ContextClock
-	for Context<Flash, SerialRx, SerialTx, VIRTUAL_KEY_BITFIELD_BYTES, Allocator, Errors, Clock>
-where
-	Flash: BlockFlash,
-	SerialRx: ReadAsync,
-	SerialTx: WriteAsync,
-	Allocator: GlobalAlloc + 'static,
-	Errors: ErrorLog,
-	Clock: crate::time::Clock + 'static,
-{
-	fn clock(&self) -> &impl crate::time::Clock {
-		self.clock
-	}
-}
-
 // Signal traits for inter-task communication
 
 pub trait UpdateProfileSignalTx {
@@ -393,4 +104,217 @@ pub trait Reboot {
 
 pub trait RebootToBootloader {
 	fn reboot_to_bootloader(&self) -> !;
+}
+
+pub struct FlashStore<F: BlockFlash> {
+	pub flash: F,
+	pub settings_partition: FlashPartition<F>,
+	pub profile_partition: FlashPartition<F>,
+}
+
+impl<F: BlockFlash> FlashStore<F> {
+	pub fn new(
+		flash: F,
+		settings_partition: FlashPartition<F>,
+		profile_partition: FlashPartition<F>,
+	) -> Self {
+		Self {
+			flash,
+			settings_partition,
+			profile_partition,
+		}
+	}
+}
+
+impl<F: BlockFlash> ContextSettingsFlash for FlashStore<F> {
+	type Flash = F;
+	fn settings_flash(&mut self) -> PartitionedFlashMemory<F> {
+		self.flash.partition(&self.settings_partition)
+	}
+}
+
+impl<F: BlockFlash> ContextProfileFlash for FlashStore<F> {
+	type Flash = F;
+	fn profile_flash(&mut self) -> PartitionedFlashMemory<F> {
+		self.flash.partition(&self.profile_partition)
+	}
+}
+
+/// Bundles the reboot and reboot-to-bootloader handlers behind a single
+/// `ContextReboot` impl.
+pub struct RebootControl {
+	pub reboot: &'static mut dyn Reboot,
+	pub bootloader: &'static dyn RebootToBootloader,
+}
+
+impl RebootControl {
+	pub fn new(
+		reboot: &'static mut dyn Reboot,
+		bootloader: &'static dyn RebootToBootloader,
+	) -> Self {
+		Self { reboot, bootloader }
+	}
+}
+
+impl ContextReboot for RebootControl {
+	fn reboot(&mut self) -> ! {
+		self.reboot.reboot()
+	}
+	fn reboot_to_bootloader(&mut self) -> ! {
+		self.bootloader.reboot_to_bootloader()
+	}
+}
+
+// Declarative macros that emit boilerplate trait impls on a device's context
+// struct, delegating to one of its fields. Each macro is opt-in; a device can
+// always hand-write the impl when it needs custom behavior.
+
+#[macro_export]
+macro_rules! impl_context_device_info {
+	($ty:ty, $field:ident) => {
+		impl $crate::context::ContextDeviceInfo for $ty {
+			fn device_info(&self) -> &'static $crate::device::DeviceInfo {
+				self.$field
+			}
+		}
+	};
+}
+
+#[macro_export]
+macro_rules! impl_context_serial_rx {
+	($ty:ty, $field:ident : $rx:ty) => {
+		impl $crate::context::ContextSerialRx for $ty {
+			type SerialRx = $rx;
+			fn serial_rx(&mut self) -> &mut Self::SerialRx {
+				&mut self.$field
+			}
+		}
+	};
+}
+
+#[macro_export]
+macro_rules! impl_context_serial_tx {
+	($ty:ty, $field:ident : $tx:ty) => {
+		impl $crate::context::ContextSerialTx for $ty {
+			type SerialTx = $tx;
+			fn serial_tx(&mut self) -> &mut Self::SerialTx {
+				&mut self.$field
+			}
+		}
+	};
+}
+
+#[macro_export]
+macro_rules! impl_context_settings_flash {
+	($ty:ty, $field:ident : $flash:ty) => {
+		impl $crate::context::ContextSettingsFlash for $ty {
+			type Flash = $flash;
+			fn settings_flash(
+				&mut self,
+			) -> $crate::storage::PartitionedFlashMemory<'_, $flash> {
+				$crate::context::ContextSettingsFlash::settings_flash(&mut self.$field)
+			}
+		}
+	};
+}
+
+#[macro_export]
+macro_rules! impl_context_profile_flash {
+	($ty:ty, $field:ident : $flash:ty) => {
+		impl $crate::context::ContextProfileFlash for $ty {
+			type Flash = $flash;
+			fn profile_flash(
+				&mut self,
+			) -> $crate::storage::PartitionedFlashMemory<'_, $flash> {
+				$crate::context::ContextProfileFlash::profile_flash(&mut self.$field)
+			}
+		}
+	};
+}
+
+#[macro_export]
+macro_rules! impl_context_update_profile {
+	($ty:ty, $field:ident) => {
+		impl $crate::context::ContextUpdateProfile for $ty {
+			type UpdateProfileSignal = dyn $crate::context::UpdateProfileSignalTx;
+			fn profile_signal(&mut self) -> &Self::UpdateProfileSignal {
+				self.$field
+			}
+		}
+	};
+}
+
+#[macro_export]
+macro_rules! impl_context_tags {
+	($ty:ty, $field:ident) => {
+		impl $crate::context::ContextTags for $ty {
+			fn set_external_tags(
+				&mut self,
+				tags: ::alloc::vec::Vec<$crate::profile::LayerTag>,
+			) {
+				$crate::context::ExternalTagsSignalTx::set_external_tags(self.$field, tags);
+			}
+		}
+	};
+}
+
+#[macro_export]
+macro_rules! impl_context_virtual_keys {
+	($ty:ty, $field:ident, $n:expr) => {
+		#[::async_trait::async_trait(?Send)]
+		impl $crate::context::ContextVirtualKeys<$n> for $ty {
+			async fn set_virtual_keys(&mut self, state: [u8; $n]) {
+				$crate::context::VirtualKeySignalTx::set_virtual_keys(self.$field, state).await;
+			}
+		}
+	};
+}
+
+#[macro_export]
+macro_rules! impl_context_allocator {
+	($ty:ty, $field:ident : $alloc:ty) => {
+		impl $crate::context::ContextAllocator for $ty {
+			type A = $alloc;
+			fn allocator(&self) -> &$crate::TrackingAllocator<Self::A> {
+				self.$field
+			}
+		}
+	};
+}
+
+#[macro_export]
+macro_rules! impl_context_reboot {
+	($ty:ty, $field:ident) => {
+		impl $crate::context::ContextReboot for $ty {
+			fn reboot(&mut self) -> ! {
+				$crate::context::ContextReboot::reboot(&mut self.$field)
+			}
+			fn reboot_to_bootloader(&mut self) -> ! {
+				$crate::context::ContextReboot::reboot_to_bootloader(&mut self.$field)
+			}
+		}
+	};
+}
+
+#[macro_export]
+macro_rules! impl_context_error_log {
+	($ty:ty, $field:ident : $errors:ty) => {
+		impl $crate::context::ContextErrorLog for $ty {
+			type Errors = $errors;
+			fn errors(&mut self) -> &mut Self::Errors {
+				&mut self.$field
+			}
+		}
+	};
+}
+
+#[macro_export]
+macro_rules! impl_context_clock {
+	($ty:ty, $field:ident) => {
+		impl $crate::context::ContextClock for $ty {
+			fn clock(&self) -> &impl $crate::time::Clock {
+				self.$field
+			}
+		}
+	};
 }

@@ -30,11 +30,18 @@ use cardboard_lib::{
 		RebootCommand, SetExternalTagsCommand, SetVirtualKeysCommand, UpdateProfileCommand,
 		UpdateSettingsCommand,
 	},
-	context::Context,
+	context::{
+		ExternalTagsSignalTx, FlashStore, RebootControl, UpdateProfileSignalTx,
+		VirtualKeySignalTx,
+	},
 	device::{DeviceInfo, DeviceTypeId, DeviceVersion},
 	embassy::{EmbassyFlashMemory, EmbassyKeypadHid, EmbassyTickClock},
 	error::HeaplessSpscErrorLog,
 	hid::{HidDevice, HidReport},
+	impl_context_allocator, impl_context_clock, impl_context_device_info,
+	impl_context_error_log, impl_context_profile_flash, impl_context_reboot,
+	impl_context_serial_rx, impl_context_serial_tx, impl_context_settings_flash,
+	impl_context_tags, impl_context_update_profile, impl_context_virtual_keys,
 	input::{ColPin, KeyId, KeyMatrix, RowPin},
 	profile::{KeyboardProfile, LayerTag},
 	serial::BufferedReader,
@@ -106,15 +113,32 @@ type ContextSerialReader =
 	BufferedReader<EmbassySerialPacketReader<'static, USB_SERIAL_PACKET_SIZE>>;
 type ContextSerialWriter = EmbassySerialPacketWriter<'static, USB_SERIAL_PACKET_SIZE>;
 
-type CommandContext = Context<
-	ContextFlashMemory,
-	ContextSerialReader,
-	ContextSerialWriter,
-	VIRTUAL_KEY_BITFIELD_SIZE,
-	Heap,
-	HeaplessSpscErrorLog<32>,
-	EmbassyTickClock,
->;
+pub struct Ck130Context {
+	device_info: &'static DeviceInfo,
+	flash: FlashStore<ContextFlashMemory>,
+	serial_rx: ContextSerialReader,
+	serial_tx: ContextSerialWriter,
+	update_profile_signal: &'static dyn UpdateProfileSignalTx,
+	external_tags_signal: &'static dyn ExternalTagsSignalTx,
+	virtual_keys_signal: &'static dyn VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_SIZE>,
+	allocator: &'static TrackingAllocator<Heap>,
+	reboot: RebootControl,
+	errors: HeaplessSpscErrorLog<32>,
+	clock: &'static EmbassyTickClock,
+}
+
+impl_context_device_info!(Ck130Context, device_info);
+impl_context_serial_rx!(Ck130Context, serial_rx: ContextSerialReader);
+impl_context_serial_tx!(Ck130Context, serial_tx: ContextSerialWriter);
+impl_context_settings_flash!(Ck130Context, flash: ContextFlashMemory);
+impl_context_profile_flash!(Ck130Context, flash: ContextFlashMemory);
+impl_context_update_profile!(Ck130Context, update_profile_signal);
+impl_context_tags!(Ck130Context, external_tags_signal);
+impl_context_virtual_keys!(Ck130Context, virtual_keys_signal, VIRTUAL_KEY_BITFIELD_SIZE);
+impl_context_allocator!(Ck130Context, allocator: Heap);
+impl_context_reboot!(Ck130Context, reboot);
+impl_context_error_log!(Ck130Context, errors: HeaplessSpscErrorLog<32>);
+impl_context_clock!(Ck130Context, clock);
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) -> () {
@@ -122,7 +146,7 @@ async fn main(spawner: Spawner) -> () {
 
 	let p = embassy_rp::init(Default::default());
 
-	let cmds: Vec<Box<dyn Command<CommandContext>>> = vec![
+	let cmds: Vec<Box<dyn Command<Ck130Context>>> = vec![
 		// identify MUST be first
 		/* 0x00 */ Box::new(IdentifyCommand {}),
 		/* 0x01 */ Box::new(UpdateProfileCommand {}),
@@ -306,22 +330,19 @@ async fn main(spawner: Spawner) -> () {
 
 	let error_log = HeaplessSpscErrorLog::new();
 
-	let ctx = CommandContext::new(
+	let ctx = Ck130Context {
 		device_info,
-		flash,
-		settings_partition,
-		profile_partition,
-		&PROFILE_CHANGED_SIGNAL,
+		flash: FlashStore::new(flash, settings_partition, profile_partition),
 		serial_rx,
 		serial_tx,
-		&EXTERNAL_TAGS_CHANGED_SIGNAL,
-		&VIRTUAL_KEY_CHANNEL,
-		&ALLOCATOR,
-		reboot,
-		bootloader,
-		error_log,
+		update_profile_signal: &PROFILE_CHANGED_SIGNAL,
+		external_tags_signal: &EXTERNAL_TAGS_CHANGED_SIGNAL,
+		virtual_keys_signal: &VIRTUAL_KEY_CHANNEL,
+		allocator: &ALLOCATOR,
+		reboot: RebootControl::new(reboot, bootloader),
+		errors: error_log,
 		clock,
-	);
+	};
 
 	spawner.spawn(usb_task(usb_device)).unwrap();
 
@@ -376,8 +397,8 @@ async fn keypad_task(
 #[embassy_executor::task]
 async fn cmd_task(
 	clock: &'static EmbassyTickClock,
-	cmds: Vec<Box<dyn Command<CommandContext>>>,
-	ctx: CommandContext,
+	cmds: Vec<Box<dyn Command<Ck130Context>>>,
+	ctx: Ck130Context,
 	timeout: Duration,
 ) {
 	cardboard_lib::tasks::cmd_task(clock, cmds, ctx, timeout).await;
