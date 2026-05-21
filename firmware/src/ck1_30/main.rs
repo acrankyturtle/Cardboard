@@ -1,28 +1,24 @@
+//! CK1-30 firmware entry point
+//!
+//! Build with:
+//!   cargo build --release --bin ck1_30                         # default (no variant)
+//!   cargo build --release --bin ck1_30 --features variant-blk  # BLK variant
+//!   cargo build --release --bin ck1_30 --features variant-wht  # WHT variant
+
 #![no_std]
 #![no_main]
 #![feature(type_alias_impl_trait)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(generic_const_exprs)]
 
-mod config;
-
 extern crate alloc;
 extern crate cortex_m;
-extern crate usbd_human_interface_device;
 
-use alloc::vec;
-use core::mem::MaybeUninit;
-use embedded_alloc::LlffHeap;
-
-use alloc::{boxed::Box, vec::Vec};
+use alloc::{boxed::Box, vec, vec::Vec};
 use cardboard::{
-	get_serial_number,
-	rp2040::{
-		bootloader::{EmbassyRp2040Reboot, EmbassyRp2040RebootToBootloader},
-		flash::{init_flash, FLASH_SIZE},
-		usb::{init_usb, init_usb_no_mouse, usb_task, USB_SERIAL_PACKET_SIZE},
-	},
-	StaticCell,
+	device_statics,
+	rp2040::{boot, millis, BootInput, DeviceConfig, FlashLayout, SerialTimeouts},
+	spawn_standard_tasks,
 };
 use cardboard_lib::{
 	command::{
@@ -31,87 +27,126 @@ use cardboard_lib::{
 		UpdateSettingsCommand,
 	},
 	context::{
-		ExternalTagsSignalTx, FlashStore, RebootControl, UpdateProfileSignalTx,
-		VirtualKeySignalTx,
+		ExternalTagsSignalTx, FlashStore, RebootControl, UpdateProfileSignalTx, VirtualKeySignalTx,
 	},
-	device::{DeviceInfo, DeviceTypeId, DeviceVersion},
-	embassy::{EmbassyFlashMemory, EmbassyKeypadHid, EmbassyTickClock},
+	device::{DeviceInfo, DeviceVariant},
+	embassy::EmbassyTickClock,
 	error::HeaplessSpscErrorLog,
-	hid::{HidDevice, HidReport},
-	impl_context_allocator, impl_context_clock, impl_context_device_info,
-	impl_context_error_log, impl_context_profile_flash, impl_context_reboot,
-	impl_context_serial_rx, impl_context_serial_tx, impl_context_settings_flash,
-	impl_context_tags, impl_context_update_profile, impl_context_virtual_keys,
-	input::{ColPin, KeyId, KeyMatrix, RowPin},
-	profile::{KeyboardProfile, LayerTag},
+	hid::{ConsumerControl, Mouse, NKROKeyboard},
+	impl_context_allocator, impl_context_clock, impl_context_device_info, impl_context_error_log,
+	impl_context_profile_flash, impl_context_reboot, impl_context_serial_rx,
+	impl_context_serial_tx, impl_context_settings_flash, impl_context_tags,
+	impl_context_update_profile, impl_context_virtual_keys,
+	input::{ColPin, KeyId, RowPin},
 	serial::BufferedReader,
-	settings::{SettingsData, VersionedSettings},
-	storage::{load_profile_from_flash, load_settings_from_flash, BlockFlashExt, FlashPartition},
+	settings::SettingsData,
 	stream::{ReadAsync, ReadAsyncExt, WriteAsync, WriteAsyncExt},
 	TrackingAllocator,
 };
-use cardboard_lib::{
-	embassy::{EmbassySerialPacketReader, EmbassySerialPacketWriter},
-	time::Duration,
-};
 use embassy_executor::Spawner;
-use embassy_rp::{
-	gpio::{Input, Level, Output, Pin, Pull},
-	peripherals::USB,
-	usb::Driver,
-	watchdog::Watchdog,
-};
-use embassy_usb::class::hid::HidWriter;
-use fugit::ExtU64;
-use uuid::Uuid;
+use embassy_rp::gpio::{Input, Level, Output, Pin, Pull};
+use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
+use uuid::uuid;
 
-use {defmt::*, defmt_rtt as _, panic_probe as _};
-
-const HEAP_SIZE: usize = 96 * 1024; // 96 KB
-static mut HEAP: [u8; HEAP_SIZE] = [0; HEAP_SIZE];
-pub type Heap = LlffHeap;
-
-#[global_allocator]
-static ALLOCATOR: TrackingAllocator<Heap> = TrackingAllocator::new(Heap::empty(), HEAP_SIZE);
+use {defmt_rtt as _, panic_probe as _};
 
 const ROWS: usize = 5;
 const COLS: usize = 6;
+const VKB: usize = 4;
+const FLASH_DATA_SIZE: usize = 500 * 1024;
+const SETTINGS_SIZE: usize = 4 * 1024;
 
-const VIRTUAL_KEY_BITFIELD_SIZE: usize = 4; // 32 bits
+device_statics! {
+	rows: ROWS,
+	cols: COLS,
+	virtual_key_bitfield: VKB,
+	heap_size: 96 * 1024,
+	flash_data_size: FLASH_DATA_SIZE,
+	settings: Ck130Settings,
+	keyboard: NKROKeyboard,
+	mouse: Mouse,
+	consumer: ConsumerControl,
+	mutex: ThreadModeRawMutex,
+	context: Ck130Context,
+}
 
-// profile flash storage
-#[link_section = ".profile"]
-static mut FLASH_DATA: MaybeUninit<[u8; FLASH_DATA_SIZE]> = MaybeUninit::uninit();
-const FLASH_DATA_SIZE: usize = 500 * 1024; // 500 KB
-const SETTINGS_SIZE: usize = 4 * 1024; // 4 KB
-const PROFILE_SIZE: usize = FLASH_DATA_SIZE - SETTINGS_SIZE;
+const CK130_CONFIG: DeviceConfig<Ck130Settings, ROWS, COLS> = DeviceConfig {
+	device_type: uuid!("0407db48-ca74-5783-9b11-489637b7c615"),
+	manufacturer: "cranky",
+	model: model(),
+	variant: variant(),
+	key_ids: [
+		KeyId::new(uuid!("0661ee85-348b-5d93-b5e2-ac11cfa5344b")),
+		KeyId::new(uuid!("87c4fd79-143b-576b-afa2-bea59e4cd02c")),
+		KeyId::new(uuid!("1d652794-96a4-5c59-9948-afd441289317")),
+		KeyId::new(uuid!("de57737c-e6c1-5818-bf94-d126ff5304a3")),
+		KeyId::new(uuid!("85c20588-8148-5785-9e9f-44976e8dfef8")),
+		KeyId::new(uuid!("b6ee974a-b405-5367-8c9f-e70a75045c37")),
+		KeyId::new(uuid!("8a1052be-8165-5976-849b-511ce92f9956")),
+		KeyId::new(uuid!("91206d06-70d4-5b75-9fdf-aad7f367fff5")),
+		KeyId::new(uuid!("7abd3edf-f94c-522e-b2be-06a88bdb1cc9")),
+		KeyId::new(uuid!("a32da69a-7f91-5f5a-87d2-dd5e4776b1c4")),
+		KeyId::new(uuid!("3a801a21-1ef7-5803-bf42-ecd1e8444656")),
+		KeyId::new(uuid!("c54ec31f-2381-5636-b0a5-edd448294b88")),
+		KeyId::new(uuid!("16ad3daf-bd00-5168-885a-74008ce8de35")),
+		KeyId::new(uuid!("da390fc5-5361-5af9-9398-d3823b81ecba")),
+		KeyId::new(uuid!("1a549b65-43d5-5068-a3f5-59429946e404")),
+		KeyId::new(uuid!("ec06b9a0-0713-5db1-862c-20fafd2b0764")),
+		KeyId::new(uuid!("cbfef260-a498-599f-a6c0-8a6a51002b76")),
+		KeyId::new(uuid!("852caff2-9ef9-59a3-ae41-e5eec3fa0d21")),
+		KeyId::new(uuid!("96148043-9890-5767-a464-1b12f126da14")),
+		KeyId::new(uuid!("7a30b4b5-f6b1-5aae-8cf5-f28bca7c1c13")),
+		KeyId::new(uuid!("ab6039e8-38dc-5f91-b15c-6678def87cea")),
+		KeyId::new(uuid!("0ef29fa7-07fb-5495-bb6f-33d164eda994")),
+		KeyId::new(uuid!("e18caa6c-d922-558e-b146-0262173a28bd")),
+		KeyId::new(uuid!("7b3285ea-4be6-5eae-9125-cec547fa3fb1")),
+		KeyId::new(uuid!("4ade2cba-18d3-5fd0-a6d4-ba928bb47009")),
+		KeyId::new(uuid!("474d0b39-6165-58e0-9745-2ca79493a9e8")),
+		KeyId::new(uuid!("67fbbc39-8540-571c-a8e7-0a8bffbdc4c0")),
+		KeyId::new(uuid!("00a68179-7585-5f08-89fd-c63464760575")),
+		KeyId::new(uuid!("7b743c81-7260-5ae3-8c7e-fc451751a2c7")),
+		KeyId::new(uuid!("15c56a3d-0f31-5ebd-bcf1-63aa968be49a")),
+	],
+	bootloader_key_index: Some(0),
+	mouse_enabled: |s| s.mouse_enabled,
+	debounce_time: |s| cardboard_lib::time::Duration::from_ticks(s.debounce_time_us as u64),
+	tick_interval: millis(1),
+	serial: SerialTimeouts::DEFAULTS,
+	flash: FlashLayout {
+		data_size: FLASH_DATA_SIZE,
+		settings_size: SETTINGS_SIZE,
+	},
+};
 
-// settings
-type Settings = VersionedSettings<Ck130Settings>;
+const fn variant() -> Option<DeviceVariant> {
+	#[cfg(feature = "variant-blk")]
+	{
+		Some(DeviceVariant::new("BLK"))
+	}
+	#[cfg(feature = "variant-wht")]
+	{
+		Some(DeviceVariant::new("WHT"))
+	}
+	#[cfg(not(any(feature = "variant-blk", feature = "variant-wht")))]
+	{
+		None
+	}
+}
 
-// hid
-type KeyboardImpl = cardboard_lib::hid::NKROKeyboard;
-type MouseImpl = cardboard_lib::hid::Mouse;
-type ConsumerImpl = cardboard_lib::hid::ConsumerControl;
-
-type Mutex = embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
-type Signal<T> = embassy_sync::signal::Signal<Mutex, T>;
-type VirtualKeyChannel =
-	embassy_sync::channel::Channel<Mutex, [u8; VIRTUAL_KEY_BITFIELD_SIZE], VIRTUAL_KEY_CHANNEL_CAP>;
-const VIRTUAL_KEY_CHANNEL_CAP: usize = 8;
-static HID_SIGNAL: Signal<
-	HidReport<{ KeyboardImpl::SIZE }, { MouseImpl::SIZE }, { ConsumerImpl::SIZE }>,
-> = Signal::new();
-static PROFILE_CHANGED_SIGNAL: Signal<KeyboardProfile> = Signal::new();
-static EXTERNAL_TAGS_CHANGED_SIGNAL: Signal<Vec<LayerTag>> = Signal::new();
-static VIRTUAL_KEY_CHANNEL: VirtualKeyChannel = embassy_sync::channel::Channel::new();
-
-type Matrix = KeyMatrix<ROWS, COLS>;
-
-type ContextFlashMemory = EmbassyFlashMemory<'static, FLASH_SIZE>;
-type ContextSerialReader =
-	BufferedReader<EmbassySerialPacketReader<'static, USB_SERIAL_PACKET_SIZE>>;
-type ContextSerialWriter = EmbassySerialPacketWriter<'static, USB_SERIAL_PACKET_SIZE>;
+const fn model() -> &'static str {
+	#[cfg(feature = "variant-blk")]
+	{
+		"CK1-30 BLK"
+	}
+	#[cfg(feature = "variant-wht")]
+	{
+		"CK1-30 WHT"
+	}
+	#[cfg(not(any(feature = "variant-blk", feature = "variant-wht")))]
+	{
+		"CK1-30"
+	}
+}
 
 pub struct Ck130Context {
 	device_info: &'static DeviceInfo,
@@ -120,7 +155,7 @@ pub struct Ck130Context {
 	serial_tx: ContextSerialWriter,
 	update_profile_signal: &'static dyn UpdateProfileSignalTx,
 	external_tags_signal: &'static dyn ExternalTagsSignalTx,
-	virtual_keys_signal: &'static dyn VirtualKeySignalTx<VIRTUAL_KEY_BITFIELD_SIZE>,
+	virtual_keys_signal: &'static dyn VirtualKeySignalTx<VKB>,
 	allocator: &'static TrackingAllocator<Heap>,
 	reboot: RebootControl,
 	errors: HeaplessSpscErrorLog<32>,
@@ -134,7 +169,7 @@ impl_context_settings_flash!(Ck130Context, flash: ContextFlashMemory);
 impl_context_profile_flash!(Ck130Context, flash: ContextFlashMemory);
 impl_context_update_profile!(Ck130Context, update_profile_signal);
 impl_context_tags!(Ck130Context, external_tags_signal);
-impl_context_virtual_keys!(Ck130Context, virtual_keys_signal, VIRTUAL_KEY_BITFIELD_SIZE);
+impl_context_virtual_keys!(Ck130Context, virtual_keys_signal, VKB);
 impl_context_allocator!(Ck130Context, allocator: Heap);
 impl_context_reboot!(Ck130Context, reboot);
 impl_context_error_log!(Ck130Context, errors: HeaplessSpscErrorLog<32>);
@@ -142,8 +177,7 @@ impl_context_clock!(Ck130Context, clock);
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) -> () {
-	unsafe { ALLOCATOR.inner.init(HEAP.as_ptr() as usize, HEAP_SIZE) };
-
+	init_heap();
 	let p = embassy_rp::init(Default::default());
 
 	let cmds: Vec<Box<dyn Command<Ck130Context>>> = vec![
@@ -154,8 +188,9 @@ async fn main(spawner: Spawner) -> () {
 		/* 0x03 */ Box::new(SetExternalTagsCommand {}),
 		/* 0x04 */ Box::new(RebootCommand {}),
 		/* 0x05 */ Box::new(GetStatusCommand {}),
-		/* 0x06 */ Box::new(SetVirtualKeysCommand::<VIRTUAL_KEY_BITFIELD_SIZE> {}),
-		/* 0x07 */ Box::new(UpdateSettingsCommand::<Settings, _>::new(|old, new| {
+		/* 0x06 */ Box::new(SetVirtualKeysCommand::<VKB> {}),
+		/* 0x07 */
+		Box::new(UpdateSettingsCommand::<Settings, _>::new(|old, new| {
 			// reboot if mouse_enabled changed (requires USB re-enumeration)
 			// reboot if debounce_time_us changed (KeyMatrix is constructed at boot)
 			old.inner.mouse_enabled != new.inner.mouse_enabled
@@ -164,269 +199,61 @@ async fn main(spawner: Spawner) -> () {
 		/* 0x08 */ Box::new(GetSettingsCommand {}),
 	];
 
-	let key_ids: [KeyId; ROWS * COLS] = [
-		KeyId::new(Uuid::parse_str("0661ee85-348b-5d93-b5e2-ac11cfa5344b").unwrap()),
-		KeyId::new(Uuid::parse_str("87c4fd79-143b-576b-afa2-bea59e4cd02c").unwrap()),
-		KeyId::new(Uuid::parse_str("1d652794-96a4-5c59-9948-afd441289317").unwrap()),
-		KeyId::new(Uuid::parse_str("de57737c-e6c1-5818-bf94-d126ff5304a3").unwrap()),
-		KeyId::new(Uuid::parse_str("85c20588-8148-5785-9e9f-44976e8dfef8").unwrap()),
-		KeyId::new(Uuid::parse_str("b6ee974a-b405-5367-8c9f-e70a75045c37").unwrap()),
-		KeyId::new(Uuid::parse_str("8a1052be-8165-5976-849b-511ce92f9956").unwrap()),
-		KeyId::new(Uuid::parse_str("91206d06-70d4-5b75-9fdf-aad7f367fff5").unwrap()),
-		KeyId::new(Uuid::parse_str("7abd3edf-f94c-522e-b2be-06a88bdb1cc9").unwrap()),
-		KeyId::new(Uuid::parse_str("a32da69a-7f91-5f5a-87d2-dd5e4776b1c4").unwrap()),
-		KeyId::new(Uuid::parse_str("3a801a21-1ef7-5803-bf42-ecd1e8444656").unwrap()),
-		KeyId::new(Uuid::parse_str("c54ec31f-2381-5636-b0a5-edd448294b88").unwrap()),
-		KeyId::new(Uuid::parse_str("16ad3daf-bd00-5168-885a-74008ce8de35").unwrap()),
-		KeyId::new(Uuid::parse_str("da390fc5-5361-5af9-9398-d3823b81ecba").unwrap()),
-		KeyId::new(Uuid::parse_str("1a549b65-43d5-5068-a3f5-59429946e404").unwrap()),
-		KeyId::new(Uuid::parse_str("ec06b9a0-0713-5db1-862c-20fafd2b0764").unwrap()),
-		KeyId::new(Uuid::parse_str("cbfef260-a498-599f-a6c0-8a6a51002b76").unwrap()),
-		KeyId::new(Uuid::parse_str("852caff2-9ef9-59a3-ae41-e5eec3fa0d21").unwrap()),
-		KeyId::new(Uuid::parse_str("96148043-9890-5767-a464-1b12f126da14").unwrap()),
-		KeyId::new(Uuid::parse_str("7a30b4b5-f6b1-5aae-8cf5-f28bca7c1c13").unwrap()),
-		KeyId::new(Uuid::parse_str("ab6039e8-38dc-5f91-b15c-6678def87cea").unwrap()),
-		KeyId::new(Uuid::parse_str("0ef29fa7-07fb-5495-bb6f-33d164eda994").unwrap()),
-		KeyId::new(Uuid::parse_str("e18caa6c-d922-558e-b146-0262173a28bd").unwrap()),
-		KeyId::new(Uuid::parse_str("7b3285ea-4be6-5eae-9125-cec547fa3fb1").unwrap()),
-		KeyId::new(Uuid::parse_str("4ade2cba-18d3-5fd0-a6d4-ba928bb47009").unwrap()),
-		KeyId::new(Uuid::parse_str("474d0b39-6165-58e0-9745-2ca79493a9e8").unwrap()),
-		KeyId::new(Uuid::parse_str("67fbbc39-8540-571c-a8e7-0a8bffbdc4c0").unwrap()),
-		KeyId::new(Uuid::parse_str("00a68179-7585-5f08-89fd-c63464760575").unwrap()),
-		KeyId::new(Uuid::parse_str("7b743c81-7260-5ae3-8c7e-fc451751a2c7").unwrap()),
-		KeyId::new(Uuid::parse_str("15c56a3d-0f31-5ebd-bcf1-63aa968be49a").unwrap()),
-	];
+	let command_info = cmds.iter().map(|c| c.info()).collect();
 
-	let flash =
-		init_flash::<FLASH_DATA_SIZE>(unsafe { FLASH_DATA.as_ptr() }, p.FLASH, p.DMA_CH0).await;
-
-	let device_id = flash.device_id;
-	let mut flash = flash.flash;
-
-	let settings_partition = FlashPartition::new(0, SETTINGS_SIZE);
-	let profile_partition = FlashPartition::new(SETTINGS_SIZE, PROFILE_SIZE);
-
-	let settings: Settings = load_settings_from_flash(&mut flash.partition(&settings_partition))
-		.await
-		.unwrap_or_default();
-
-	static DEVICE_INFO: StaticCell<DeviceInfo> = StaticCell::new();
-	let device_info = DEVICE_INFO.init(DeviceInfo {
-		id: device_id,
-		manufacturer: "cranky",
-		r#type: DeviceTypeId::new(Uuid::from_u128(0x0407db48_ca74_5783_9b11_489637b7c615)),
-		variant: config::VARIANT,
-		version: DeviceVersion::new(
-			env!("CARGO_PKG_VERSION_MAJOR").parse().unwrap_or(0),
-			env!("CARGO_PKG_VERSION_MINOR").parse().unwrap_or(0),
-			env!("CARGO_PKG_VERSION_PATCH").parse().unwrap_or(0),
-		),
-		commands: cmds.iter().map(|cmd| cmd.info()).collect(),
-	});
-
-	static CLOCK: StaticCell<EmbassyTickClock> = StaticCell::new();
-	let clock = CLOCK.init(EmbassyTickClock {});
-
-	let tick_interval = 1.millis();
-
-	let bootloader_key = key_ids[0];
-
-	let rows: [Box<dyn RowPin>; ROWS] = [
-		p.PIN_28.degrade(),
-		p.PIN_27.degrade(),
-		p.PIN_26.degrade(),
-		p.PIN_22.degrade(),
-		p.PIN_21.degrade(),
-	]
-	.map(|pin| Box::new(Output::new(pin, Level::Low)) as Box<dyn RowPin>);
-
-	let cols: [Box<dyn ColPin>; COLS] = [
-		p.PIN_16.degrade(),
-		p.PIN_17.degrade(),
-		p.PIN_9.degrade(),
-		p.PIN_18.degrade(),
-		p.PIN_19.degrade(),
-		p.PIN_20.degrade(),
-	]
-	.map(|pin| Box::new(Input::new(pin, Pull::Down)) as Box<dyn ColPin>);
-
-	let debounce_time = Duration::from_ticks(settings.inner.debounce_time_us as u64);
-	let matrix = KeyMatrix::new(key_ids, rows, cols, debounce_time);
-
-	let profile = match load_profile_from_flash(&mut flash.partition(&profile_partition)).await {
-		Ok(profile) => {
-			info!("Profile loaded from flash storage");
-			profile
-		}
-		Err(err) => {
-			warn!("Failed to load profile from flash storage. Falling back to empty profile. Error: {}", err);
-			KeyboardProfile::default()
-		}
-	};
-
-	let hid = EmbassyKeypadHid {
-		keyboard: KeyboardImpl::new(),
-		mouse: MouseImpl::new(),
-		consumer: ConsumerImpl::new(),
-		signal: &HID_SIGNAL,
-	};
-
-	let watchdog = Watchdog::new(p.WATCHDOG);
-
-	static REBOOT: StaticCell<EmbassyRp2040Reboot> = StaticCell::new();
-	let reboot = REBOOT.init(EmbassyRp2040Reboot { watchdog });
-
-	static BOOTLOADER: StaticCell<EmbassyRp2040RebootToBootloader> = StaticCell::new();
-	let bootloader = BOOTLOADER.init(EmbassyRp2040RebootToBootloader {});
-
-	let serial_number = get_serial_number(&device_id);
-
-	let serial_read_timeout = 100.millis();
-	let serial_write_timeout = 1.secs();
-	let serial_reset_timeout = 1.secs();
-
-	let (serial_reader, serial_writer, usb_device) = if settings.inner.mouse_enabled {
-		let usb = init_usb::<KeyboardImpl, MouseImpl, ConsumerImpl>(
-			p.USB,
-			&device_info,
-			serial_number,
-			config::USB_MODEL,
-		);
-		spawner
-			.spawn(hid_task(
-				usb.keyboard_writer,
-				usb.mouse_writer,
-				usb.consumer_writer,
-				&HID_SIGNAL,
-			))
-			.unwrap();
-		(usb.serial_reader, usb.serial_writer, usb.device)
-	} else {
-		let usb = init_usb_no_mouse::<KeyboardImpl, ConsumerImpl>(
-			p.USB,
-			&device_info,
-			serial_number,
-			config::USB_MODEL,
-		);
-		spawner
-			.spawn(hid_task_no_mouse(
-				usb.keyboard_writer,
-				usb.consumer_writer,
-				&HID_SIGNAL,
-			))
-			.unwrap();
-		(usb.serial_reader, usb.serial_writer, usb.device)
-	};
-
-	let serial_rx = EmbassySerialPacketReader::<{ USB_SERIAL_PACKET_SIZE }>::new(
-		serial_reader,
-		serial_read_timeout,
-	);
-	let serial_rx = BufferedReader::new(serial_rx);
-	let serial_tx = EmbassySerialPacketWriter::<{ USB_SERIAL_PACKET_SIZE }>::new(
-		serial_writer,
-		serial_write_timeout,
-	);
-
-	let error_log = HeaplessSpscErrorLog::new();
+	let boot =
+		boot::<Ck130Settings, NKROKeyboard, Mouse, ConsumerControl, ROWS, COLS>(BootInput {
+			config: &CK130_CONFIG,
+			command_info,
+			flash_data_ptr: flash_data_ptr(),
+			flash: p.FLASH,
+			flash_dma: p.DMA_CH0,
+			usb: p.USB,
+			watchdog: p.WATCHDOG,
+			row_pins: [
+				p.PIN_28.degrade(),
+				p.PIN_27.degrade(),
+				p.PIN_26.degrade(),
+				p.PIN_22.degrade(),
+				p.PIN_21.degrade(),
+			]
+			.map(|pin| Box::new(Output::new(pin, Level::Low)) as Box<dyn RowPin>),
+			col_pins: [
+				p.PIN_16.degrade(),
+				p.PIN_17.degrade(),
+				p.PIN_9.degrade(),
+				p.PIN_18.degrade(),
+				p.PIN_19.degrade(),
+				p.PIN_20.degrade(),
+			]
+			.map(|pin| Box::new(Input::new(pin, Pull::Down)) as Box<dyn ColPin>),
+		})
+		.await;
 
 	let ctx = Ck130Context {
-		device_info,
-		flash: FlashStore::new(flash, settings_partition, profile_partition),
-		serial_rx,
-		serial_tx,
+		device_info: boot.device_info,
+		flash: boot.flash_store,
+		serial_rx: BufferedReader::new(boot.serial_rx),
+		serial_tx: boot.serial_tx,
 		update_profile_signal: &PROFILE_CHANGED_SIGNAL,
 		external_tags_signal: &EXTERNAL_TAGS_CHANGED_SIGNAL,
 		virtual_keys_signal: &VIRTUAL_KEY_CHANNEL,
 		allocator: &ALLOCATOR,
-		reboot: RebootControl::new(reboot, bootloader),
-		errors: error_log,
-		clock,
+		reboot: boot.reboot,
+		errors: HeaplessSpscErrorLog::new(),
+		clock: boot.clock,
 	};
 
-	spawner.spawn(usb_task(usb_device)).unwrap();
-
-	spawner
-		.spawn(keypad_task(
-			clock,
-			matrix,
-			profile,
-			hid,
-			&PROFILE_CHANGED_SIGNAL,
-			&EXTERNAL_TAGS_CHANGED_SIGNAL,
-			&VIRTUAL_KEY_CHANNEL,
-			bootloader_key,
-			bootloader,
-			tick_interval,
-		))
-		.unwrap();
-
-	spawner
-		.spawn(cmd_task(clock, cmds, ctx, serial_reset_timeout))
-		.unwrap();
+	spawn_standard_tasks!(
+		spawner: spawner,
+		config: &CK130_CONFIG,
+		boot: boot,
+		ctx: ctx,
+		cmds: cmds,
+	);
 }
 
-#[embassy_executor::task]
-async fn keypad_task(
-	clock: &'static EmbassyTickClock,
-	matrix: Matrix,
-	profile: KeyboardProfile,
-	hid: EmbassyKeypadHid<KeyboardImpl, MouseImpl, ConsumerImpl, Mutex>,
-	profile_changed: &'static Signal<KeyboardProfile>,
-	tags_changed: &'static Signal<Vec<LayerTag>>,
-	virtual_keys_changed: &'static VirtualKeyChannel,
-	bootloader_key: KeyId,
-	bootloader: &'static EmbassyRp2040RebootToBootloader,
-	interval: Duration,
-) {
-	cardboard_lib::tasks::keypad_task(
-		clock,
-		matrix,
-		profile,
-		hid,
-		profile_changed,
-		tags_changed,
-		virtual_keys_changed,
-		Some(bootloader_key),
-		bootloader,
-		interval,
-	)
-	.await
-}
-
-#[embassy_executor::task]
-async fn cmd_task(
-	clock: &'static EmbassyTickClock,
-	cmds: Vec<Box<dyn Command<Ck130Context>>>,
-	ctx: Ck130Context,
-	timeout: Duration,
-) {
-	cardboard_lib::tasks::cmd_task(clock, cmds, ctx, timeout).await;
-}
-
-#[embassy_executor::task]
-async fn hid_task(
-	keyboard: HidWriter<'static, Driver<'static, USB>, { KeyboardImpl::SIZE }>,
-	mouse: HidWriter<'static, Driver<'static, USB>, { MouseImpl::SIZE }>,
-	consumer: HidWriter<'static, Driver<'static, USB>, { ConsumerImpl::SIZE }>,
-	signal: &'static Signal<
-		HidReport<{ KeyboardImpl::SIZE }, { MouseImpl::SIZE }, { ConsumerImpl::SIZE }>,
-	>,
-) {
-	cardboard::rp2040::hid::hid_task(keyboard, mouse, consumer, signal).await;
-}
-#[embassy_executor::task]
-async fn hid_task_no_mouse(
-	keyboard: HidWriter<'static, Driver<'static, USB>, { KeyboardImpl::SIZE }>,
-	consumer: HidWriter<'static, Driver<'static, USB>, { ConsumerImpl::SIZE }>,
-	signal: &'static Signal<
-		HidReport<{ KeyboardImpl::SIZE }, { MouseImpl::SIZE }, { ConsumerImpl::SIZE }>,
-	>,
-) {
-	cardboard::rp2040::hid::hid_task_no_mouse(keyboard, consumer, signal).await;
-}
-
-struct Ck130Settings {
+pub struct Ck130Settings {
 	mouse_enabled: bool,
 	debounce_time_us: u32,
 }
