@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Cardboard.Device;
 using Cardboard.Utilities;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,7 +33,7 @@ public interface IDeviceUpdater
 	/// <summary>
 	/// Update a device that is already in bootloader mode.
 	/// </summary>
-	IAsyncEnumerable<FirmwareUpdateReport> UpdateDevice(DeviceFirmware firmware);
+	IAsyncEnumerable<FirmwareUpdateReport> UpdateDevice(ReadOnlyMemory<byte> firmware);
 }
 
 public abstract class FirmwareUpdateReport;
@@ -84,7 +85,7 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 		DeviceId deviceId,
 		DeviceFirmware firmware,
 		bool migrateData,
-		[System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default
+		[EnumeratorCancellation] CancellationToken cancellationToken = default
 	)
 	{
 		logger.LogInformation(
@@ -93,28 +94,11 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 			firmware.Version
 		);
 
-		DeviceProfile? deviceProfile = null;
-		DeviceSettings? deviceSettings = null;
-
 		await _lock.WaitAsync(cancellationToken);
 		logger.LogDebug("Acquired update lock for device {DeviceId}", deviceId);
 
 		try
 		{
-			// make sure another device isn't already in bootloader mode
-			if (PicoWatcher.FindBootloaderDrive().TryGetSuccess(out var existing))
-			{
-				logger.LogError(
-					"Another device is already in bootloader mode at {Path}",
-					existing.RootDirectory.FullName
-				);
-				yield return new FirmwareUpdateComplete
-				{
-					Result = UpdateFirmwareResult.DeviceAlreadyInBootloader,
-				};
-				yield break;
-			}
-
 			// find target device
 			var devices = await deviceService.GetDevices(cancellationToken);
 			var device = devices.FirstOrDefault(d => d.Id == deviceId);
@@ -126,6 +110,7 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 				yield break;
 			}
 
+			// validate type
 			if (firmware.DeviceType != device.Type)
 			{
 				logger.LogError(
@@ -138,6 +123,7 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 				yield break;
 			}
 
+			// validate variant
 			if (!string.Equals(firmware.Variant, device.Variant, StringComparison.OrdinalIgnoreCase))
 			{
 				logger.LogError(
@@ -153,76 +139,14 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 				yield break;
 			}
 
-			if (migrateData)
-			{
-				yield return new FirmwareUpdateProgress { Stage = FirmwareUpdateStage.Preparing };
-				logger.LogDebug("Backing up device profile and settings for migration");
-
-				// get profile
-				var getProfileResult = await deviceService.SendCommand(
-					new GetProfileCommand(),
-					new(),
-					deviceId,
-					cancellationToken
-				);
-				if (!getProfileResult.TryGetSuccess(out deviceProfile))
-				{
-					logger.LogError("Failed to get device profile for backup");
-					yield return new FirmwareUpdateComplete
-					{
-						Result = UpdateFirmwareResult.FailedToGetProfile,
-					};
-					yield break;
-				}
-
-				logger.LogDebug("Device profile backed up successfully");
-
-				// get settings
-				var getSettingsResult = await deviceService.SendCommand(
-					new GetSettingsCommand(),
-					new(),
-					deviceId,
-					cancellationToken
-				);
-				if (!getSettingsResult.TryGetSuccess(out deviceSettings))
-				{
-					logger.LogError("Failed to get device settings for backup");
-					yield return new FirmwareUpdateComplete
-					{
-						Result = UpdateFirmwareResult.FailedToGetSettings,
-					};
-					yield break;
-				}
-
-				logger.LogDebug("Device settings backed up successfully");
-			}
-
-			// Point of no return - from here on, we must complete the update regardless of cancellation
-			// to avoid leaving the device in an undefined state (e.g., stuck in bootloader mode)
-			cancellationToken.ThrowIfCancellationRequested();
-
-			// put device in bootloader mode
-			yield return new FirmwareUpdateProgress { Stage = FirmwareUpdateStage.EnteringBootloader };
-			logger.LogDebug("Sending reboot command to enter bootloader mode");
-			var bootloaderResult = await deviceService.SendCommand(
-				new RebootCommand(),
-				new() { BootloaderMode = true },
-				deviceId,
-				CancellationToken.None
-			);
-			if (!bootloaderResult.IsSuccess)
-			{
-				logger.LogError("Failed to send bootloader command");
-				yield return new FirmwareUpdateComplete
-				{
-					Result = UpdateFirmwareResult.FailedToEnterBootloader,
-				};
-				yield break;
-			}
-
-			// use explicitly non-cancelable token because we are past the point of no return
+			// perform update
 			await foreach (
-				var update in UpdateDeviceInBootloaderMode(firmware).WithCancellation(CancellationToken.None)
+				var update in PutDeviceInBootloaderAndUpdate(
+					deviceId,
+					firmware.Firmware,
+					migrateData,
+					cancellationToken
+				)
 			)
 			{
 				yield return update;
@@ -230,88 +154,6 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 				if (update is FirmwareUpdateComplete)
 					yield break;
 			}
-
-			// Wait for device to reconnect after firmware update with a timeout
-			yield return new FirmwareUpdateProgress { Stage = FirmwareUpdateStage.WaitingForReconnect };
-			const int reconnectTimeoutSeconds = 30;
-			logger.LogDebug("Waiting up to {Timeout}s for device to reconnect", reconnectTimeoutSeconds);
-
-			using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(reconnectTimeoutSeconds));
-
-			// Poll the device list directly instead of waiting for events
-			// This avoids race conditions where the device reconnects before we start listening
-			var findAfterReboot = await Polling.Poll<Unit, Unit>(
-				async () =>
-				{
-					var devices = await deviceService.GetDevices(timeoutCts.Token);
-					if (devices.Any(x => x.Id == deviceId))
-						return Result.Success(Unit.Value);
-
-					return Result.Fail(Unit.Value);
-				},
-				TimeSpan.FromMilliseconds(500),
-				timeoutCts.Token
-			);
-
-			if (!findAfterReboot.IsSuccess)
-			{
-				logger.LogError("Device {DeviceId} did not reconnect after firmware update", deviceId);
-				yield return new FirmwareUpdateComplete
-				{
-					Result = UpdateFirmwareResult.DeviceNotReconnected,
-				};
-				yield break;
-			}
-
-			logger.LogDebug("Device {DeviceId} reconnected successfully", deviceId);
-
-			if (deviceProfile is not null)
-			{
-				yield return new FirmwareUpdateProgress { Stage = FirmwareUpdateStage.Restoring };
-				logger.LogDebug("Restoring device profile and settings after update");
-
-				var restoreProfileResult = await deviceService.SendCommand(
-					new UpdateProfileCommand(),
-					deviceProfile,
-					deviceId,
-					CancellationToken.None
-				);
-				if (!restoreProfileResult.IsSuccess)
-				{
-					logger.LogError("Failed to restore device profile");
-					yield return new FirmwareUpdateComplete
-					{
-						Result = UpdateFirmwareResult.FailedToRestoreProfile,
-					};
-					yield break;
-				}
-
-				logger.LogDebug("Device profile restored successfully");
-
-				if (deviceSettings is not null)
-				{
-					var restoreSettingsResult = await deviceService.SendCommand(
-						new UpdateSettingsCommand(),
-						deviceSettings,
-						deviceId,
-						CancellationToken.None
-					);
-					if (!restoreSettingsResult.IsSuccess)
-					{
-						logger.LogError("Failed to restore device settings");
-						yield return new FirmwareUpdateComplete
-						{
-							Result = UpdateFirmwareResult.FailedToRestoreSettings,
-						};
-						yield break;
-					}
-
-					logger.LogDebug("Device settings restored successfully");
-				}
-			}
-
-			yield return new FirmwareUpdateComplete { Result = UpdateFirmwareResult.Success };
-			logger.LogInformation("Firmware update completed successfully for device {DeviceId}", deviceId);
 		}
 		finally
 		{
@@ -320,9 +162,114 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 		}
 	}
 
-	public async IAsyncEnumerable<FirmwareUpdateReport> UpdateDevice(DeviceFirmware firmware)
+	public async IAsyncEnumerable<FirmwareUpdateReport> UpdateDevice(ReadOnlyMemory<byte> firmware)
 	{
-		await foreach (var update in UpdateDeviceInBootloaderMode(firmware))
+		await _lock.WaitAsync();
+
+		try
+		{
+			await foreach (var update in UpdateDeviceInBootloaderMode(firmware))
+			{
+				yield return update;
+
+				if (update is FirmwareUpdateComplete)
+					yield break;
+			}
+
+			yield return new FirmwareUpdateComplete { Result = UpdateFirmwareResult.Success };
+		}
+		finally
+		{
+			_lock.Release();
+		}
+	}
+
+	private async IAsyncEnumerable<FirmwareUpdateReport> PutDeviceInBootloaderAndUpdate(
+		DeviceId deviceId,
+		ReadOnlyMemory<byte> firmware,
+		bool migrateData,
+		[EnumeratorCancellation] CancellationToken cancellationToken
+	)
+	{
+		DeviceProfile? deviceProfile = null;
+		DeviceSettings? deviceSettings = null;
+
+		if (migrateData)
+		{
+			yield return new FirmwareUpdateProgress { Stage = FirmwareUpdateStage.Preparing };
+			logger.LogDebug("Backing up device profile and settings for migration");
+
+			// get profile
+			var getProfileResult = await deviceService.SendCommand(
+				new GetProfileCommand(),
+				new(),
+				deviceId,
+				cancellationToken
+			);
+			if (!getProfileResult.TryGetSuccess(out deviceProfile))
+			{
+				logger.LogError("Failed to get device profile for backup");
+				yield return new FirmwareUpdateComplete { Result = UpdateFirmwareResult.FailedToGetProfile };
+				yield break;
+			}
+
+			logger.LogDebug("Device profile backed up successfully");
+
+			// get settings
+			var getSettingsResult = await deviceService.SendCommand(
+				new GetSettingsCommand(),
+				new(),
+				deviceId,
+				cancellationToken
+			);
+			if (!getSettingsResult.TryGetSuccess(out deviceSettings))
+			{
+				logger.LogError("Failed to get device settings for backup");
+				yield return new FirmwareUpdateComplete { Result = UpdateFirmwareResult.FailedToGetSettings };
+				yield break;
+			}
+
+			logger.LogDebug("Device settings backed up successfully");
+		}
+
+		// make sure another device isn't already in bootloader mode
+		if (PicoWatcher.FindBootloaderDrive().TryGetSuccess(out var existing))
+		{
+			logger.LogError(
+				"Another device is already in bootloader mode at {Path}",
+				existing.RootDirectory.FullName
+			);
+			yield return new FirmwareUpdateComplete
+			{
+				Result = UpdateFirmwareResult.DeviceAlreadyInBootloader,
+			};
+			yield break;
+		}
+
+		// point of no return -- from here on, we must complete the update regardless of cancellation
+		// to avoid leaving the device in an undefined state (e.g., stuck in bootloader mode)
+		cancellationToken.ThrowIfCancellationRequested();
+
+		// put device in bootloader mode
+		yield return new FirmwareUpdateProgress { Stage = FirmwareUpdateStage.EnteringBootloader };
+		logger.LogDebug("Sending reboot command to enter bootloader mode");
+		var bootloaderResult = await deviceService.SendCommand(
+			new RebootCommand(),
+			new() { BootloaderMode = true },
+			deviceId,
+			CancellationToken.None
+		);
+		if (!bootloaderResult.IsSuccess)
+		{
+			logger.LogError("Failed to send bootloader command");
+			yield return new FirmwareUpdateComplete { Result = UpdateFirmwareResult.FailedToEnterBootloader };
+			yield break;
+		}
+
+		// use explicitly non-cancelable token because we are past the point of no return
+		await foreach (
+			var update in UpdateDeviceInBootloaderMode(firmware).WithCancellation(CancellationToken.None)
+		)
 		{
 			yield return update;
 
@@ -330,10 +277,91 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 				yield break;
 		}
 
+		// wait for device to reconnect after firmware update with a timeout
+		yield return new FirmwareUpdateProgress { Stage = FirmwareUpdateStage.WaitingForReconnect };
+		const int reconnectTimeoutSeconds = 30;
+		logger.LogDebug("Waiting up to {Timeout}s for device to reconnect", reconnectTimeoutSeconds);
+
+		using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(reconnectTimeoutSeconds));
+
+		// poll the device list directly instead of waiting for events
+		// this avoids race conditions where the device reconnects before we start listening
+		var findAfterReboot = await Polling.Poll<Unit, Unit>(
+			async () =>
+			{
+				var devices = await deviceService.GetDevices(timeoutCts.Token);
+				if (devices.Any(x => x.Id == deviceId))
+					return Result.Success(Unit.Value);
+
+				return Result.Fail(Unit.Value);
+			},
+			TimeSpan.FromMilliseconds(500),
+			timeoutCts.Token
+		);
+
+		if (!findAfterReboot.IsSuccess)
+		{
+			logger.LogError("Device {DeviceId} did not reconnect after firmware update", deviceId);
+			yield return new FirmwareUpdateComplete { Result = UpdateFirmwareResult.DeviceNotReconnected };
+			yield break;
+		}
+
+		logger.LogDebug("Device {DeviceId} reconnected successfully", deviceId);
+
+		// restore profile
+		if (deviceProfile is not null)
+		{
+			yield return new FirmwareUpdateProgress { Stage = FirmwareUpdateStage.Restoring };
+			logger.LogDebug("Restoring device profile and settings after update");
+
+			var restoreProfileResult = await deviceService.SendCommand(
+				new UpdateProfileCommand(),
+				deviceProfile,
+				deviceId,
+				CancellationToken.None
+			);
+			if (!restoreProfileResult.IsSuccess)
+			{
+				logger.LogError("Failed to restore device profile");
+				yield return new FirmwareUpdateComplete
+				{
+					Result = UpdateFirmwareResult.FailedToRestoreProfile,
+				};
+				yield break;
+			}
+
+			logger.LogDebug("Device profile restored successfully");
+		}
+
+		// restore settings
+		if (deviceSettings is not null)
+		{
+			var restoreSettingsResult = await deviceService.SendCommand(
+				new UpdateSettingsCommand(),
+				deviceSettings,
+				deviceId,
+				CancellationToken.None
+			);
+			if (!restoreSettingsResult.IsSuccess)
+			{
+				logger.LogError("Failed to restore device settings");
+				yield return new FirmwareUpdateComplete
+				{
+					Result = UpdateFirmwareResult.FailedToRestoreSettings,
+				};
+				yield break;
+			}
+
+			logger.LogDebug("Device settings restored successfully");
+		}
+
 		yield return new FirmwareUpdateComplete { Result = UpdateFirmwareResult.Success };
+		logger.LogInformation("Firmware update completed successfully for device {DeviceId}", deviceId);
 	}
 
-	private async IAsyncEnumerable<FirmwareUpdateReport> UpdateDeviceInBootloaderMode(DeviceFirmware firmware)
+	private async IAsyncEnumerable<FirmwareUpdateReport> UpdateDeviceInBootloaderMode(
+		ReadOnlyMemory<byte> firmware
+	)
 	{
 		// wait for device to present itself as USB device
 		yield return new FirmwareUpdateProgress { Stage = FirmwareUpdateStage.WaitingForBootloader };
@@ -354,8 +382,8 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 		// copy firmware to device
 		yield return new FirmwareUpdateProgress { Stage = FirmwareUpdateStage.WritingFirmware };
 		var targetPath = Path.Combine(picoDrive.RootDirectory.FullName, "firmware.uf2");
-		logger.LogDebug("Writing {Size} bytes of firmware to {Path}", firmware.Firmware.Length, targetPath);
-		await File.WriteAllBytesAsync(targetPath, firmware.Firmware.ToArray(), CancellationToken.None);
+		logger.LogDebug("Writing {Size} bytes of firmware to {Path}", firmware.Length, targetPath);
+		await File.WriteAllBytesAsync(targetPath, firmware.ToArray(), CancellationToken.None);
 		logger.LogDebug("Firmware written successfully, device will reboot");
 	}
 }
