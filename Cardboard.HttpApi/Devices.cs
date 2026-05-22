@@ -57,6 +57,11 @@ public static class Devices
 			.WithName("Update Firmware")
 			.Produces(StatusCodes.Status200OK, contentType: "text/event-stream");
 		group
+			.MapPost("/{id}/custom-update", UploadCustomFirmware)
+			.DisableAntiforgery()
+			.WithName("Upload Custom Firmware")
+			.Produces(StatusCodes.Status200OK, contentType: "text/event-stream");
+		group
 			.MapPost("/update", UpdateBootloaderDevice)
 			.WithName("Update Bootloader Device")
 			.Produces(StatusCodes.Status200OK, contentType: "text/event-stream");
@@ -187,6 +192,47 @@ public static class Devices
 		}
 	}
 
+	/// <summary>
+	/// Debug-only endpoint. Allows user to upload custom firmware with optional migration. Only use this if you know what you're doing, otherwise data loss may occur! This will not perform any safety checks.
+	/// </summary>
+	private static async Task UploadCustomFirmware(
+		HttpContext context,
+		[FromServices] IDeviceUpdater deviceUpdater,
+		[FromServices] IOptions<JsonOptions> jsonOptions,
+		[FromRoute(Name = "id")] DeviceId deviceId,
+		[FromQuery(Name = "migrate")] bool migrateData,
+		IFormFile firmware,
+		CancellationToken cancellationToken
+	)
+	{
+		context.Response.Headers.ContentType = "text/event-stream";
+		context.Response.Headers.CacheControl = "no-cache";
+		context.Response.Headers.Connection = "keep-alive";
+
+		await using var stream = firmware.OpenReadStream();
+		var firmwareBytes = new byte[stream.Length];
+		await stream.ReadExactlyAsync(firmwareBytes, cancellationToken);
+
+		try
+		{
+			await foreach (
+				var report in deviceUpdater.UpdateDevice(
+					deviceId,
+					firmwareBytes,
+					migrateData,
+					cancellationToken
+				)
+			)
+			{
+				await HandleDeviceUpdateReport(report, context, jsonOptions, cancellationToken);
+			}
+		}
+		catch (Exception ex) when (ex is not OperationCanceledException)
+		{
+			await HandleDeviceUpdateException(ex, context, jsonOptions, cancellationToken);
+		}
+	}
+
 	private static async Task UpdateBootloaderDevice(
 		HttpContext context,
 		[FromServices] IFirmwareSource firmwareSource,
@@ -244,7 +290,9 @@ public static class Devices
 			}
 
 			await foreach (
-				var report in deviceUpdater.UpdateDevice(firmware).WithCancellation(CancellationToken.None)
+				var report in deviceUpdater
+					.UpdateDevice(firmware.Firmware)
+					.WithCancellation(CancellationToken.None)
 			)
 			{
 				await HandleDeviceUpdateReport(report, context, jsonOptions, cancellationToken);
@@ -282,8 +330,12 @@ public static class Devices
 		await SendDeviceUpdateEvent(evt, context, jsonOptions, cancellationToken);
 	}
 
-	private static async Task SendDeviceUpdateEvent(FirmwareUpdateEvent evt, HttpContext context,
-		IOptions<JsonOptions> jsonOptions, CancellationToken cancellationToken)
+	private static async Task SendDeviceUpdateEvent(
+		FirmwareUpdateEvent evt,
+		HttpContext context,
+		IOptions<JsonOptions> jsonOptions,
+		CancellationToken cancellationToken
+	)
 	{
 		var json = JsonSerializer.Serialize(evt, jsonOptions.Value.SerializerOptions);
 		await context.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
