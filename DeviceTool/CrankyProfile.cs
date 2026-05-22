@@ -198,7 +198,7 @@ public class CrankyProfileBuilder : IProfileBuilder
 			rapidSpaceMacro,
 		];
 
-		var keys = Ck130.Keys(
+		var keys = Ck130.CreateKeys(
 			Utilities.BasicKey(generator.NewLayerId(), escMacro),
 			Utilities.BasicKey(generator.NewLayerId(), oneMacro),
 			Utilities.BasicKey(generator.NewLayerId(), twoMacro),

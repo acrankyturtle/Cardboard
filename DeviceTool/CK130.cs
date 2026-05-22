@@ -39,6 +39,6 @@ public static class Ck130
 		DeviceKeyId.Parse("15c56a3d-0f31-5ebd-bcf1-63aa968be49a"),
 	];
 
-	public static IEnumerable<Key> Keys(params IReadOnlyCollection<KeyBindingLayers> deviceLayers) =>
+	public static IEnumerable<Key> CreateKeys(params IReadOnlyCollection<KeyBindingLayers> deviceLayers) =>
 		DeviceBuilder.Keys(KeyIds, deviceLayers);
 }
