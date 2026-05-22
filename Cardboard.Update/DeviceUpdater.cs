@@ -16,6 +16,7 @@ public interface IDeviceUpdater
 {
 	/// <summary>
 	/// Put a device into bootloader mode, update its firmware, and restore its profile if desired.
+	/// Ensures firmware is compatible with device.
 	/// Yields progress stages as the update proceeds.
 	/// The last element will always be a <see cref="FirmwareUpdateComplete"/>.
 	/// </summary>
@@ -26,6 +27,23 @@ public interface IDeviceUpdater
 	IAsyncEnumerable<FirmwareUpdateReport> UpdateDevice(
 		DeviceId deviceId,
 		DeviceFirmware firmware,
+		bool migrateData,
+		CancellationToken cancellationToken = default
+	);
+
+	/// <summary>
+	/// Put a device into bootloader mode, update its firmware, and restore its profile if desired.
+	/// Bypasses safety checks and assumes the caller has already validated the device and firmware compatibility.
+	/// Yields progress stages as the update proceeds.
+	/// The last element will always be a <see cref="FirmwareUpdateComplete"/>.
+	/// </summary>
+	/// <remarks>
+	/// The <paramref name="cancellationToken"/> is only honored before the device enters bootloader mode.
+	/// After that point, the update will run to completion to avoid leaving the device in an undefined state.
+	/// </remarks>
+	IAsyncEnumerable<FirmwareUpdateReport> UpdateDevice(
+		DeviceId deviceId,
+		ReadOnlyMemory<byte> firmware,
 		bool migrateData,
 		CancellationToken cancellationToken = default
 	);
@@ -159,6 +177,38 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 		{
 			_lock.Release();
 			logger.LogDebug("Released update lock for device {DeviceId}", deviceId);
+		}
+	}
+
+	public async IAsyncEnumerable<FirmwareUpdateReport> UpdateDevice(
+		DeviceId deviceId,
+		ReadOnlyMemory<byte> firmware,
+		bool migrateData,
+		[EnumeratorCancellation] CancellationToken cancellationToken = default
+	)
+	{
+		await _lock.WaitAsync(cancellationToken);
+
+		try
+		{
+			await foreach (
+				var update in PutDeviceInBootloaderAndUpdate(
+					deviceId,
+					firmware,
+					migrateData,
+					cancellationToken
+				)
+			)
+			{
+				yield return update;
+
+				if (update is FirmwareUpdateComplete)
+					yield break;
+			}
+		}
+		finally
+		{
+			_lock.Release();
 		}
 	}
 
