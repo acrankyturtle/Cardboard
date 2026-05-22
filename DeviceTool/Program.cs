@@ -12,13 +12,17 @@ using var host = builder.Build();
 
 await host.Services.Initialize();
 
-List<(string Name, IProfileBuilder Builder)> profiles =
+List<(string Name, IProfileBuilder Builder)> allProfiles =
 [
 	("cranky", new CrankyProfileBuilder()),
 	("jake", new JakeProfileBuilder()),
 ];
 var deviceService = host.Services.GetRequiredService<IDeviceService>();
 var device = await SelectDevice(deviceService);
+
+var filteredProfiles = device is null
+	? allProfiles
+	: allProfiles.Where(p => p.Builder.CanBuildFor(device.Type)).ToList();
 
 var name = SelectName();
 
@@ -115,16 +119,16 @@ string SelectName()
 	{
 		Console.WriteLine("Select a profile:");
 
-		for (var i = 0; i < profiles.Count; i++)
-			Console.WriteLine($"{i + 1}: {profiles[i].Name}");
+		for (var i = 0; i < filteredProfiles.Count; i++)
+			Console.WriteLine($"{i + 1}: {filteredProfiles[i].Name}");
 
 		Console.WriteLine();
 		Console.Write("Enter profile number: ");
 
-		if (!TryReadIndex(out var index, profiles.Count))
+		if (!TryReadIndex(out var index, filteredProfiles.Count))
 			continue;
 
-		var selected = profiles[index];
+		var selected = filteredProfiles[index];
 		var idGenerator = new IdGenerator(100000, 200000);
 		return (selected.Name, selected.Builder.Build(name, idGenerator));
 	}

@@ -4,6 +4,7 @@ namespace DeviceTool;
 
 public interface IProfileBuilder
 {
+	bool CanBuildFor(DeviceTypeId deviceTypeId);
 	DeviceProfile Build(string name, IdGenerator generator);
 }
 

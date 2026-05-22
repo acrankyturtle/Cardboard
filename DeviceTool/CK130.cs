@@ -5,6 +5,8 @@ namespace DeviceTool;
 
 public static class Ck130
 {
+	public static DeviceTypeId DeviceTypeId => DeviceTypeId.Parse("0407db48-ca74-5783-9b11-489637b7c615");
+
 	public static IReadOnlyCollection<DeviceKeyId> KeyIds { get; } =
 	[
 		DeviceKeyId.Parse("0661ee85-348b-5d93-b5e2-ac11cfa5344b"),

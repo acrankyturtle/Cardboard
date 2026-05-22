@@ -5,6 +5,8 @@ namespace DeviceTool;
 
 public class JakeProfileBuilder : IProfileBuilder
 {
+	public bool CanBuildFor(DeviceTypeId deviceTypeId) => deviceTypeId == Ck130.DeviceTypeId;
+
 	public DeviceProfile Build(string name, IdGenerator generator)
 	{
 		var fnLayerTag = LayerTag.Parse("fn");

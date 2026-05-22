@@ -5,6 +5,8 @@ namespace DeviceTool;
 
 public class CrankyProfileBuilder : IProfileBuilder
 {
+	public bool CanBuildFor(DeviceTypeId deviceTypeId) => deviceTypeId == Ck130.DeviceTypeId;
+
 	public DeviceProfile Build(string name, IdGenerator generator)
 	{
 		var escMacro = Utilities.BasicKeyMacro(generator.NewMacroId(), "Esc", KeyboardKey.ESCAPE);
