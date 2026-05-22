@@ -178,32 +178,12 @@ public static class Devices
 				)
 			)
 			{
-				var evt = ToEvent(report);
-				var json = JsonSerializer.Serialize(evt, jsonOptions.Value.SerializerOptions);
-				await context.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
-				await context.Response.Body.FlushAsync(cancellationToken);
+				await HandleDeviceUpdateReport(report, context, jsonOptions, cancellationToken);
 			}
 		}
 		catch (Exception ex) when (ex is not OperationCanceledException)
 		{
-			var evt = new FirmwareUpdateErrorEvent
-			{
-				Result = UpdateFirmwareResult.UnknownError,
-				Message = ex.Message,
-			};
-			var json = JsonSerializer.Serialize<FirmwareUpdateEvent>(
-				evt,
-				jsonOptions.Value.SerializerOptions
-			);
-			try
-			{
-				await context.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
-				await context.Response.Body.FlushAsync(cancellationToken);
-			}
-			catch
-			{
-				// ignored
-			}
+			await HandleDeviceUpdateException(ex, context, jsonOptions, cancellationToken);
 		}
 	}
 
@@ -241,12 +221,7 @@ public static class Devices
 					Result = UpdateFirmwareResult.FirmwareNotFound,
 					Message = "No firmware available for this device type.",
 				};
-				var json = JsonSerializer.Serialize<FirmwareUpdateEvent>(
-					evt,
-					jsonOptions.Value.SerializerOptions
-				);
-				await context.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
-				await context.Response.Body.FlushAsync(cancellationToken);
+				await SendDeviceUpdateEvent(evt, context, jsonOptions, cancellationToken);
 				return;
 			}
 
@@ -264,12 +239,7 @@ public static class Devices
 					Result = UpdateFirmwareResult.FirmwareNotFound,
 					Message = "The specified firmware version was not found.",
 				};
-				var json = JsonSerializer.Serialize<FirmwareUpdateEvent>(
-					evt,
-					jsonOptions.Value.SerializerOptions
-				);
-				await context.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
-				await context.Response.Body.FlushAsync(cancellationToken);
+				await SendDeviceUpdateEvent(evt, context, jsonOptions, cancellationToken);
 				return;
 			}
 
@@ -277,33 +247,47 @@ public static class Devices
 				var report in deviceUpdater.UpdateDevice(firmware).WithCancellation(CancellationToken.None)
 			)
 			{
-				var evt = ToEvent(report);
-				var json = JsonSerializer.Serialize(evt, jsonOptions.Value.SerializerOptions);
-				await context.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
-				await context.Response.Body.FlushAsync(cancellationToken);
+				await HandleDeviceUpdateReport(report, context, jsonOptions, cancellationToken);
 			}
 		}
 		catch (Exception ex) when (ex is not OperationCanceledException)
 		{
-			var evt = new FirmwareUpdateErrorEvent
-			{
-				Result = UpdateFirmwareResult.UnknownError,
-				Message = ex.Message,
-			};
-			var json = JsonSerializer.Serialize<FirmwareUpdateEvent>(
-				evt,
-				jsonOptions.Value.SerializerOptions
-			);
-			try
-			{
-				await context.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
-				await context.Response.Body.FlushAsync(cancellationToken);
-			}
-			catch
-			{
-				// ignored
-			}
+			await HandleDeviceUpdateException(ex, context, jsonOptions, cancellationToken);
 		}
+	}
+
+	private static async Task HandleDeviceUpdateReport(
+		FirmwareUpdateReport report,
+		HttpContext context,
+		IOptions<JsonOptions> jsonOptions,
+		CancellationToken cancellationToken
+	)
+	{
+		var evt = ToEvent(report);
+		await SendDeviceUpdateEvent(evt, context, jsonOptions, cancellationToken);
+	}
+
+	private static async Task HandleDeviceUpdateException(
+		Exception ex,
+		HttpContext context,
+		IOptions<JsonOptions> jsonOptions,
+		CancellationToken cancellationToken
+	)
+	{
+		var evt = new FirmwareUpdateErrorEvent
+		{
+			Result = UpdateFirmwareResult.UnknownError,
+			Message = ex.Message,
+		};
+		await SendDeviceUpdateEvent(evt, context, jsonOptions, cancellationToken);
+	}
+
+	private static async Task SendDeviceUpdateEvent(FirmwareUpdateEvent evt, HttpContext context,
+		IOptions<JsonOptions> jsonOptions, CancellationToken cancellationToken)
+	{
+		var json = JsonSerializer.Serialize(evt, jsonOptions.Value.SerializerOptions);
+		await context.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
+		await context.Response.Body.FlushAsync(cancellationToken);
 	}
 
 	private static FirmwareUpdateEvent ToEvent(FirmwareUpdateReport report) =>
@@ -319,12 +303,12 @@ public static class Devices
 			FirmwareUpdateComplete complete => new FirmwareUpdateErrorEvent
 			{
 				Result = complete.Result,
-				Message = GetErrorMessage(complete.Result),
+				Message = GetDeviceUpdateErrorMessage(complete.Result),
 			},
 			_ => throw new InvalidOperationException($"Unknown report type: {report.GetType()}"),
 		};
 
-	private static string GetErrorMessage(UpdateFirmwareResult result) =>
+	private static string GetDeviceUpdateErrorMessage(UpdateFirmwareResult result) =>
 		result switch
 		{
 			UpdateFirmwareResult.DeviceNotFound => "The specified device was not found.",
