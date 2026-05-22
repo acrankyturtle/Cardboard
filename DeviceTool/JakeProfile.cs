@@ -5,7 +5,7 @@ namespace DeviceTool;
 
 public class JakeProfileBuilder : IProfileBuilder
 {
-	public DeviceProfile Build(DeviceId deviceId, string name, IdGenerator generator)
+	public DeviceProfile Build(string name, IdGenerator generator)
 	{
 		var fnLayerTag = LayerTag.Parse("fn");
 
@@ -123,6 +123,6 @@ public class JakeProfileBuilder : IProfileBuilder
 
 		VirtualKey[] virtualKeys = [];
 
-		return ProfileBuilder.Build(deviceId, name, macros, keys, virtualKeys).ToDevice();
+		return ProfileBuilder.Build(name, macros, keys, virtualKeys).ToDevice();
 	}
 }

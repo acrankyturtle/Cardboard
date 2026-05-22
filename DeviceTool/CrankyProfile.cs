@@ -5,7 +5,7 @@ namespace DeviceTool;
 
 public class CrankyProfileBuilder : IProfileBuilder
 {
-	public DeviceProfile Build(DeviceId deviceId, string name, IdGenerator generator)
+	public DeviceProfile Build(string name, IdGenerator generator)
 	{
 		var escMacro = Utilities.BasicKeyMacro(generator.NewMacroId(), "Esc", KeyboardKey.ESCAPE);
 		var oneMacro = Utilities.BasicKeyMacro(generator.NewMacroId(), "1", KeyboardKey.ONE);
@@ -257,6 +257,6 @@ public class CrankyProfileBuilder : IProfileBuilder
 
 		VirtualKey[] virtualKeys = [new() { Layers = Utilities.BasicKey(generator.NewLayerId(), oneMacro) }];
 
-		return ProfileBuilder.Build(deviceId, name, macros, keys, virtualKeys).ToDevice();
+		return ProfileBuilder.Build(name, macros, keys, virtualKeys).ToDevice();
 	}
 }

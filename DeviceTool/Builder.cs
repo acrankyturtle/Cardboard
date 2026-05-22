@@ -6,7 +6,6 @@ namespace DeviceTool;
 public static class ProfileBuilder
 {
 	public static Profile Build(
-		DeviceId deviceId,
 		string name,
 		IEnumerable<Macro> macros,
 		IEnumerable<Key> keys,

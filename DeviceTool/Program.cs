@@ -126,7 +126,7 @@ string SelectName()
 
 		var selected = profiles[index];
 		var idGenerator = new IdGenerator(100000, 200000);
-		return (selected.Name, selected.Builder.Build(device?.Id ?? DeviceId.Empty, name, idGenerator));
+		return (selected.Name, selected.Builder.Build(name, idGenerator));
 	}
 }
 

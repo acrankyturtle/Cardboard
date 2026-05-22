@@ -4,7 +4,7 @@ namespace DeviceTool;
 
 public interface IProfileBuilder
 {
-	DeviceProfile Build(DeviceId deviceId, string name, IdGenerator generator);
+	DeviceProfile Build(string name, IdGenerator generator);
 }
 
 public class IdGenerator(int macroIdSeed, int layerIdSeed)
