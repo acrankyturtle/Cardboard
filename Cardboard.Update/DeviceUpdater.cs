@@ -368,14 +368,4 @@ public sealed class DeviceFirmware
 	public required ReadOnlyMemory<byte> Firmware { get; init; }
 }
 
-public class FirmwareUpdateOptions
-{
-	/// <summary>
-	/// Look for a device already in bootloader mode and flash it without performing any other steps.
-	/// </summary>
-	public bool FlashOnly { get; set; }
-
-	public bool MigrateData { get; set; } = true;
-}
-
 public class FirmwareIntegrityException(string message) : Exception(message);
