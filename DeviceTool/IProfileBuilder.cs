@@ -17,7 +17,7 @@ public class IdGenerator(int macroIdSeed, int layerIdSeed)
 
 	public LayerId NewLayerId() => new(_layerIdGenerator.Next());
 
-	public class GuidGenerator(Random rng)
+	private class GuidGenerator(Random rng)
 	{
 		public Guid Next()
 		{
