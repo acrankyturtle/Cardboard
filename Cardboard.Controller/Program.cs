@@ -25,21 +25,26 @@ builder.WebHost.ConfigureKestrel(options =>
 // web api json options
 builder.Services.ConfigureWebJsonOptions();
 
-builder
-	.Services.AddSwaggerGen(options =>
-	{
-		options.MapStronglyTypedId<Channel>();
-		options.MapStronglyTypedId<CommandId>();
-		options.MapStronglyTypedId<DeviceId>();
-		options.MapStronglyTypedId<DeviceKeyId>();
-		options.MapStronglyTypedId<DeviceTypeId>();
-		options.MapStronglyTypedId<LayerId>();
-		options.MapStronglyTypedId<LayerTag>();
-		options.MapStronglyTypedId<MacroId>();
-		options.MapStronglyTypedId<MacroIndex>();
-		options.MapStronglyTypedId<ApplicationAssociationId>();
-	})
-	.AddEndpointsApiExplorer();
+var useSwagger = builder.Configuration.GetValue("Swagger__Enabled", false) || builder.Environment.IsDevelopment();
+
+if (useSwagger)
+{
+	builder
+		.Services.AddSwaggerGen(options =>
+		{
+			options.MapStronglyTypedId<Channel>();
+			options.MapStronglyTypedId<CommandId>();
+			options.MapStronglyTypedId<DeviceId>();
+			options.MapStronglyTypedId<DeviceKeyId>();
+			options.MapStronglyTypedId<DeviceTypeId>();
+			options.MapStronglyTypedId<LayerId>();
+			options.MapStronglyTypedId<LayerTag>();
+			options.MapStronglyTypedId<MacroId>();
+			options.MapStronglyTypedId<MacroIndex>();
+			options.MapStronglyTypedId<ApplicationAssociationId>();
+		})
+		.AddEndpointsApiExplorer();
+}
 
 builder.Services.AddHttpClient();
 
@@ -119,7 +124,7 @@ if (app.Environment.IsDevelopment())
 	);
 }
 
-if (app.Environment.IsDevelopment())
+if (useSwagger)
 {
 	app.UseSwagger();
 	app.UseSwaggerUI(c =>
