@@ -138,6 +138,12 @@ export const createEmptyAssociationData = (): AssociationData => ({
   matchOnPath: [],
 });
 
+export const createDefaultEmblem = (): ApplicationIconEmblem => ({
+  position: "BottomRight",
+  shape: "Circle",
+  color: "#6495ED",
+});
+
 export const createEmptyVirtualKeyAssociation = (
   deviceId: string,
 ): VirtualKeyAssociation => ({
@@ -147,6 +153,19 @@ export const createEmptyVirtualKeyAssociation = (
   },
   virtualKey: 0,
 });
+
+export const EMBLEM_POSITIONS = [
+  { value: "TopLeft", label: "Top Left" },
+  { value: "TopRight", label: "Top Right" },
+  { value: "BottomLeft", label: "Bottom Left" },
+  { value: "BottomRight", label: "Bottom Right" },
+] as const;
+
+export const EMBLEM_SHAPES = [
+  { value: "Circle", label: "Circle" },
+  { value: "Square", label: "Square" },
+  { value: "Triangle", label: "Triangle" },
+] as const;
 
 export const EMPTY_INPUT_KEY = "None";
 

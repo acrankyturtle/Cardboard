@@ -36,6 +36,7 @@ import { Tooltip } from "../components/Tooltip.tsx";
 import { HelpLink } from "../components/HelpLink.tsx";
 import { downloadJsonFile, pickAndReadJsonFile } from "../lib/jsonFileUtils.ts";
 import { EditAssociationDialog } from "../components/EditAssociationsDialog.tsx";
+import { EmblemPreview } from "../components/EmblemPreview.tsx";
 
 export function AssociationsIndex() {
   const { associations, isLoading, error, mutate } = useAssociations();
@@ -281,6 +282,13 @@ function AssociationCard({
 }) {
   return (
     <div className="flex items-start gap-4 rounded-lg border border-stone-700 bg-stone-800 p-4 shadow">
+      {association.data.emblem && (
+        <EmblemPreview
+          className="place-self-center"
+          emblem={association.data.emblem}
+          size={32}
+        />
+      )}
       <AssociationDetails className="grow" association={association} />
       <div className="flex gap-2">
         <Tooltip content="Edit">

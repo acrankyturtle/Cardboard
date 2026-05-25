@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ApplicationIconEmblem,
   AssociationData,
+  createDefaultEmblem,
   createEmptyVirtualKeyAssociation,
+  EMBLEM_POSITIONS,
+  EMBLEM_SHAPES,
   EMPTY_INPUT_KEY,
   useAssociations,
   VirtualKeyAssociation,
@@ -36,6 +40,8 @@ import { InputKeySelector } from "@root/react-frontend/src/components/InputKeySe
 import { Tooltip } from "@root/react-frontend/src/components/Tooltip.tsx";
 import { getInputDevices, InputDeviceInfo } from "../api/inputDevices.ts";
 import { LargeLoadingIndicator } from "@root/react-frontend/src/components/LoadingIndicator.tsx";
+import { ToggleSwitch } from "@root/react-frontend/src/components/ToggleSwitch.tsx";
+import { EmblemPreview } from "@root/react-frontend/src/components/EmblemPreview.tsx";
 
 export function EditAssociationDialog({
   open,
@@ -163,6 +169,11 @@ export function EditAssociationDialog({
               onChange={(tags) => setData({ ...data, tags })}
             />
           </Field>
+          <DialogDivider />
+          <EmblemEditor
+            emblem={data.emblem}
+            onChange={(emblem) => setData({ ...data, emblem })}
+          />
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <Label className="text-sm font-medium">Virtual Keys</Label>
@@ -364,6 +375,111 @@ function VirtualKeyEditor({
         </Button>
       </Tooltip>
     </div>
+  );
+}
+
+function EmblemEditor({
+  emblem,
+  onChange,
+}: {
+  emblem: ApplicationIconEmblem | undefined;
+  onChange: (emblem: ApplicationIconEmblem | undefined) => void;
+}) {
+  const enabled = emblem !== undefined;
+
+  const handleToggle = (checked: boolean) => {
+    onChange(checked ? createDefaultEmblem() : undefined);
+  };
+
+  return (
+    <Field className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <Label className="text-sm font-medium">Icon Emblem</Label>
+        <ToggleSwitch checked={enabled} onChange={handleToggle} />
+      </div>
+      {enabled && emblem ? (
+        <div className="flex items-start gap-4 rounded border border-stone-800 bg-stone-600 p-3">
+          <EmblemPreview emblem={emblem} size={64} />
+          <div className="flex grow flex-col gap-3">
+            <div className="flex flex-col gap-1">
+              <div className="text-xs text-stone-400">Position</div>
+              <div className="grid w-fit grid-cols-2 gap-1">
+                {EMBLEM_POSITIONS.map((p) => (
+                  <Button
+                    key={p.value}
+                    className="text-xs"
+                    buttonStyle={{
+                      variant: "ghost",
+                      isActive: emblem.position === p.value,
+                    }}
+                    onClick={() => onChange({ ...emblem, position: p.value })}
+                  >
+                    {p.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              <div className="text-xs text-stone-400">Shape</div>
+              <div className="flex w-fit gap-1">
+                {EMBLEM_SHAPES.map((s) => (
+                  <Button
+                    key={s.value}
+                    className="text-xs"
+                    buttonStyle={{
+                      variant: "ghost",
+                      isActive: emblem.shape === s.value,
+                    }}
+                    onClick={() => onChange({ ...emblem, shape: s.value })}
+                  >
+                    <ShapeGlyph shape={s.value} />
+                    <span className="ml-1.5">{s.label}</span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="text-xs text-stone-400">Color</div>
+              <input
+                type="color"
+                className="h-7 w-12 cursor-pointer rounded border border-stone-800 bg-stone-800 p-0.5"
+                value={emblem.color}
+                onChange={(e) =>
+                  onChange({ ...emblem, color: e.target.value.toLowerCase() })
+                }
+              />
+              <span className="font-mono text-xs text-stone-400">
+                {emblem.color}
+              </span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="text-xs text-stone-400">
+          Overlay a colored shape on the tray icon while this association is
+          active.
+        </div>
+      )}
+    </Field>
+  );
+}
+
+function ShapeGlyph({ shape }: { shape: "Circle" | "Square" | "Triangle" }) {
+  const style: React.CSSProperties = (() => {
+    switch (shape) {
+      case "Circle":
+        return { borderRadius: "50%" };
+      case "Square":
+        return {};
+      case "Triangle":
+        return { clipPath: "polygon(50% 0, 0 100%, 100% 100%)" };
+    }
+  })();
+  return (
+    <span
+      className="inline-block size-3 bg-current align-middle"
+      style={style}
+    />
   );
 }
 
