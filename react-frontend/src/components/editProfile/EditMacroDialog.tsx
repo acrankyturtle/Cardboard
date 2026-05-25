@@ -408,7 +408,7 @@ function ChannelSummaryLink({
           </DialogHeaderDescription>
         </DialogHeader>
         <DialogDivider />
-        <DialogBody className="max-h-80 overflow-y-auto">
+        <DialogBody scrollable className="max-h-80">
           {channelInfo.sortedChannels.length === 0 ? (
             <div className="text-stone-400 italic">
               No channels are currently in use.

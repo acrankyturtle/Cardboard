@@ -140,7 +140,7 @@ export function EditAssociationDialog({
         </DialogHeaderDescription>
       </DialogHeader>
       <DialogDivider />
-      <DialogBody className="max-h-[60vh] overflow-y-auto">
+      <DialogBody scrollable className="max-h-[60vh]">
         <Fieldset className="space-y-4">
           <Field className="flex flex-col gap-1">
             <Label className="text-sm font-medium">Match Paths</Label>
@@ -434,7 +434,7 @@ function InputDevicesDialog({
         </DialogHeaderDescription>
       </DialogHeader>
       <DialogDivider />
-      <DialogBody className="max-h-[60vh] overflow-y-auto">
+      <DialogBody scrollable className="max-h-[60vh]">
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <LargeLoadingIndicator />

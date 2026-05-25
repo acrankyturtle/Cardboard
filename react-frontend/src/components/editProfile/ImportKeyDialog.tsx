@@ -70,7 +70,7 @@ export function ImportKeyDialog() {
           handleImport();
         }}
       >
-        <DialogBody className="max-h-96 overflow-y-auto">
+        <DialogBody scrollable className="max-h-96">
           {conflicts.map((conflict, index) => (
             <ConflictItem
               key={conflict.imported.id}

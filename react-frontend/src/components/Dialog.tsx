@@ -99,13 +99,23 @@ export function DialogDivider({ className }: { className?: string }) {
 
 export function DialogBody({
   className,
+  scrollable,
   children,
 }: {
   className?: string;
+  scrollable?: boolean;
   children?: ReactNode;
 }) {
   return (
-    <div className={clsx("flex flex-col gap-2", className)}>{children}</div>
+    <div
+      className={clsx(
+        "flex flex-col gap-2",
+        scrollable && "-mx-2 -my-1 overflow-y-auto px-2 py-1",
+        className,
+      )}
+    >
+      {children}
+    </div>
   );
 }
 
