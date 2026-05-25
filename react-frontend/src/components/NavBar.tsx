@@ -2,9 +2,9 @@ import { getButtonClassName } from "./Button.tsx";
 import clsx from "clsx";
 import { forwardRef, ReactElement, ReactNode } from "react";
 import { NavLink, To } from "react-router";
-import logo from "../assets/key.png";
 import { useControllerUpdate } from "../api/controller.ts";
 import { Tooltip } from "./Tooltip.tsx";
+import { Logo } from "./Logo.tsx";
 
 export function NavBar({ className }: { className?: string }) {
   const showLogButton = false;
@@ -13,7 +13,7 @@ export function NavBar({ className }: { className?: string }) {
     <nav className={clsx("bg-stone-800", className)}>
       <div className="flex h-full w-16 flex-col items-center">
         <NavLink className="flex min-h-18 flex-col justify-center" to={"/"}>
-          <Logo />
+          <LogoIcon />
         </NavLink>
         <div className="flex h-full flex-col items-center space-y-2 py-3">
           <Tooltip content="Dashboard" side="right">
@@ -83,12 +83,11 @@ const NavBarButton = forwardRef<
   );
 });
 
-function Logo() {
+function LogoIcon() {
   return (
     <div className="shrink-0">
-      <img
+      <Logo
         className="size-8 drop-shadow-lg drop-shadow-black/25"
-        src={logo}
         alt="Cardboard"
       />
     </div>
