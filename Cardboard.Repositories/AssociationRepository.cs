@@ -128,7 +128,7 @@ file class JsonAssociationRepository(
 		PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
 	};
 
-	private readonly FileWatcher _fileWatcher = new(configuration.Value.Path);
+	private readonly FileWatcher _fileWatcher = CreateFileWatcher(configuration.Value.Path);
 	public IObservable<Unit> OnAssociationsChanged => _fileWatcher.OnChanged.Select(_ => Unit.Value);
 
 	public async Task<IReadOnlyCollection<ApplicationAssociation>> GetAssociations(
@@ -269,6 +269,16 @@ file class JsonAssociationRepository(
 			.Where(x => x.Result.IsSuccess)
 			.SelectMany(x => x.Result.Assert().Keys.SelectMany(k => k.Layers.Layers.SelectMany(l => l.Tags)))
 			.Distinct();
+	}
+
+	private static FileWatcher CreateFileWatcher(string path)
+	{
+		var directory = Path.GetDirectoryName(path);
+
+		if (directory is not null)
+			Directory.CreateDirectory(directory);
+
+		return new(path);
 	}
 }
 
