@@ -9,7 +9,7 @@ public interface IDeviceService
 
 	Task<IReadOnlyCollection<DeviceInfo>> GetDevices(CancellationToken cancellationToken = default);
 
-	Task<IReadOnlyCollection<(DeviceId DeviceId, Result<TOut, Exception> Result)>> SendCommand<TIn, TOut>(
+	Task<IReadOnlyCollection<SendCommandResult<TOut>>> SendCommand<TIn, TOut>(
 		ICommand<TIn, TOut> command,
 		TIn input,
 		Predicate<DeviceInfo>? filter = null,
@@ -40,10 +40,7 @@ internal class DeviceService : IDeviceService, IDisposable
 			.SelectMany(x => x)
 			.ToList();
 
-	public async Task<IReadOnlyCollection<(DeviceId DeviceId, Result<TOut, Exception> Result)>> SendCommand<
-		TIn,
-		TOut
-	>(
+	public async Task<IReadOnlyCollection<SendCommandResult<TOut>>> SendCommand<TIn, TOut>(
 		ICommand<TIn, TOut> command,
 		TIn input,
 		Predicate<DeviceInfo>? filter,

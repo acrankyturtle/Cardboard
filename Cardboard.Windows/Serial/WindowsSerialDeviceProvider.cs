@@ -120,10 +120,7 @@ internal class WindowsSerialDeviceProvider : IDeviceProvider, IInitializable, ID
 	public Task<IReadOnlyCollection<DeviceInfo>> GetDevices(CancellationToken cancellationToken) =>
 		Task.FromResult<IReadOnlyCollection<DeviceInfo>>(_ports.Select(x => x.DeviceInfo).ToList());
 
-	public async Task<IReadOnlyCollection<(DeviceId DeviceId, Result<TOut, Exception> Result)>> SendCommand<
-		TIn,
-		TOut
-	>(
+	public async Task<IReadOnlyCollection<SendCommandResult<TOut>>> SendCommand<TIn, TOut>(
 		IEnumerable<DeviceId> deviceIds,
 		ICommand<TIn, TOut> command,
 		TIn input,
@@ -136,8 +133,8 @@ internal class WindowsSerialDeviceProvider : IDeviceProvider, IInitializable, ID
 			_ports
 				.Where(x => deviceIdSet.Contains(x.DeviceInfo.Id))
 				.Select(
-					async Task<(DeviceId, Result<TOut, Exception>)> (x) =>
-						(
+					async Task<SendCommandResult<TOut>> (x) =>
+						new(
 							x.DeviceInfo.Id,
 							await x.SerialPort.With<TOut>(
 								async commandStream =>

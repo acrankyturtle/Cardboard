@@ -8,7 +8,7 @@ public interface IDeviceProvider
 
 	Task<IReadOnlyCollection<DeviceInfo>> GetDevices(CancellationToken cancellationToken = default);
 
-	Task<IReadOnlyCollection<(DeviceId DeviceId, Result<TOut, Exception> Result)>> SendCommand<TIn, TOut>(
+	Task<IReadOnlyCollection<SendCommandResult<TOut>>> SendCommand<TIn, TOut>(
 		IEnumerable<DeviceId> deviceIds,
 		ICommand<TIn, TOut> command,
 		TIn input,
@@ -24,3 +24,5 @@ public readonly record struct DevicesChangedEvent(
 	public override string ToString() =>
 		$"{nameof(DevicesChangedEvent)}: {{ {nameof(Added)}: [{Added.Count}], {nameof(Removed)}: {Removed.Count} }}";
 }
+
+public readonly record struct SendCommandResult<TOut>(DeviceId DeviceId, Result<TOut, Exception> Result);
