@@ -50,6 +50,20 @@ pub struct UsbDevices<
 	pub device: UsbDevice<'static, Driver<'static, USB>>,
 }
 
+macro_rules! hid_writer {
+	($usb_builder:expr, $impl:ty, $event:ty, $max_packet_size:expr) => {{
+		let config = embassy_usb::class::hid::Config {
+			report_descriptor: <$impl as HidDevice<$event>>::report_descriptor(),
+			request_handler: None,
+			poll_ms: 1,
+			max_packet_size: $max_packet_size,
+		};
+
+		static STATE: StaticCell<HidState> = StaticCell::new();
+		HidWriter::new($usb_builder, STATE.init(HidState::new()), config)
+	}};
+}
+
 pub fn init_usb<
 	KeyboardImpl: HidDevice<KeyboardEvent>,
 	MouseImpl: HidDevice<MouseEvent>,
@@ -63,9 +77,26 @@ pub fn init_usb<
 ) -> UsbDevices<{ KeyboardImpl::SIZE }, { MouseImpl::SIZE }, { ConsumerImpl::SIZE }> {
 	let mut usb_builder = get_usb_builder(usb, device_info, serial_number, model);
 
-	let keyboard_writer = get_keyboard_writer::<KeyboardImpl>(&mut usb_builder);
-	let mouse_writer = mouse_enabled.then(|| get_mouse_writer::<MouseImpl>(&mut usb_builder));
-	let consumer_writer = get_consumer_writer::<ConsumerImpl>(&mut usb_builder);
+	let keyboard_writer = hid_writer!(
+		&mut usb_builder,
+		KeyboardImpl,
+		KeyboardEvent,
+		USB_HID_KEYBOARD_PACKET_SIZE as u16
+	);
+	let mouse_writer = mouse_enabled.then(|| {
+		hid_writer!(
+			&mut usb_builder,
+			MouseImpl,
+			MouseEvent,
+			USB_HID_MOUSE_PACKET_SIZE as u16
+		)
+	});
+	let consumer_writer = hid_writer!(
+		&mut usb_builder,
+		ConsumerImpl,
+		ConsumerControlEvent,
+		USB_HID_CONSUMER_PACKET_SIZE as u16
+	);
 	let serial_class = get_serial_class(&mut usb_builder);
 	let (serial_writer, serial_reader) = serial_class.split();
 
@@ -119,51 +150,6 @@ fn get_usb_builder(
 		msos_descriptor,
 		control_buf,
 	)
-}
-
-fn get_keyboard_writer<KeyboardImpl: HidDevice<KeyboardEvent>>(
-	usb_builder: &mut Builder<'static, Driver<'static, USB>>,
-) -> HidWriter<'static, Driver<'static, USB>, { KeyboardImpl::SIZE }> {
-	let keyboard_hid_config = embassy_usb::class::hid::Config {
-		report_descriptor: KeyboardImpl::report_descriptor(),
-		request_handler: None,
-		poll_ms: 1,
-		max_packet_size: USB_HID_KEYBOARD_PACKET_SIZE as u16,
-	};
-
-	static STATE: StaticCell<HidState> = StaticCell::new();
-	let state = STATE.init(HidState::new());
-	HidWriter::new(usb_builder, state, keyboard_hid_config)
-}
-
-fn get_mouse_writer<MouseImpl: HidDevice<MouseEvent>>(
-	usb_builder: &mut Builder<'static, Driver<'static, USB>>,
-) -> HidWriter<'static, Driver<'static, USB>, { MouseImpl::SIZE }> {
-	let mouse_hid_config = embassy_usb::class::hid::Config {
-		report_descriptor: MouseImpl::report_descriptor(),
-		request_handler: None,
-		poll_ms: 1,
-		max_packet_size: USB_HID_MOUSE_PACKET_SIZE as u16,
-	};
-
-	static STATE: StaticCell<HidState> = StaticCell::new();
-	let state = STATE.init(HidState::new());
-	HidWriter::new(usb_builder, state, mouse_hid_config)
-}
-
-fn get_consumer_writer<ConsumerImpl: HidDevice<ConsumerControlEvent>>(
-	usb_builder: &mut Builder<'static, Driver<'static, USB>>,
-) -> HidWriter<'static, Driver<'static, USB>, { ConsumerImpl::SIZE }> {
-	let consumer_hid_config = embassy_usb::class::hid::Config {
-		report_descriptor: ConsumerImpl::report_descriptor(),
-		request_handler: None,
-		poll_ms: 1,
-		max_packet_size: USB_HID_CONSUMER_PACKET_SIZE as u16,
-	};
-
-	static STATE: StaticCell<HidState> = StaticCell::new();
-	let state = STATE.init(HidState::new());
-	HidWriter::new(usb_builder, state, consumer_hid_config)
 }
 
 fn get_serial_class(
