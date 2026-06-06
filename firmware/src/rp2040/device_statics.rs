@@ -134,13 +134,13 @@ macro_rules! device_statics {
 					$crate::__reexports::KeyboardEvent,
 				>>::SIZE },
 			>,
-			mouse: ::embassy_usb::class::hid::HidWriter<
+			mouse: ::core::option::Option<::embassy_usb::class::hid::HidWriter<
 				'static,
 				::embassy_rp::usb::Driver<'static, ::embassy_rp::peripherals::USB>,
 				{ <MouseImpl as $crate::__reexports::HidDevice<
 					$crate::__reexports::MouseEvent,
 				>>::SIZE },
-			>,
+			>>,
 			consumer: ::embassy_usb::class::hid::HidWriter<
 				'static,
 				::embassy_rp::usb::Driver<'static, ::embassy_rp::peripherals::USB>,
@@ -163,39 +163,6 @@ macro_rules! device_statics {
 			>,
 		) {
 			$crate::rp2040::hid::hid_task(keyboard, mouse, consumer, signal).await
-		}
-
-		#[::embassy_executor::task]
-		async fn hid_task_no_mouse(
-			keyboard: ::embassy_usb::class::hid::HidWriter<
-				'static,
-				::embassy_rp::usb::Driver<'static, ::embassy_rp::peripherals::USB>,
-				{ <KeyboardImpl as $crate::__reexports::HidDevice<
-					$crate::__reexports::KeyboardEvent,
-				>>::SIZE },
-			>,
-			consumer: ::embassy_usb::class::hid::HidWriter<
-				'static,
-				::embassy_rp::usb::Driver<'static, ::embassy_rp::peripherals::USB>,
-				{ <ConsumerImpl as $crate::__reexports::HidDevice<
-					$crate::__reexports::ConsumerControlEvent,
-				>>::SIZE },
-			>,
-			signal: &'static DeviceSignal<
-				$crate::__reexports::HidReport<
-					{ <KeyboardImpl as $crate::__reexports::HidDevice<
-						$crate::__reexports::KeyboardEvent,
-					>>::SIZE },
-					{ <MouseImpl as $crate::__reexports::HidDevice<
-						$crate::__reexports::MouseEvent,
-					>>::SIZE },
-					{ <ConsumerImpl as $crate::__reexports::HidDevice<
-						$crate::__reexports::ConsumerControlEvent,
-					>>::SIZE },
-				>,
-			>,
-		) {
-			$crate::rp2040::hid::hid_task_no_mouse(keyboard, consumer, signal).await
 		}
 
 		pub fn init_heap() {
@@ -228,22 +195,14 @@ macro_rules! spawn_standard_tasks {
 			.spawn($crate::rp2040::usb::usb_task($boot.usb_device))
 			.unwrap();
 
-		match $boot.hid_writers {
-			$crate::rp2040::bootstrap::HidWriters::WithMouse {
-				keyboard,
-				mouse,
-				consumer,
-			} => {
-				$spawner
-					.spawn(hid_task(keyboard, mouse, consumer, &HID_SIGNAL))
-					.unwrap();
-			}
-			$crate::rp2040::bootstrap::HidWriters::NoMouse { keyboard, consumer } => {
-				$spawner
-					.spawn(hid_task_no_mouse(keyboard, consumer, &HID_SIGNAL))
-					.unwrap();
-			}
-		}
+		let $crate::rp2040::bootstrap::HidWriters {
+			keyboard,
+			mouse,
+			consumer,
+		} = $boot.hid_writers;
+		$spawner
+			.spawn(hid_task(keyboard, mouse, consumer, &HID_SIGNAL))
+			.unwrap();
 
 		$spawner
 			.spawn(keypad_task(

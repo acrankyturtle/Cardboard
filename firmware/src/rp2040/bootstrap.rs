@@ -27,7 +27,7 @@ use crate::{
 		bootloader::{EmbassyRp2040Reboot, EmbassyRp2040RebootToBootloader},
 		config::DeviceConfig,
 		flash::{FLASH_SIZE, init_flash},
-		usb::{USB_SERIAL_PACKET_SIZE, init_usb, init_usb_no_mouse},
+		usb::{USB_SERIAL_PACKET_SIZE, init_usb},
 	},
 };
 
@@ -47,16 +47,10 @@ where
 	pub col_pins: [Box<dyn ColPin>; COLS],
 }
 
-pub enum HidWriters<const K: usize, const M: usize, const C: usize> {
-	WithMouse {
-		keyboard: HidWriter<'static, Driver<'static, USB>, K>,
-		mouse: HidWriter<'static, Driver<'static, USB>, M>,
-		consumer: HidWriter<'static, Driver<'static, USB>, C>,
-	},
-	NoMouse {
-		keyboard: HidWriter<'static, Driver<'static, USB>, K>,
-		consumer: HidWriter<'static, Driver<'static, USB>, C>,
-	},
+pub struct HidWriters<const K: usize, const M: usize, const C: usize> {
+	pub keyboard: HidWriter<'static, Driver<'static, USB>, K>,
+	pub mouse: Option<HidWriter<'static, Driver<'static, USB>, M>>,
+	pub consumer: HidWriter<'static, Driver<'static, USB>, C>,
 }
 
 pub struct BootOutput<
@@ -175,35 +169,18 @@ where
 	// usb
 	let serial_number = get_serial_number(&device_id);
 	let mouse_enabled = (cfg.mouse_enabled)(&settings.inner);
-	let (serial_reader, serial_writer, usb_device, hid_writers) = if mouse_enabled {
-		let usb = init_usb::<KbdImpl, MouseImpl, ConsumerImpl>(
-			input.usb,
-			device_info,
-			serial_number,
-			cfg.model,
-		);
-		(
-			usb.serial_reader,
-			usb.serial_writer,
-			usb.device,
-			HidWriters::WithMouse {
-				keyboard: usb.keyboard_writer,
-				mouse: usb.mouse_writer,
-				consumer: usb.consumer_writer,
-			},
-		)
-	} else {
-		let usb =
-			init_usb_no_mouse::<KbdImpl, ConsumerImpl>(input.usb, device_info, serial_number, cfg.model);
-		(
-			usb.serial_reader,
-			usb.serial_writer,
-			usb.device,
-			HidWriters::NoMouse {
-				keyboard: usb.keyboard_writer,
-				consumer: usb.consumer_writer,
-			},
-		)
+	let usb = init_usb::<KbdImpl, MouseImpl, ConsumerImpl>(
+		input.usb,
+		device_info,
+		serial_number,
+		cfg.model,
+		mouse_enabled,
+	);
+	let (serial_reader, serial_writer, usb_device) = (usb.serial_reader, usb.serial_writer, usb.device);
+	let hid_writers = HidWriters {
+		keyboard: usb.keyboard_writer,
+		mouse: usb.mouse_writer,
+		consumer: usb.consumer_writer,
 	};
 
 	let serial_rx =

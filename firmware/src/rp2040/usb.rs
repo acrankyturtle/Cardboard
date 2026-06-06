@@ -43,7 +43,7 @@ pub struct UsbDevices<
 	const CONSUMER_PACKET_SIZE: usize,
 > {
 	pub keyboard_writer: HidWriter<'static, Driver<'static, USB>, KEYBOARD_PACKET_SIZE>,
-	pub mouse_writer: HidWriter<'static, Driver<'static, USB>, MOUSE_PACKET_SIZE>,
+	pub mouse_writer: Option<HidWriter<'static, Driver<'static, USB>, MOUSE_PACKET_SIZE>>,
 	pub consumer_writer: HidWriter<'static, Driver<'static, USB>, CONSUMER_PACKET_SIZE>,
 	pub serial_reader: Receiver<'static, Driver<'static, USB>>,
 	pub serial_writer: embassy_usb::class::cdc_acm::Sender<'static, Driver<'static, USB>>,
@@ -59,11 +59,12 @@ pub fn init_usb<
 	device_info: &DeviceInfo,
 	serial_number: &'static str,
 	model: &'static str,
+	mouse_enabled: bool,
 ) -> UsbDevices<{ KeyboardImpl::SIZE }, { MouseImpl::SIZE }, { ConsumerImpl::SIZE }> {
 	let mut usb_builder = get_usb_builder(usb, device_info, serial_number, model);
 
 	let keyboard_writer = get_keyboard_writer::<KeyboardImpl>(&mut usb_builder);
-	let mouse_writer = get_mouse_writer::<MouseImpl>(&mut usb_builder);
+	let mouse_writer = mouse_enabled.then(|| get_mouse_writer::<MouseImpl>(&mut usb_builder));
 	let consumer_writer = get_consumer_writer::<ConsumerImpl>(&mut usb_builder);
 	let serial_class = get_serial_class(&mut usb_builder);
 	let (serial_writer, serial_reader) = serial_class.split();
@@ -73,33 +74,6 @@ pub fn init_usb<
 	UsbDevices {
 		keyboard_writer,
 		mouse_writer,
-		consumer_writer,
-		serial_reader,
-		serial_writer,
-		device: usb_device,
-	}
-}
-
-pub fn init_usb_no_mouse<
-	KeyboardImpl: HidDevice<KeyboardEvent>,
-	ConsumerImpl: HidDevice<ConsumerControlEvent>,
->(
-	usb: USB,
-	device_info: &DeviceInfo,
-	serial_number: &'static str,
-	model: &'static str,
-) -> UsbDevicesNoMouse<{ KeyboardImpl::SIZE }, { ConsumerImpl::SIZE }> {
-	let mut usb_builder = get_usb_builder(usb, device_info, serial_number, model);
-
-	let keyboard_writer = get_keyboard_writer::<KeyboardImpl>(&mut usb_builder);
-	let consumer_writer = get_consumer_writer::<ConsumerImpl>(&mut usb_builder);
-	let serial_class = get_serial_class(&mut usb_builder);
-	let (serial_writer, serial_reader) = serial_class.split();
-
-	let usb_device = usb_builder.build();
-
-	UsbDevicesNoMouse {
-		keyboard_writer,
 		consumer_writer,
 		serial_reader,
 		serial_writer,
@@ -198,12 +172,4 @@ fn get_serial_class(
 	static STATE: StaticCell<embassy_usb::class::cdc_acm::State> = StaticCell::new();
 	let state = STATE.init(CdcAcmState::new());
 	CdcAcmClass::new(usb_builder, state, USB_SERIAL_PACKET_SIZE as u16)
-}
-
-pub struct UsbDevicesNoMouse<const KEYBOARD_PACKET_SIZE: usize, const CONSUMER_PACKET_SIZE: usize> {
-	pub keyboard_writer: HidWriter<'static, Driver<'static, USB>, KEYBOARD_PACKET_SIZE>,
-	pub consumer_writer: HidWriter<'static, Driver<'static, USB>, CONSUMER_PACKET_SIZE>,
-	pub serial_reader: Receiver<'static, Driver<'static, USB>>,
-	pub serial_writer: embassy_usb::class::cdc_acm::Sender<'static, Driver<'static, USB>>,
-	pub device: UsbDevice<'static, Driver<'static, USB>>,
 }
