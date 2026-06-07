@@ -280,3 +280,10 @@ impl<'a> WriteAsync for &'a mut [u8] {
 		Ok(())
 	}
 }
+
+impl WriteAsync for Vec<u8> {
+	async fn write_exact(&mut self, data: &[u8]) -> Result<(), &'static str> {
+		self.extend_from_slice(data);
+		Ok(())
+	}
+}
