@@ -11,7 +11,7 @@ use cardboard_lib::{
 	input::{ColPin, KeyMatrix, RowPin},
 	profile::{ConsumerControlEvent, KeyboardEvent, KeyboardProfile, MouseEvent},
 	settings::{SettingsData, VersionedSettings},
-	storage::{BlockFlashExt, FlashPartition, load_profile_from_flash, load_settings_from_flash},
+	storage::{BlockFlashExt, FlashPartition, load_profile_from_flash, load_settings_from_flash, save_default_settings_to_flash},
 };
 use defmt::{info, warn};
 use embassy_rp::{
@@ -115,11 +115,20 @@ where
 	let settings_partition = FlashPartition::new(0, cfg.flash.settings_size);
 	let profile_partition = FlashPartition::new(cfg.flash.settings_size, cfg.flash.profile_size());
 
-	// settings
+	// settings: load from flash, or stamp defaults
 	let settings: VersionedSettings<S> =
-		load_settings_from_flash(&mut flash.partition(&settings_partition))
-			.await
-			.unwrap_or_default();
+		match load_settings_from_flash(&mut flash.partition(&settings_partition)).await {
+			Ok(settings) => settings,
+			Err(err) => {
+				info!("No settings in flash ({}); initializing defaults", err);
+				save_default_settings_to_flash(&mut flash.partition(&settings_partition))
+					.await
+					.unwrap_or_else(|err| {
+						warn!("Failed to initialize settings flash: {}", err);
+						VersionedSettings::default()
+					})
+			}
+		};
 
 	// device info (held in a static so command handlers can read it later)
 	static DEVICE_INFO: StaticCell<DeviceInfo> = StaticCell::new();

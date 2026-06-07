@@ -1,4 +1,11 @@
-use crate::{profile::KeyboardProfile, serialize::Readable, stream::ReadAsyncExt};
+use alloc::vec::Vec;
+
+use crate::{
+	profile::KeyboardProfile,
+	serialize::{Readable, Writeable},
+	settings::{SettingsData, VersionedSettings},
+	stream::ReadAsyncExt,
+};
 
 pub trait BlockFlash {
 	fn as_slice(&self) -> &'static [u8];
@@ -105,6 +112,20 @@ where
 		.ok_or("Failed to read settings length")? as usize;
 	data = &data[..length];
 	Settings::read_from(&mut data).await
+}
+
+pub async fn save_default_settings_to_flash<F, S>(
+	flash: &mut F,
+) -> Result<VersionedSettings<S>, &'static str>
+where
+	F: BlockFlash,
+	S: SettingsData,
+{
+	let defaults = VersionedSettings::<S>::default();
+	let mut buf = Vec::new();
+	defaults.write_to(&mut buf).await?;
+	save_settings_to_flash(flash, &buf).await?;
+	Ok(defaults)
 }
 
 pub async fn save_settings_to_flash<F: BlockFlash>(
