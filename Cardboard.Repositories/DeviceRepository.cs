@@ -379,9 +379,12 @@ file sealed class DeviceRepository(
 		if (previous is null)
 			return UpdateDeviceSettingsResult.NotFound;
 
+		// write back in whatever version the device currently speaks, never the client's
+		var toWrite = deviceSettings with { Version = previous.Version };
+
 		var result = await deviceService.SendCommand(
 			new UpdateSettingsCommand(),
-			deviceSettings,
+			toWrite,
 			deviceId,
 			cancellationToken
 		);

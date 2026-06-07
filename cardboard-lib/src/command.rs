@@ -7,6 +7,7 @@ use crate::serialize::{Readable, Writeable};
 use crate::storage::BlockFlash;
 use crate::storage::BlockFlashExt;
 use crate::storage::PartitionedFlashMemory;
+use crate::settings::VersionedReadable;
 use crate::storage::load_settings_from_flash;
 use crate::time::Clock;
 use async_trait::async_trait;
@@ -355,9 +356,8 @@ where
 	async fn try_execute<Context>(&self, ctx: &mut Context) -> Result<bool, (u8, &'static str)>
 	where
 		Context: ContextSerialRx + ContextSerialTx + ContextSettingsFlash,
-		Settings: Readable + Default,
+		Settings: VersionedReadable + Default,
 	{
-		// Load old settings BEFORE erasing flash (use Default if none exist)
 		let old_settings: Settings = load_settings_from_flash(&mut ctx.settings_flash())
 			.await
 			.unwrap_or_default();
@@ -369,7 +369,21 @@ where
 
 		debug!("Settings length: {}", len);
 
-		// clear settings flash storage
+		if len < SIZEOF_SETTINGS_VERSION {
+			error!("Settings length {} is too small", len);
+			return Err((0x10u8, "Settings length too small"));
+		}
+
+		// validate the version before erasing, so a rejected update can't clobber the existing settings
+		let version = ctx.serial_rx().read_u32().await.ok_or_else(|| {
+			error!("Failed to read settings version");
+			(0x10u8, "Failed to read settings version")
+		})?;
+		if !Settings::is_supported_version(version) {
+			error!("Rejected settings update: unsupported version {}", version);
+			return Err((0x2Cu8, "Unsupported settings version"));
+		}
+
 		ctx.settings_flash().erase_at_least(len).or_else(|e| {
 			error!("Failed to erase settings flash storage: {:?}", e);
 			Err((0x20u8, "Failed to erase settings flash storage"))
@@ -383,18 +397,31 @@ where
 				Err((0x24u8, "Failed to write settings length to flash storage"))
 			})?;
 
-		copy_serial_to_flash(ctx, |c| c.settings_flash(), SIZEOF_SETTINGS_LENGTH, len)
-			.await
-			.map_err(|e| match e {
-				CopySerialToFlashError::SerialReadError(e) => {
-					error!("Failed to read settings chunk from serial port: {:?}", e);
-					(0x14u8, "Failed to read settings chunk from serial port")
-				}
-				CopySerialToFlashError::FlashWriteError(e) => {
-					error!("Failed to write settings to flash storage: {:?}", e);
-					(0x28u8, "Failed to write settings to flash storage")
-				}
+		// write settings version to flash storage
+		ctx.settings_flash()
+			.write(SIZEOF_SETTINGS_LENGTH, &version.to_le_bytes())
+			.or_else(|e| {
+				error!("Failed to write settings version to flash storage: {:?}", e);
+				Err((0x24u8, "Failed to write settings version to flash storage"))
 			})?;
+
+		copy_serial_to_flash(
+			ctx,
+			|c| c.settings_flash(),
+			SIZEOF_SETTINGS_LENGTH + SIZEOF_SETTINGS_VERSION,
+			len - SIZEOF_SETTINGS_VERSION,
+		)
+		.await
+		.map_err(|e| match e {
+			CopySerialToFlashError::SerialReadError(e) => {
+				error!("Failed to read settings chunk from serial port: {:?}", e);
+				(0x14u8, "Failed to read settings chunk from serial port")
+			}
+			CopySerialToFlashError::FlashWriteError(e) => {
+				error!("Failed to write settings to flash storage: {:?}", e);
+				(0x28u8, "Failed to write settings to flash storage")
+			}
+		})?;
 
 		let new_settings: Settings = load_settings_from_flash(&mut ctx.settings_flash())
 			.await
@@ -413,7 +440,7 @@ where
 impl<Context, Settings, F> Command<Context> for UpdateSettingsCommand<Settings, F>
 where
 	Context: ContextSerialRx + ContextSerialTx + ContextSettingsFlash + ContextReboot,
-	Settings: Readable + Default,
+	Settings: VersionedReadable + Default,
 	F: Fn(&Settings, &Settings) -> bool,
 {
 	fn info(&self) -> CommandInfo {
@@ -451,6 +478,7 @@ where
 }
 
 const SIZEOF_SETTINGS_LENGTH: usize = 2; // size of u16
+const SIZEOF_SETTINGS_VERSION: usize = 4; // size of u32
 pub struct GetSettingsCommand;
 
 #[async_trait(?Send)]

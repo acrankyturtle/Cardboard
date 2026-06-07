@@ -38,6 +38,17 @@ impl<T: SettingsData> Default for VersionedSettings<T> {
 	}
 }
 
+/// Allows the settings update path reject an unsupported version before committing to flash.
+pub trait VersionedReadable: Readable {
+	fn is_supported_version(version: u32) -> bool;
+}
+
+impl<T: SettingsData> VersionedReadable for VersionedSettings<T> {
+	fn is_supported_version(version: u32) -> bool {
+		version == T::VERSION
+	}
+}
+
 impl<T: SettingsData> Readable for VersionedSettings<T> {
 	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str> {
 		let version = reader

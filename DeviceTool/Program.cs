@@ -139,10 +139,7 @@ DeviceSettings? SelectSettings()
 	Console.Write("Enable mouse input? (y/n) leave blank for default: ");
 	var input = Console.ReadLine();
 	return !string.IsNullOrWhiteSpace(input)
-		? DeviceSettings.CreateDefault() with
-		{
-			MouseEnabled = string.Equals(input, "y", StringComparison.OrdinalIgnoreCase),
-		}
+		? new() { MouseEnabled = string.Equals(input, "y", StringComparison.OrdinalIgnoreCase) }
 		: null;
 }
 

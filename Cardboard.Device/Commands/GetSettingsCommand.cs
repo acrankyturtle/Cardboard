@@ -11,8 +11,10 @@ public class GetSettingsCommand : ICommand<Unit, DeviceSettings>
 	{
 		var length = stream.Reader.ReadUInt16();
 
+		// firmware versions >1.0.2 stamps default on initial boot
+		// so if we get len == 0, we are dealing with a device version <1.0.2
 		if (length == 0)
-			return DeviceSettings.CreateDefault();
+			return DeviceSettings.CreateLegacyDefault();
 
 		var data = stream.Reader.ReadBytes(length);
 

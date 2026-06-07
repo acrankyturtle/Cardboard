@@ -386,9 +386,29 @@ internal class DeviceUpdater(IDeviceService deviceService, ILogger<DeviceUpdater
 		// restore settings
 		if (deviceSettings is not null)
 		{
+			// the reflashed firmware may have a different settings version
+			// re-read it and migrate the backed-up values into that version before writing
+			var currentSettingsResult = await deviceService.SendCommand(
+				new GetSettingsCommand(),
+				new(),
+				deviceId,
+				CancellationToken.None
+			);
+			if (!currentSettingsResult.TryGetSuccess(out var currentSettings))
+			{
+				logger.LogError("Failed to read device settings version after update");
+				yield return new FirmwareUpdateComplete
+				{
+					Result = UpdateFirmwareResult.FailedToRestoreSettings,
+				};
+				yield break;
+			}
+
+			var migratedSettings = deviceSettings with { Version = currentSettings.Version };
+
 			var restoreSettingsResult = await deviceService.SendCommand(
 				new UpdateSettingsCommand(),
-				deviceSettings,
+				migratedSettings,
 				deviceId,
 				CancellationToken.None
 			);
