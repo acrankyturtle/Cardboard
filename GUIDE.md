@@ -9,7 +9,7 @@ This guide covers all the shared concepts and features. For hardware-specific de
 Before diving into individual features, here's the big picture of how Cardboard's concepts relate to each other:
 
 - A **profile** lives on your device and contains all of its key configuration: which keys do what, organized into macros and layers.
-- A **macro** is an action sequence that fires when you press a key — it can type keys, click mouse buttons, send media commands, or switch layers.
+- A **macro** is an action sequence that fires when you press a key — it can type keys, click mouse buttons, send gamepad input, send media commands, or switch layers.
 - Each key has **layers**. Layers let a single key do different things depending on context. One layer is the **default** (always active); others are **tagged layers** that activate when specific tags are present.
 - **Tags** are simple string labels (like `gaming` or `photoshop`) that control which layers are active. Tags can come from two sources: **associations** (set automatically based on the focused application) or **macro actions** (set/cleared manually by pressing keys).
 - **Associations** watch which application is in the foreground and automatically apply tags (and optionally set up virtual keys) when a match is detected.
@@ -95,7 +95,7 @@ Each key independently determines its active layer based on the current tags. Wh
 
 ## Macros
 
-A macro is a named sequence of actions with timing control. When a key fires a macro, the device executes actions in order — pressing keys, clicking mouse buttons, sending media commands, or switching layers.
+A macro is a named sequence of actions with timing control. When a key fires a macro, the device executes actions in order — pressing keys, clicking mouse buttons, sending gamepad input, sending media commands, or switching layers.
 
 ### The Three Phases
 
@@ -113,6 +113,7 @@ Each action in a sequence is one of:
 
 - **Keyboard** — Press or release a keyboard key. Supports all standard keys (A–Z, 0–9, F1–F24, modifiers, arrows, numpad, etc.).
 - **Mouse** — Press or release a mouse button (Left, Right, Middle, Back, Forward), scroll, or move the cursor.
+- **Gamepad** — Press or release a gamepad button (Button 1–16), or set a gamepad axis to a value. The device presents itself as a standard USB gamepad with 16 buttons and 6 axes: left stick (LS X/Y), right stick (RS X/Y), and the two triggers (LT, RT). Axis values range from -127 to 127.
 - **Consumer Control** — Send a media command: Play/Pause, Mute, Volume Up/Down, Next/Previous Track, Stop, Record, Fast Forward, Rewind, Eject.
 - **Layer** — Set or clear a tag, which activates or deactivates tagged layers. See [Layers](#layers).
 
@@ -281,6 +282,14 @@ The device can present itself as a USB mouse. Some games with anti-cheat softwar
 When mouse output is disabled, any mouse actions in your macros will have no effect. The profile editor shows a warning indicator on macros containing mouse actions when mouse output is disabled.
 
 **Note:** Changing this setting requires the device to reboot, as it changes the USB device descriptor.
+
+### Gamepad Enable/Disable
+
+The device can also present itself as a USB gamepad. As with the mouse, some games with anti-cheat software may flag composite USB devices that include extra input endpoints. If you encounter issues, you can **disable gamepad output** in device settings, and the device will no longer present a gamepad HID interface.
+
+When gamepad output is disabled, any gamepad actions in your macros will have no effect.
+
+**Note:** Changing this setting requires the device to reboot, as it changes the USB device descriptor. The gamepad toggle only appears for devices whose firmware supports it; older firmware that predates gamepad support will not show the option.
 
 ## Firmware Updates
 

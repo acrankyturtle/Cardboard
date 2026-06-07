@@ -71,11 +71,16 @@ Get device settings.
 ```json
 {
   "deviceSettings": {
+    "version": 2,
     "mouseEnabled": true,
+    "gamepadEnabled": true,
+    "supportsGamepad": true,
     "debounceTimeUs": 10000
   }
 }
 ```
+
+`supportsGamepad` is derived from the settings `version` (true for version 2+) and indicates whether the device's firmware exposes the `gamepadEnabled` toggle. Older firmware reports version 1 with no `gamepadEnabled` field.
 
 ### PUT /api/devices/{id}/settings
 

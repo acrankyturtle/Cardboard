@@ -1,6 +1,8 @@
 import {
   ActionEvent,
   ConsumerControlEvent,
+  GamepadAxis,
+  GamepadButton,
   KeyboardKey,
   MouseButton,
   Sequence,
@@ -20,6 +22,8 @@ export type TemplateAction =
   | { type: "mouseScroll"; x: number; y: number }
   | { type: "mouseMove"; x: number; y: number }
   | { type: "consumerControl"; control: ConsumerControlEvent }
+  | { type: "gamepadButton"; button: GamepadButton }
+  | { type: "gamepadAxis"; axis: GamepadAxis; value: number }
   | { type: "layer"; tag: string };
 
 export function templateActionToEvents(action: TemplateAction): {
@@ -57,6 +61,20 @@ export function templateActionToEvents(action: TemplateAction): {
         down: { consumerControl: action.control },
         up: null,
         isInstant: true,
+      };
+    case "gamepadButton":
+      return {
+        down: { gamepad: { buttonDown: action.button } },
+        up: { gamepad: { buttonUp: action.button } },
+        isInstant: false,
+      };
+    case "gamepadAxis":
+      return {
+        down: {
+          gamepad: { adjust: { axis: action.axis, value: action.value } },
+        },
+        up: { gamepad: { adjust: { axis: action.axis, value: -action.value } } },
+        isInstant: false,
       };
     case "layer":
       return {
@@ -96,6 +114,18 @@ export function tryParseDownEvent(event: ActionEvent): TemplateAction | null {
   }
   if ("consumerControl" in event) {
     return { type: "consumerControl", control: event.consumerControl };
+  }
+  if ("gamepad" in event) {
+    if ("buttonDown" in event.gamepad) {
+      return { type: "gamepadButton", button: event.gamepad.buttonDown };
+    }
+    if ("adjust" in event.gamepad) {
+      return {
+        type: "gamepadAxis",
+        axis: event.gamepad.adjust.axis,
+        value: event.gamepad.adjust.value,
+      };
+    }
   }
   if ("layer" in event && "set" in event.layer) {
     return { type: "layer", tag: event.layer.set };

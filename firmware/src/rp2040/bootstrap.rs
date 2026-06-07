@@ -9,7 +9,7 @@ use cardboard_lib::{
 	},
 	hid::HidDevice,
 	input::{ColPin, KeyMatrix, RowPin},
-	profile::{ConsumerControlEvent, KeyboardEvent, KeyboardProfile, MouseEvent},
+	profile::{ConsumerControlEvent, GamepadEvent, KeyboardEvent, KeyboardProfile, MouseEvent},
 	settings::{SettingsData, VersionedSettings},
 	storage::{BlockFlashExt, FlashPartition, load_profile_from_flash, load_settings_from_flash, save_default_settings_to_flash},
 };
@@ -47,10 +47,11 @@ where
 	pub col_pins: [Box<dyn ColPin>; COLS],
 }
 
-pub struct HidWriters<const K: usize, const M: usize, const C: usize> {
+pub struct HidWriters<const K: usize, const M: usize, const C: usize, const G: usize> {
 	pub keyboard: HidWriter<'static, Driver<'static, USB>, K>,
 	pub mouse: Option<HidWriter<'static, Driver<'static, USB>, M>>,
 	pub consumer: HidWriter<'static, Driver<'static, USB>, C>,
+	pub gamepad: Option<HidWriter<'static, Driver<'static, USB>, G>>,
 }
 
 pub struct BootOutput<
@@ -60,6 +61,7 @@ pub struct BootOutput<
 	const K: usize,
 	const M: usize,
 	const C: usize,
+	const G: usize,
 > where
 	[(); ROWS * COLS]:,
 	S: SettingsData,
@@ -72,7 +74,7 @@ pub struct BootOutput<
 	pub serial_rx: EmbassySerialPacketReader<'static, USB_SERIAL_PACKET_SIZE>,
 	pub serial_tx: EmbassySerialPacketWriter<'static, USB_SERIAL_PACKET_SIZE>,
 	pub usb_device: UsbDevice<'static, Driver<'static, USB>>,
-	pub hid_writers: HidWriters<K, M, C>,
+	pub hid_writers: HidWriters<K, M, C, G>,
 	pub reboot: RebootControl,
 	pub clock: &'static EmbassyTickClock,
 	pub bootloader: &'static EmbassyRp2040RebootToBootloader,
@@ -83,20 +85,31 @@ pub async fn boot<
 	KbdImpl,
 	MouseImpl,
 	ConsumerImpl,
+	GamepadImpl,
 	const ROWS: usize,
 	const COLS: usize,
 >(
 	input: BootInput<S, ROWS, COLS>,
-) -> BootOutput<S, ROWS, COLS, { KbdImpl::SIZE }, { MouseImpl::SIZE }, { ConsumerImpl::SIZE }>
+) -> BootOutput<
+	S,
+	ROWS,
+	COLS,
+	{ KbdImpl::SIZE },
+	{ MouseImpl::SIZE },
+	{ ConsumerImpl::SIZE },
+	{ GamepadImpl::SIZE },
+>
 where
 	S: SettingsData + 'static,
 	KbdImpl: HidDevice<KeyboardEvent>,
 	MouseImpl: HidDevice<MouseEvent>,
 	ConsumerImpl: HidDevice<ConsumerControlEvent>,
+	GamepadImpl: HidDevice<GamepadEvent>,
 	[(); ROWS * COLS]:,
 	[(); KbdImpl::SIZE]:,
 	[(); MouseImpl::SIZE]:,
 	[(); ConsumerImpl::SIZE]:,
+	[(); GamepadImpl::SIZE]:,
 {
 	let cfg = input.config;
 
@@ -178,18 +191,21 @@ where
 	// usb
 	let serial_number = get_serial_number(&device_id);
 	let mouse_enabled = (cfg.mouse_enabled)(&settings.inner);
-	let usb = init_usb::<KbdImpl, MouseImpl, ConsumerImpl>(
+	let gamepad_enabled = (cfg.gamepad_enabled)(&settings.inner);
+	let usb = init_usb::<KbdImpl, MouseImpl, ConsumerImpl, GamepadImpl>(
 		input.usb,
 		device_info,
 		serial_number,
 		cfg.model,
 		mouse_enabled,
+		gamepad_enabled,
 	);
 	let (serial_reader, serial_writer, usb_device) = (usb.serial_reader, usb.serial_writer, usb.device);
 	let hid_writers = HidWriters {
 		keyboard: usb.keyboard_writer,
 		mouse: usb.mouse_writer,
 		consumer: usb.consumer_writer,
+		gamepad: usb.gamepad_writer,
 	};
 
 	let serial_rx =

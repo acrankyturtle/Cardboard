@@ -12,6 +12,10 @@ import {
   MouseButtonUpActionEvent,
   MouseMoveActionEvent,
   MouseScrollActionEvent,
+  GamepadActionEvent,
+  GamepadButtonDownActionEvent,
+  GamepadButtonUpActionEvent,
+  GamepadAdjustActionEvent,
   TaggedDeviceLayer,
 } from "./deviceTypes.ts";
 
@@ -31,6 +35,10 @@ export const isConsumerControlActionEvent = (
   e: ActionEvent,
 ): e is { consumerControl: import("./deviceTypes.ts").ConsumerControlEvent } =>
   "consumerControl" in e;
+
+export const isGamepadActionEvent = (
+  e: ActionEvent,
+): e is { gamepad: GamepadActionEvent } => "gamepad" in e;
 
 export const isLayerActionEvent = (
   e: ActionEvent,
@@ -63,6 +71,18 @@ export const isMouseScrollEvent = (
 export const isMouseMoveEvent = (
   e: MouseActionEvent,
 ): e is MouseMoveActionEvent => "move" in e;
+
+export const isGamepadButtonDownEvent = (
+  e: GamepadActionEvent,
+): e is GamepadButtonDownActionEvent => "buttonDown" in e;
+
+export const isGamepadButtonUpEvent = (
+  e: GamepadActionEvent,
+): e is GamepadButtonUpActionEvent => "buttonUp" in e;
+
+export const isGamepadAdjustEvent = (
+  e: GamepadActionEvent,
+): e is GamepadAdjustActionEvent => "adjust" in e;
 
 export const isLayerClearEvent = (
   e: LayerActionEvent,

@@ -4,7 +4,7 @@ This guide covers hardware details and device-specific information for the CK1-3
 
 ## Overview
 
-The CK1-30 is a 30-key programmable Cardboard keypad built on the RP2040 microcontroller. It connects to your computer over USB and appears as a composite device with keyboard, mouse, consumer control, and serial communication endpoints.
+The CK1-30 is a 30-key programmable Cardboard keypad built on the RP2040 microcontroller. It connects to your computer over USB and appears as a composite device with keyboard, mouse, gamepad, consumer control, and serial communication endpoints.
 
 ### Specifications
 
@@ -14,7 +14,7 @@ The CK1-30 is a 30-key programmable Cardboard keypad built on the RP2040 microco
 | Virtual Keys | Up to 32 |
 | Microcontroller | RP2040 (dual-core Arm Cortex-M0+) |
 | Connection | USB 2.0 (composite device) |
-| USB Endpoints | NKRO Keyboard, Mouse, Consumer Control, CDC Serial |
+| USB Endpoints | NKRO Keyboard, Mouse, Gamepad, Consumer Control, CDC Serial |
 | Profile Storage | Flash memory |
 | Key Debounce | 10 ms (default, configurable) |
 | Scan Rate | 1 ms |
@@ -50,6 +50,7 @@ The CK1-30 presents itself as a USB composite device with multiple endpoints:
 
 - **Keyboard (NKRO)** — Full N-Key Rollover keyboard for keystroke output.
 - **Mouse** — Mouse buttons, scroll, and cursor movement. Can be disabled in device settings if needed for anti-cheat compatibility.
+- **Gamepad** — 16 buttons and 6 axes (left/right stick X/Y and two triggers). Can be disabled in device settings if needed for anti-cheat compatibility.
 - **Consumer Control** — Media keys (volume, playback, etc.).
 - **CDC Serial** — Communication channel between Cardboard and the device for profile management, settings, and firmware updates.
 
@@ -71,5 +72,6 @@ All macro action types are supported on the CK1-30:
 
 - **Keyboard** — Full key set including modifiers (Ctrl, Shift, Alt, GUI/Win), function keys (F1–F24), numpad, navigation, and special keys.
 - **Mouse** — Left, Right, Middle, Back, and Forward buttons; scroll; cursor movement. Requires mouse output to be enabled in device settings (default is ON).
+- **Gamepad** — 16 buttons (Button 1–16) and 6 axes (left stick X/Y, right stick X/Y, left trigger, right trigger). Axis values range from -127 to 127. Requires gamepad output to be enabled in device settings (default is ON).
 - **Consumer Control** — Play/Pause, Mute, Volume Up/Down, Next/Previous Track, Stop, Record, Fast Forward, Rewind, Eject.
 - **Layer** — Set and clear tags to switch layers on the device itself.

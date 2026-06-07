@@ -316,6 +316,7 @@ Discriminated union. First byte selects the variant:
 | `3` | ConsumerControl | u8 (HID usage code) |
 | `4` | Layer | LayerEvent |
 | `5` | Debug | DebugEvent |
+| `6` | Gamepad | GamepadEvent |
 
 #### KeyboardEvent
 
@@ -335,6 +336,23 @@ Discriminated union (u8):
 | `2` | Scroll | i32 x, i32 y |
 | `3` | Move | i32 x, i32 y |
 
+#### GamepadEvent
+
+Discriminated union (u8):
+
+| Discriminator | Variant | Payload |
+|---------------|---------|---------|
+| `0` | ButtonDown | u8 (GamepadButton enum: 0=Button1 … 15=Button16) |
+| `1` | ButtonUp | u8 (GamepadButton) |
+| `2` | Adjust | GamepadAxisValue |
+
+##### GamepadAxisValue
+
+| Field | Type | Description |
+|-------|------|-------------|
+| axis | u8 | GamepadAxis enum: 0=LeftX, 1=LeftY, 2=RightX, 3=RightY, 4=LeftTrigger, 5=RightTrigger |
+| value | i8 | Axis value, -127 to 127 |
+
 #### LayerEvent
 
 | Field | Type | Description |
@@ -352,8 +370,21 @@ Discriminated union (u8):
 
 ### DeviceSettings
 
+The settings format is versioned. The leading `version` field selects the field layout that follows. The host and firmware negotiate the version per device so that older firmware (which has no gamepad) continues to round-trip its settings.
+
+**Version 1** (legacy, pre-gamepad firmware):
+
 | Field | Type |
 |-------|------|
-| version | u32 (must be `1`) |
+| version | u32 (`1`) |
 | mouse_enabled | bool |
+| debounce_time_us | u32 |
+
+**Version 2** (current, gamepad-capable firmware):
+
+| Field | Type |
+|-------|------|
+| version | u32 (`2`) |
+| mouse_enabled | bool |
+| gamepad_enabled | bool |
 | debounce_time_us | u32 |

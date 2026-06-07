@@ -13,6 +13,7 @@ where
 	pub key_ids: [KeyId; ROWS * COLS],
 	pub bootloader_key_index: Option<usize>,
 	pub mouse_enabled: fn(&S) -> bool,
+	pub gamepad_enabled: fn(&S) -> bool,
 	pub debounce_time: fn(&S) -> Duration,
 	pub tick_interval: Duration,
 	pub serial: SerialTimeouts,

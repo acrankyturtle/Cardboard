@@ -51,11 +51,14 @@ export enum KeyColor {
 
 export interface DeviceSettingsReport {
   isMouseEnabled: boolean;
+  isGamepadEnabled: boolean;
   debounceTimeUs: number;
 }
 
 export interface DeviceSettings {
+  supportsGamepad: boolean;
   mouseEnabled: boolean;
+  gamepadEnabled: boolean;
   debounceTimeUs: number;
 }
 
@@ -139,7 +142,8 @@ export type ActionEvent =
   | { mouse: MouseActionEvent }
   | { consumerControl: ConsumerControlEvent }
   | { layer: LayerActionEvent }
-  | { debug: DebugActionEvent };
+  | { debug: DebugActionEvent }
+  | { gamepad: GamepadActionEvent };
 
 export type KeyboardActionEvent =
   | KeyboardKeyDownActionEvent
@@ -180,6 +184,28 @@ export type LayerClearActionEvent = { clear: string };
 export type LayerSetActionEvent = { set: string };
 
 export type DebugActionEvent = { log: string };
+
+export type GamepadActionEvent =
+  | GamepadButtonDownActionEvent
+  | GamepadButtonUpActionEvent
+  | GamepadAdjustActionEvent;
+
+export type GamepadButtonDownActionEvent = {
+  buttonDown: GamepadButton;
+};
+
+export type GamepadButtonUpActionEvent = {
+  buttonUp: GamepadButton;
+};
+
+export type GamepadAdjustActionEvent = {
+  adjust: GamepadAxisValue;
+};
+
+export interface GamepadAxisValue {
+  axis: GamepadAxis;
+  value: number;
+}
 
 interface MouseScroll {
   x: number;
@@ -324,6 +350,34 @@ export enum MouseButton {
   Middle = "Middle",
   Back = "Back",
   Forward = "Forward",
+}
+
+export enum GamepadButton {
+  Button1 = "Button1",
+  Button2 = "Button2",
+  Button3 = "Button3",
+  Button4 = "Button4",
+  Button5 = "Button5",
+  Button6 = "Button6",
+  Button7 = "Button7",
+  Button8 = "Button8",
+  Button9 = "Button9",
+  Button10 = "Button10",
+  Button11 = "Button11",
+  Button12 = "Button12",
+  Button13 = "Button13",
+  Button14 = "Button14",
+  Button15 = "Button15",
+  Button16 = "Button16",
+}
+
+export enum GamepadAxis {
+  LeftX = "LeftX",
+  LeftY = "LeftY",
+  RightX = "RightX",
+  RightY = "RightY",
+  LeftTrigger = "LeftTrigger",
+  RightTrigger = "RightTrigger",
 }
 
 export enum ConsumerControlEvent {

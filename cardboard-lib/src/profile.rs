@@ -313,6 +313,7 @@ pub enum ActionEvent {
 	ConsumerControl(ConsumerControlEvent),
 	Layer(LayerEvent),
 	DebugAction(DebugEvent),
+	Gamepad(GamepadEvent),
 }
 
 impl Readable for ActionEvent {
@@ -331,6 +332,7 @@ impl Readable for ActionEvent {
 			3 => ActionEvent::ConsumerControl(ConsumerControlEvent::read_from(reader).await?),
 			4 => ActionEvent::Layer(LayerEvent::read_from(reader).await?),
 			5 => ActionEvent::DebugAction(DebugEvent::read_from(reader).await?),
+			6 => ActionEvent::Gamepad(GamepadEvent::read_from(reader).await?),
 			_ => return Err("Invalid action event discriminator"),
 		};
 
@@ -722,6 +724,108 @@ impl Readable for MouseMove {
 			.await
 			.ok_or("Failed to read mouse move y")? as i32;
 		Ok(MouseMove { x, y })
+	}
+}
+
+#[derive(Clone, Debug)]
+pub enum GamepadEvent {
+	ButtonDown(GamepadButton),
+	ButtonUp(GamepadButton),
+	SetAxis(GamepadAxisValue),
+}
+
+impl Readable for GamepadEvent {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let discriminator = reader
+			.read_u8()
+			.await
+			.ok_or("Failed to read gamepad event discriminator")?;
+		let value = match discriminator {
+			0 => GamepadEvent::ButtonDown(GamepadButton::read_from(reader).await?),
+			1 => GamepadEvent::ButtonUp(GamepadButton::read_from(reader).await?),
+			2 => GamepadEvent::SetAxis(GamepadAxisValue::read_from(reader).await?),
+			_ => return Err("Invalid gamepad event discriminator"),
+		};
+
+		Ok(value)
+	}
+}
+
+#[derive(Clone, Copy, Debug, TryFromPrimitive)]
+#[repr(u8)]
+pub enum GamepadButton {
+	Button1,
+	Button2,
+	Button3,
+	Button4,
+	Button5,
+	Button6,
+	Button7,
+	Button8,
+	Button9,
+	Button10,
+	Button11,
+	Button12,
+	Button13,
+	Button14,
+	Button15,
+	Button16,
+}
+
+impl Readable for GamepadButton {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let value = reader
+			.read_u8()
+			.await
+			.ok_or("Failed to read gamepad button")?;
+		Ok(GamepadButton::try_from(value).or(Err("Failed to parse gamepad button"))?)
+	}
+}
+
+#[derive(Clone, Copy, Debug, TryFromPrimitive)]
+#[repr(u8)]
+pub enum GamepadAxis {
+	LeftX,
+	LeftY,
+	RightX,
+	RightY,
+	LeftTrigger,
+	RightTrigger,
+}
+
+impl Readable for GamepadAxis {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let value = reader.read_u8().await.ok_or("Failed to read gamepad axis")?;
+		Ok(GamepadAxis::try_from(value).or(Err("Failed to parse gamepad axis"))?)
+	}
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct GamepadAxisValue {
+	pub axis: GamepadAxis,
+	pub value: i8,
+}
+
+impl Readable for GamepadAxisValue {
+	async fn read_from<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str>
+	where
+		Self: Sized,
+	{
+		let axis = GamepadAxis::read_from(reader).await?;
+		let value = reader
+			.read_u8()
+			.await
+			.ok_or("Failed to read gamepad axis value")? as i8;
+		Ok(GamepadAxisValue { axis, value })
 	}
 }
 

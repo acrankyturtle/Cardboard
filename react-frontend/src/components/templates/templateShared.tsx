@@ -2,6 +2,8 @@ import { ReactNode } from "react";
 import clsx from "clsx";
 import {
   ConsumerControlEvent,
+  GamepadAxis,
+  GamepadButton,
   KeyboardKey,
   MouseButton,
   Sequence,
@@ -16,6 +18,10 @@ import {
 } from "@headlessui/react";
 import { InputClassName } from "../Input.tsx";
 import { ConsumerControlKeySelector } from "../keySelectors/ConsumerControlKeySelector.tsx";
+import {
+  GamepadAxisSelector,
+  GamepadKeySelector,
+} from "../keySelectors/GamepadKeySelector.tsx";
 import { KeyboardKeySelector } from "../keySelectors/KeyboardKeySelector.tsx";
 import { MouseKeySelector } from "../keySelectors/MouseKeySelector.tsx";
 import { CompactActionView } from "../ActionView.tsx";
@@ -161,6 +167,27 @@ export function ActionList({
               >
                 Media Control
               </ActionMenuItem>
+              <ActionMenuItem
+                onClick={() =>
+                  addAction({
+                    type: "gamepadButton",
+                    button: GamepadButton.Button1,
+                  })
+                }
+              >
+                Gamepad Button
+              </ActionMenuItem>
+              <ActionMenuItem
+                onClick={() =>
+                  addAction({
+                    type: "gamepadAxis",
+                    axis: GamepadAxis.LeftX,
+                    value: 127,
+                  })
+                }
+              >
+                Gamepad Axis
+              </ActionMenuItem>
               {allowLayers && (
                 <ActionMenuItem
                   onClick={() => addAction({ type: "layer", tag: "" })}
@@ -303,6 +330,43 @@ function ActionEditor({
           <ConsumerControlKeySelector
             value={action.control}
             onChange={(control) => onChange({ ...action, control })}
+          />
+        </div>
+      );
+    case "gamepadButton":
+      return (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-stone-400">Button:</span>
+          <GamepadKeySelector
+            value={action.button}
+            onChange={(button) => onChange({ ...action, button })}
+          />
+        </div>
+      );
+    case "gamepadAxis":
+      return (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-stone-400">Axis:</span>
+          <GamepadAxisSelector
+            value={action.axis}
+            onChange={(axis) => onChange({ ...action, axis })}
+          />
+          <Input
+            type="number"
+            className={clsx("w-16", InputClassName)}
+            value={action.value}
+            min={-127}
+            max={127}
+            onChange={(e) =>
+              onChange({
+                ...action,
+                value: Math.max(
+                  -127,
+                  Math.min(127, Math.round(Number(e.target.value)) || 0),
+                ),
+              })
+            }
+            placeholder="Value"
           />
         </div>
       );

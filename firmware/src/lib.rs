@@ -30,7 +30,7 @@ pub mod __reexports {
 	pub use cardboard_lib::hid::{HidDevice, HidReport};
 	pub use cardboard_lib::input::{KeyId, KeyMatrix};
 	pub use cardboard_lib::profile::{
-		ConsumerControlEvent, KeyboardEvent, KeyboardProfile, LayerTag, MouseEvent,
+		ConsumerControlEvent, GamepadEvent, KeyboardEvent, KeyboardProfile, LayerTag, MouseEvent,
 	};
 	pub use cardboard_lib::serial::BufferedReader;
 	pub use cardboard_lib::settings::VersionedSettings;

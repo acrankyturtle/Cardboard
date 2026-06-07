@@ -32,7 +32,7 @@ use cardboard_lib::{
 	device::{DeviceInfo, DeviceVariant},
 	embassy::EmbassyTickClock,
 	error::HeaplessSpscErrorLog,
-	hid::{ConsumerControl, Mouse, NKROKeyboard},
+	hid::{ConsumerControl, Gamepad, Mouse, NKROKeyboard},
 	impl_context_allocator, impl_context_clock, impl_context_device_info, impl_context_error_log,
 	impl_context_profile_flash, impl_context_reboot, impl_context_serial_rx,
 	impl_context_serial_tx, impl_context_settings_flash, impl_context_tags,
@@ -66,6 +66,7 @@ device_statics! {
 	keyboard: NKROKeyboard,
 	mouse: Mouse,
 	consumer: ConsumerControl,
+	gamepad: Gamepad,
 	mutex: ThreadModeRawMutex,
 	context: Ck130Context,
 }
@@ -109,6 +110,7 @@ const CK130_CONFIG: DeviceConfig<Ck130Settings, ROWS, COLS> = DeviceConfig {
 	],
 	bootloader_key_index: Some(0),
 	mouse_enabled: |s| s.mouse_enabled,
+	gamepad_enabled: |s| s.gamepad_enabled,
 	debounce_time: |s| cardboard_lib::time::Duration::from_ticks(s.debounce_time_us as u64),
 	tick_interval: millis(1),
 	serial: SerialTimeouts::DEFAULTS,
@@ -191,9 +193,10 @@ async fn main(spawner: Spawner) -> () {
 		/* 0x06 */ Box::new(SetVirtualKeysCommand::<VKB> {}),
 		/* 0x07 */
 		Box::new(UpdateSettingsCommand::<Settings, _>::new(|old, new| {
-			// reboot if mouse_enabled changed (requires USB re-enumeration)
+			// reboot if mouse_enabled or gamepad_enabled changed (requires USB re-enumeration)
 			// reboot if debounce_time_us changed (KeyMatrix is constructed at boot)
 			old.inner.mouse_enabled != new.inner.mouse_enabled
+				|| old.inner.gamepad_enabled != new.inner.gamepad_enabled
 				|| old.inner.debounce_time_us != new.inner.debounce_time_us
 		})),
 		/* 0x08 */ Box::new(GetSettingsCommand {}),
@@ -202,7 +205,7 @@ async fn main(spawner: Spawner) -> () {
 	let command_info = cmds.iter().map(|c| c.info()).collect();
 
 	let boot =
-		boot::<Ck130Settings, NKROKeyboard, Mouse, ConsumerControl, ROWS, COLS>(BootInput {
+		boot::<Ck130Settings, NKROKeyboard, Mouse, ConsumerControl, Gamepad, ROWS, COLS>(BootInput {
 			config: &CK130_CONFIG,
 			command_info,
 			flash_data_ptr: flash_data_ptr(),
@@ -255,6 +258,7 @@ async fn main(spawner: Spawner) -> () {
 
 pub struct Ck130Settings {
 	mouse_enabled: bool,
+	gamepad_enabled: bool,
 	debounce_time_us: u32,
 }
 
@@ -262,13 +266,14 @@ impl Default for Ck130Settings {
 	fn default() -> Self {
 		Self {
 			mouse_enabled: true,
+			gamepad_enabled: true,
 			debounce_time_us: 10_000,
 		}
 	}
 }
 
 impl SettingsData for Ck130Settings {
-	const VERSION: u32 = 1;
+	const VERSION: u32 = 2;
 
 	async fn read_data<R: ReadAsync>(reader: &mut R) -> Result<Self, &'static str> {
 		Ok(Self {
@@ -276,6 +281,10 @@ impl SettingsData for Ck130Settings {
 				.read_bool()
 				.await
 				.ok_or("Could not read mouse enabled")?,
+			gamepad_enabled: reader
+				.read_bool()
+				.await
+				.ok_or("Could not read gamepad enabled")?,
 			debounce_time_us: reader
 				.read_u32()
 				.await
@@ -285,6 +294,7 @@ impl SettingsData for Ck130Settings {
 
 	async fn write_data<W: WriteAsync>(&self, writer: &mut W) -> Result<(), &'static str> {
 		writer.write_bool(self.mouse_enabled).await?;
+		writer.write_bool(self.gamepad_enabled).await?;
 		writer.write_u32(self.debounce_time_us).await
 	}
 }

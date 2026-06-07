@@ -109,6 +109,7 @@ pub async fn keypad_task<
 			ActionEvent::None => {}
 			ActionEvent::Keyboard(event) => hid.report_keyboard(event),
 			ActionEvent::Mouse(event) => hid.report_mouse(event),
+			ActionEvent::Gamepad(event) => hid.report_gamepad(event),
 			ActionEvent::ConsumerControl(event) => {
 				hid.report_consumer(event);
 			}

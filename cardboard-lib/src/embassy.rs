@@ -17,7 +17,7 @@ use embassy_usb::class::cdc_acm::{Receiver, Sender};
 
 use crate::context::{ExternalTagsSignalRx, VirtualKeySignalTx};
 use crate::hid::{HidDevice, HidReport, ReportHid};
-use crate::profile::{ConsumerControlEvent, KeyboardEvent, MouseEvent};
+use crate::profile::{ConsumerControlEvent, GamepadEvent, KeyboardEvent, MouseEvent};
 use crate::serial::{SerialDrain, SerialPacketReader, SerialPacketSender};
 use crate::storage::BlockFlash;
 use crate::time::{Clock, Duration};
@@ -277,18 +277,26 @@ pub struct EmbassyKeypadHid<
 	HidKeyboard: HidDevice<KeyboardEvent> + 'static,
 	HidMouse: HidDevice<MouseEvent> + 'static,
 	HidConsumer: HidDevice<ConsumerControlEvent> + 'static,
+	HidGamepad: HidDevice<GamepadEvent> + 'static,
 	M: 'static + RawMutex,
 > where
 	[(); HidKeyboard::SIZE]:,
 	[(); HidMouse::SIZE]:,
 	[(); HidConsumer::SIZE]:,
+	[(); HidGamepad::SIZE]:,
 {
 	pub keyboard: HidKeyboard,
 	pub mouse: HidMouse,
 	pub consumer: HidConsumer,
+	pub gamepad: HidGamepad,
 	pub signal: &'static Signal<
 		M,
-		HidReport<{ HidKeyboard::SIZE }, { HidMouse::SIZE }, { HidConsumer::SIZE }>,
+		HidReport<
+			{ HidKeyboard::SIZE },
+			{ HidMouse::SIZE },
+			{ HidConsumer::SIZE },
+			{ HidGamepad::SIZE },
+		>,
 	>,
 }
 
@@ -296,12 +304,14 @@ impl<
 	HidKeyboard: HidDevice<KeyboardEvent>,
 	HidMouse: HidDevice<MouseEvent>,
 	HidConsumer: HidDevice<ConsumerControlEvent>,
+	HidGamepad: HidDevice<GamepadEvent>,
 	M: 'static + RawMutex,
-> ReportHid for EmbassyKeypadHid<HidKeyboard, HidMouse, HidConsumer, M>
+> ReportHid for EmbassyKeypadHid<HidKeyboard, HidMouse, HidConsumer, HidGamepad, M>
 where
 	[(); HidKeyboard::SIZE]:,
 	[(); HidMouse::SIZE]:,
 	[(); HidConsumer::SIZE]:,
+	[(); HidGamepad::SIZE]:,
 {
 	fn report_keyboard(&mut self, report: &crate::profile::KeyboardEvent) {
 		self.keyboard.input(report);
@@ -315,15 +325,21 @@ where
 		self.consumer.input(report);
 	}
 
+	fn report_gamepad(&mut self, report: &crate::profile::GamepadEvent) {
+		self.gamepad.input(report);
+	}
+
 	fn flush(&mut self) {
 		let keyboard = self.keyboard.create_report(false);
 		let mouse = self.mouse.create_report(false);
 		let consumer = self.consumer.create_report(false);
+		let gamepad = self.gamepad.create_report(false);
 
 		self.signal.signal(HidReport {
 			keyboard,
 			mouse,
 			consumer,
+			gamepad,
 		});
 	}
 
@@ -331,6 +347,7 @@ where
 		self.keyboard.reset();
 		self.mouse.reset();
 		self.consumer.reset();
+		self.gamepad.reset();
 
 		self.flush();
 	}

@@ -172,6 +172,21 @@ export function EditDeviceSettings({
                 />
               </SettingsRow>
             </SettingsSection>
+            {settings.supportsGamepad && (
+              <SettingsSection title="Gamepad">
+                <SettingsRow
+                  label="Enable Gamepad"
+                  description="Disable the gamepad device. When disabled the device does not present a gamepad HID interface, which can be useful when dealing with anti-cheat systems that disable additional input devices."
+                >
+                  <ToggleSwitch
+                    checked={settings.gamepadEnabled}
+                    onChange={(checked) =>
+                      setSettings({ ...settings, gamepadEnabled: checked })
+                    }
+                  />
+                </SettingsRow>
+              </SettingsSection>
+            )}
           </div>
         ) : null}
       </div>

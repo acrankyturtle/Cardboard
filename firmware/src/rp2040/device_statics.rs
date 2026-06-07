@@ -10,6 +10,7 @@ macro_rules! device_statics {
 		keyboard: $keyboard:ty,
 		mouse: $mouse:ty,
 		consumer: $consumer:ty,
+		gamepad: $gamepad:ty,
 		mutex: $mutex:ty,
 		context: $context:ty $(,)?
 	) => {
@@ -35,6 +36,7 @@ macro_rules! device_statics {
 		pub type KeyboardImpl = $keyboard;
 		pub type MouseImpl = $mouse;
 		pub type ConsumerImpl = $consumer;
+		pub type GamepadImpl = $gamepad;
 		pub type Mutex = $mutex;
 		pub type DeviceSignal<T> = ::embassy_sync::signal::Signal<Mutex, T>;
 
@@ -68,6 +70,9 @@ macro_rules! device_statics {
 				{ <ConsumerImpl as $crate::__reexports::HidDevice<
 					$crate::__reexports::ConsumerControlEvent,
 				>>::SIZE },
+				{ <GamepadImpl as $crate::__reexports::HidDevice<
+					$crate::__reexports::GamepadEvent,
+				>>::SIZE },
 			>,
 		> = ::embassy_sync::signal::Signal::new();
 
@@ -88,7 +93,7 @@ macro_rules! device_statics {
 			clock: &'static $crate::__reexports::EmbassyTickClock,
 			matrix: Matrix,
 			profile: $crate::__reexports::KeyboardProfile,
-			hid: $crate::__reexports::EmbassyKeypadHid<KeyboardImpl, MouseImpl, ConsumerImpl, Mutex>,
+			hid: $crate::__reexports::EmbassyKeypadHid<KeyboardImpl, MouseImpl, ConsumerImpl, GamepadImpl, Mutex>,
 			profile_changed: &'static DeviceSignal<$crate::__reexports::KeyboardProfile>,
 			tags_changed: &'static DeviceSignal<
 				::alloc::vec::Vec<$crate::__reexports::LayerTag>,
@@ -148,6 +153,13 @@ macro_rules! device_statics {
 					$crate::__reexports::ConsumerControlEvent,
 				>>::SIZE },
 			>,
+			gamepad: ::core::option::Option<::embassy_usb::class::hid::HidWriter<
+				'static,
+				::embassy_rp::usb::Driver<'static, ::embassy_rp::peripherals::USB>,
+				{ <GamepadImpl as $crate::__reexports::HidDevice<
+					$crate::__reexports::GamepadEvent,
+				>>::SIZE },
+			>>,
 			signal: &'static DeviceSignal<
 				$crate::__reexports::HidReport<
 					{ <KeyboardImpl as $crate::__reexports::HidDevice<
@@ -159,10 +171,13 @@ macro_rules! device_statics {
 					{ <ConsumerImpl as $crate::__reexports::HidDevice<
 						$crate::__reexports::ConsumerControlEvent,
 					>>::SIZE },
+					{ <GamepadImpl as $crate::__reexports::HidDevice<
+						$crate::__reexports::GamepadEvent,
+					>>::SIZE },
 				>,
 			>,
 		) {
-			$crate::rp2040::hid::hid_task(keyboard, mouse, consumer, signal).await
+			$crate::rp2040::hid::hid_task(keyboard, mouse, consumer, gamepad, signal).await
 		}
 
 		pub fn init_heap() {
@@ -188,6 +203,7 @@ macro_rules! spawn_standard_tasks {
 			keyboard: KeyboardImpl::new(),
 			mouse: MouseImpl::new(),
 			consumer: ConsumerImpl::new(),
+			gamepad: GamepadImpl::new(),
 			signal: &HID_SIGNAL,
 		};
 
@@ -199,9 +215,10 @@ macro_rules! spawn_standard_tasks {
 			keyboard,
 			mouse,
 			consumer,
+			gamepad,
 		} = $boot.hid_writers;
 		$spawner
-			.spawn(hid_task(keyboard, mouse, consumer, &HID_SIGNAL))
+			.spawn(hid_task(keyboard, mouse, consumer, gamepad, &HID_SIGNAL))
 			.unwrap();
 
 		$spawner

@@ -3,15 +3,19 @@ import {
   ActionEvent,
   isKeyboardActionEvent,
   isMouseActionEvent,
+  isGamepadActionEvent,
   isLayerActionEvent,
   isKeyDownEvent,
   isKeyUpEvent,
   isMouseDownEvent,
   isMouseUpEvent,
+  isGamepadButtonDownEvent,
+  isGamepadButtonUpEvent,
   isLayerSetEvent,
   isLayerClearEvent,
   KeyboardKey,
   MouseButton,
+  GamepadButton,
   Sequence,
 } from "../api/devices.ts";
 
@@ -24,6 +28,9 @@ export function isDownEvent(event: ActionEvent): boolean {
   }
   if (isMouseActionEvent(event)) {
     return isMouseDownEvent(event.mouse);
+  }
+  if (isGamepadActionEvent(event)) {
+    return isGamepadButtonDownEvent(event.gamepad);
   }
   if (isLayerActionEvent(event)) {
     return isLayerSetEvent(event.layer);
@@ -41,6 +48,9 @@ export function isUpEvent(event: ActionEvent): boolean {
   if (isMouseActionEvent(event)) {
     return isMouseUpEvent(event.mouse);
   }
+  if (isGamepadActionEvent(event)) {
+    return isGamepadButtonUpEvent(event.gamepad);
+  }
   if (isLayerActionEvent(event)) {
     return isLayerClearEvent(event.layer);
   }
@@ -57,6 +67,9 @@ export function convertDownToUp(event: ActionEvent): ActionEvent | null {
   if (isMouseActionEvent(event) && isMouseDownEvent(event.mouse)) {
     return { mouse: { buttonUp: event.mouse.buttonDown } };
   }
+  if (isGamepadActionEvent(event) && isGamepadButtonDownEvent(event.gamepad)) {
+    return { gamepad: { buttonUp: event.gamepad.buttonDown } };
+  }
   if (isLayerActionEvent(event) && isLayerSetEvent(event.layer)) {
     return { layer: { clear: event.layer.set } };
   }
@@ -72,6 +85,9 @@ export function convertUpToDown(event: ActionEvent): ActionEvent | null {
   }
   if (isMouseActionEvent(event) && isMouseUpEvent(event.mouse)) {
     return { mouse: { buttonDown: event.mouse.buttonUp } };
+  }
+  if (isGamepadActionEvent(event) && isGamepadButtonUpEvent(event.gamepad)) {
+    return { gamepad: { buttonDown: event.gamepad.buttonUp } };
   }
   if (isLayerActionEvent(event) && isLayerClearEvent(event.layer)) {
     return { layer: { set: event.layer.clear } };
@@ -189,6 +205,28 @@ const getButtonUps = (sequence: Sequence): MouseButton[] =>
       (a.actionEvent as { mouse: { buttonUp: MouseButton } }).mouse.buttonUp,
   );
 
+const getGamepadButtonDowns = (sequence: Sequence): GamepadButton[] =>
+  getEventsOfType(
+    sequence,
+    (a) =>
+      isGamepadActionEvent(a.actionEvent) &&
+      isGamepadButtonDownEvent(a.actionEvent.gamepad),
+    (a) =>
+      (a.actionEvent as { gamepad: { buttonDown: GamepadButton } }).gamepad
+        .buttonDown,
+  );
+
+const getGamepadButtonUps = (sequence: Sequence): GamepadButton[] =>
+  getEventsOfType(
+    sequence,
+    (a) =>
+      isGamepadActionEvent(a.actionEvent) &&
+      isGamepadButtonUpEvent(a.actionEvent.gamepad),
+    (a) =>
+      (a.actionEvent as { gamepad: { buttonUp: GamepadButton } }).gamepad
+        .buttonUp,
+  );
+
 const getLayerSets = (sequence: Sequence): string[] =>
   getEventsOfType(
     sequence,
@@ -237,6 +275,12 @@ const findUnpairedButtonDown = (startSeq: Sequence, endSeq: Sequence) =>
 const findUnpairedButtonUp = (endSeq: Sequence, startSeq: Sequence) =>
   findUnpaired(getButtonUps(endSeq), getButtonDowns(startSeq));
 
+const findUnpairedGamepadButtonDown = (startSeq: Sequence, endSeq: Sequence) =>
+  findUnpaired(getGamepadButtonDowns(startSeq), getGamepadButtonUps(endSeq));
+
+const findUnpairedGamepadButtonUp = (endSeq: Sequence, startSeq: Sequence) =>
+  findUnpaired(getGamepadButtonUps(endSeq), getGamepadButtonDowns(startSeq));
+
 const findUnpairedLayerSet = (startSeq: Sequence, endSeq: Sequence) =>
   findUnpaired(getLayerSets(startSeq), getLayerClears(endSeq));
 
@@ -268,6 +312,16 @@ export function createStartSequenceActionEvent(
     const matchingButton = findUnpairedButtonUp(endSequence, startSeq);
     if (matchingButton) {
       return { mouse: { buttonDown: matchingButton } };
+    }
+  }
+
+  if (
+    isGamepadActionEvent(baseEvent) &&
+    isGamepadButtonDownEvent(baseEvent.gamepad)
+  ) {
+    const matchingButton = findUnpairedGamepadButtonUp(endSequence, startSeq);
+    if (matchingButton) {
+      return { gamepad: { buttonDown: matchingButton } };
     }
   }
 
@@ -306,6 +360,16 @@ export function createEndSequenceActionEvent(
     const matchingButton = findUnpairedButtonDown(startSequence, endSeq);
     if (matchingButton) {
       return { mouse: { buttonUp: matchingButton } };
+    }
+  }
+
+  if (
+    isGamepadActionEvent(baseEvent) &&
+    isGamepadButtonUpEvent(baseEvent.gamepad)
+  ) {
+    const matchingButton = findUnpairedGamepadButtonDown(startSequence, endSeq);
+    if (matchingButton) {
+      return { gamepad: { buttonUp: matchingButton } };
     }
   }
 

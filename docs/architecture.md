@@ -25,7 +25,7 @@ Deep dive into the Cardboard system architecture, component relationships, and d
 └─────────────────────────────────┘
 ```
 
-The frontend communicates with the backend over HTTP. The backend discovers and manages devices over USB serial. Devices present themselves as composite USB devices with HID endpoints (keyboard, mouse, consumer control) and a CDC-ACM serial endpoint for host communication.
+The frontend communicates with the backend over HTTP. The backend discovers and manages devices over USB serial. Devices present themselves as composite USB devices with HID endpoints (keyboard, mouse, gamepad, consumer control) and a CDC-ACM serial endpoint for host communication.
 
 ## Backend Architecture
 
@@ -139,7 +139,7 @@ The firmware runs on the Embassy async executor with four concurrent tasks:
 
 2. **cmd_task** — Serial command processing loop. Reads a command index byte, dispatches to the matching command handler, and handles error recovery by draining buffered serial data on failure.
 
-3. **hid_task** — Waits for `HID_SIGNAL`, then distributes HID reports (keyboard, mouse, consumer control) to the appropriate USB endpoints. Has a `no_mouse` variant when mouse input is disabled.
+3. **hid_task** — Waits for `HID_SIGNAL`, then distributes HID reports (keyboard, mouse, gamepad, consumer control) to the appropriate USB endpoints. The optional mouse and gamepad interfaces are only present when enabled in device settings; disabling either changes the set of enumerated HID interfaces (and the device descriptor), so the change takes effect after a reboot.
 
 4. **usb_task** — Main USB device loop handling enumeration and control requests.
 
@@ -160,8 +160,11 @@ Tasks communicate via lock-free Embassy signals:
 |----------|------|-------------|
 | Keyboard | HID (NKRO) | 32 bytes |
 | Mouse | HID | 32 bytes |
+| Gamepad | HID | 32 bytes |
 | Consumer Control | HID | 32 bytes |
 | Serial | CDC-ACM | 64 bytes |
+
+The mouse and gamepad interfaces are optional — each is only enumerated when enabled in device settings.
 
 ### Key Matrix and State Machine
 
@@ -182,7 +185,7 @@ Macros have three sequences:
 - **Loop** — Repeats while the key is held
 - **End** — Executes on key release
 
-Actions within sequences can include keyboard events, mouse events, consumer control, layer tag operations, and debug logging, each with an optional predelay.
+Actions within sequences can include keyboard events, mouse events, gamepad events (button down/up and axis adjustments), consumer control, layer tag operations, and debug logging, each with an optional predelay.
 
 Macros support **channels** for coordination: when a macro begins, it will stop any other macros that have their `play_channel` contained in the pressed macro's `cut_channels`.
 
@@ -195,7 +198,7 @@ Macros support **channels** for coordination: when a macro begins, it will stop 
 | `device` | Device identification types (UUID-based) |
 | `profile` | Profile structures: keys, layers, macros, actions |
 | `state` | Keyboard state machine and macro execution |
-| `hid` | NKRO keyboard, mouse, consumer control report generation |
+| `hid` | NKRO keyboard, mouse, gamepad, consumer control report generation |
 | `input` | Key matrix scanning with debounce |
 | `storage` | Flash memory traits and partition management |
 | `serial` | Buffered serial packet reader/writer |

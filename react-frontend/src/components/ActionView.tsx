@@ -6,6 +6,7 @@ import {
   isKeyboardActionEvent,
   isLayerActionEvent,
   isMouseActionEvent,
+  isGamepadActionEvent,
 } from "../api/devices.ts";
 import { forwardRef } from "react";
 import clsx from "clsx";
@@ -18,6 +19,7 @@ import { useMaybeEditDeviceContext } from "../lib/editDeviceContext.tsx";
 import { UnknownActionEventView } from "./actionViews/shared.tsx";
 import { KeyboardActionEventView } from "./actionViews/KeyboardActionEventView.tsx";
 import { MouseActionEventView } from "./actionViews/MouseActionEventView.tsx";
+import { GamepadActionEventView } from "./actionViews/GamepadActionEventView.tsx";
 import { LayerActionEventView } from "./actionViews/LayerActionEventView.tsx";
 import {
   ConsumerControlActionEventView,
@@ -198,6 +200,8 @@ function ActionEventView({
     <KeyboardActionEventView event={event.keyboard} setAction={setAction} />
   ) : isMouseActionEvent(event) ? (
     <MouseActionEventView event={event.mouse} setAction={setAction} />
+  ) : isGamepadActionEvent(event) ? (
+    <GamepadActionEventView event={event.gamepad} setAction={setAction} />
   ) : isConsumerControlActionEvent(event) ? (
     <ConsumerControlActionEventView
       event={event.consumerControl}

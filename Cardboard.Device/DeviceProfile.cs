@@ -260,6 +260,9 @@ public sealed class ActionEvent : IReadable<ActionEvent>, IWriteable
 	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
 	public DebugActionEvent? Debug { get; init; }
 
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+	public GamepadActionEvent? Gamepad { get; init; }
+
 	public static ActionEvent ReadFrom(BinaryReader reader)
 	{
 		var discriminator = reader.ReadByte();
@@ -271,36 +274,41 @@ public sealed class ActionEvent : IReadable<ActionEvent>, IWriteable
 			3 => new() { ConsumerControl = (ConsumerControlEvent)reader.ReadByte() },
 			4 => new() { Layer = LayerActionEvent.ReadFrom(reader) },
 			5 => new() { Debug = DebugActionEvent.ReadFrom(reader) },
+			6 => new() { Gamepad = GamepadActionEvent.ReadFrom(reader) },
 			_ => throw new InvalidDataException($"Unknown ActionEvent discriminator: {discriminator}"),
 		};
 	}
 
 	public void WriteTo(BinaryWriter writer)
 	{
-		switch (Keyboard, Mouse, ConsumerControl, Layer, Debug)
+		switch (Keyboard, Mouse, ConsumerControl, Layer, Debug, Gamepad)
 		{
-			case (null, null, null, null, null):
+			case (null, null, null, null, null, null):
 				writer.Write((byte)0);
 				break;
-			case ({ } keyboard, null, null, null, null):
+			case ({ } keyboard, null, null, null, null, null):
 				writer.Write((byte)1);
 				keyboard.WriteTo(writer);
 				break;
-			case (null, { } mouse, null, null, null):
+			case (null, { } mouse, null, null, null, null):
 				writer.Write((byte)2);
 				mouse.WriteTo(writer);
 				break;
-			case (null, null, { } consumerControl, null, null):
+			case (null, null, { } consumerControl, null, null, null):
 				writer.Write((byte)3);
 				writer.Write((byte)consumerControl);
 				break;
-			case (null, null, null, { } layer, null):
+			case (null, null, null, { } layer, null, null):
 				writer.Write((byte)4);
 				layer.WriteTo(writer);
 				break;
-			case (null, null, null, null, { } debug):
+			case (null, null, null, null, { } debug, null):
 				writer.Write((byte)5);
 				debug.WriteTo(writer);
+				break;
+			case (null, null, null, null, null, { } gamepad):
+				writer.Write((byte)6);
+				gamepad.WriteTo(writer);
 				break;
 			default:
 				throw new InvalidOperationException(
@@ -399,6 +407,74 @@ public sealed class ActionEvent : IReadable<ActionEvent>, IWriteable
 					throw new InvalidOperationException(
 						$"{nameof(MouseActionEvent)} must be either {nameof(ButtonDown)}, {nameof(ButtonUp)}, {nameof(Scroll)}, or {nameof(Move)}"
 					);
+			}
+		}
+	}
+
+	public sealed class GamepadActionEvent : IReadable<GamepadActionEvent>, IWriteable
+	{
+		[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+		public GamepadButton? ButtonDown { get; init; }
+
+		[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+		public GamepadButton? ButtonUp { get; init; }
+
+		[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+		public GamepadAxisValue? Adjust { get; init; }
+
+		public static GamepadActionEvent ReadFrom(BinaryReader reader)
+		{
+			var discriminator = reader.ReadByte();
+			return discriminator switch
+			{
+				0 => new() { ButtonDown = (GamepadButton)reader.ReadByte() },
+				1 => new() { ButtonUp = (GamepadButton)reader.ReadByte() },
+				2 => new() { Adjust = GamepadAxisValue.ReadFrom(reader) },
+				_ => throw new InvalidDataException(
+					$"Unknown GamepadActionEvent discriminator: {discriminator}"
+				),
+			};
+		}
+
+		public void WriteTo(BinaryWriter writer)
+		{
+			switch (ButtonDown, ButtonUp, Adjust)
+			{
+				case ({ } buttonDown, null, null):
+					writer.Write((byte)0);
+					writer.Write((byte)buttonDown);
+					break;
+				case (null, { } buttonUp, null):
+					writer.Write((byte)1);
+					writer.Write((byte)buttonUp);
+					break;
+				case (null, null, { } adjust):
+					writer.Write((byte)2);
+					adjust.WriteTo(writer);
+					break;
+				default:
+					throw new InvalidOperationException(
+						$"{nameof(GamepadActionEvent)} must be either {nameof(ButtonDown)}, {nameof(ButtonUp)}, or {nameof(Adjust)}"
+					);
+			}
+		}
+
+		public sealed class GamepadAxisValue : IReadable<GamepadAxisValue>, IWriteable
+		{
+			public required GamepadAxis Axis { get; init; }
+			public required sbyte Value { get; init; }
+
+			public static GamepadAxisValue ReadFrom(BinaryReader reader)
+			{
+				var axis = (GamepadAxis)reader.ReadByte();
+				var value = reader.ReadSByte();
+				return new() { Axis = axis, Value = value };
+			}
+
+			public void WriteTo(BinaryWriter writer)
+			{
+				writer.Write((byte)Axis);
+				writer.Write(Value);
 			}
 		}
 	}
@@ -686,6 +762,36 @@ public enum MouseButton
 	Middle,
 	Back,
 	Forward,
+}
+
+public enum GamepadButton
+{
+	Button1,
+	Button2,
+	Button3,
+	Button4,
+	Button5,
+	Button6,
+	Button7,
+	Button8,
+	Button9,
+	Button10,
+	Button11,
+	Button12,
+	Button13,
+	Button14,
+	Button15,
+	Button16,
+}
+
+public enum GamepadAxis
+{
+	LeftX,
+	LeftY,
+	RightX,
+	RightY,
+	LeftTrigger,
+	RightTrigger,
 }
 
 public enum ConsumerControlEvent

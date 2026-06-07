@@ -1,18 +1,28 @@
 use crate::input::KeyState;
-use crate::profile::{ConsumerControlEvent, KeyboardEvent, KeyboardKey, MouseButton, MouseEvent};
+use crate::profile::{
+	ConsumerControlEvent, GamepadAxis, GamepadButton, GamepadEvent, KeyboardEvent, KeyboardKey,
+	MouseButton, MouseEvent,
+};
 use bitflags::bitflags;
 use defmt::Format;
 
-pub struct HidReport<const SIZE_K: usize, const SIZE_M: usize, const SIZE_C: usize> {
+pub struct HidReport<
+	const SIZE_K: usize,
+	const SIZE_M: usize,
+	const SIZE_C: usize,
+	const SIZE_G: usize,
+> {
 	pub keyboard: Option<[u8; SIZE_K]>,
 	pub mouse: Option<[u8; SIZE_M]>,
 	pub consumer: Option<[u8; SIZE_C]>,
+	pub gamepad: Option<[u8; SIZE_G]>,
 }
 
 pub trait ReportHid {
 	fn report_keyboard(&mut self, report: &KeyboardEvent);
 	fn report_mouse(&mut self, report: &MouseEvent);
 	fn report_consumer(&mut self, report: &ConsumerControlEvent);
+	fn report_gamepad(&mut self, report: &GamepadEvent);
 	fn flush(&mut self);
 	fn reset(&mut self);
 }
@@ -370,6 +380,103 @@ impl HidDevice<MouseEvent> for Scroll {
 	const SIZE: usize = Scroll::REPORT_SIZE;
 
 	// const SIZE: usize = Mouse::REPORT_SIZE;
+}
+
+pub struct Gamepad {
+	buttons: u16,
+	axes: [i16; Gamepad::AXIS_COUNT], // report is -127..127, but we need headroom to keep track of multiple keys
+	dirty: bool,
+}
+
+impl Gamepad {
+	const AXIS_COUNT: usize = 6;
+	const REPORT_SIZE: usize = 2 + Gamepad::AXIS_COUNT; // 2 button bytes + 6 axis bytes
+
+	pub fn new() -> Self {
+		Gamepad {
+			buttons: 0,
+			axes: [0; Gamepad::AXIS_COUNT],
+			dirty: true,
+		}
+	}
+
+	fn button_down(&mut self, button: GamepadButton) {
+		self.buttons |= 1 << (button as u8);
+	}
+
+	fn button_up(&mut self, button: GamepadButton) {
+		self.buttons &= !(1 << (button as u8));
+	}
+
+	fn adjust_axis(&mut self, axis: GamepadAxis, delta: i8) {
+		let i = axis as usize;
+		self.axes[i] = self.axes[i].saturating_add(delta as i16);
+	}
+}
+
+impl HidDevice<GamepadEvent> for Gamepad {
+	fn create_report(&mut self, force: bool) -> Option<[u8; Gamepad::REPORT_SIZE]> {
+		if !self.dirty && !force {
+			return None;
+		}
+
+		self.dirty = false;
+		let mut report = [0u8; Gamepad::REPORT_SIZE];
+		report[0] = self.buttons as u8;
+		report[1] = (self.buttons >> 8) as u8;
+		for (i, axis) in self.axes.iter().enumerate() {
+			report[2 + i] = (*axis).clamp(-127, 127) as u8;
+		}
+		Some(report)
+	}
+
+	fn input(&mut self, input: &GamepadEvent) {
+		self.dirty = true;
+		match input {
+			GamepadEvent::ButtonDown(button) => self.button_down(*button),
+			GamepadEvent::ButtonUp(button) => self.button_up(*button),
+			GamepadEvent::SetAxis(a) => self.adjust_axis(a.axis, a.value),
+		}
+	}
+
+	fn reset(&mut self) {
+		*self = Gamepad::new();
+	}
+
+	fn report_descriptor() -> &'static [u8] {
+		&[
+			0x05, 0x01, // Usage Page (Generic Desktop)
+			0x09, 0x05, // Usage (Game Pad)
+			0xA1, 0x01, // Collection (Application)
+			0xA1, 0x00, //   Collection (Physical)
+			// 16 buttons
+			0x05, 0x09, //     Usage Page (Button)
+			0x19, 0x01, //     Usage Minimum (Button 1)
+			0x29, 0x10, //     Usage Maximum (Button 16)
+			0x15, 0x00, //     Logical Minimum (0)
+			0x25, 0x01, //     Logical Maximum (1)
+			0x75, 0x01, //     Report Size (1)
+			0x95, 0x10, //     Report Count (16)
+			0x81, 0x02, //     Input (Data, Variable, Absolute)
+			// 6 axes: X, Y, Z, Rz, Rx, Ry
+			0x05, 0x01, //     Usage Page (Generic Desktop)
+			0x09, 0x30, //     Usage (X)        - left stick X
+			0x09, 0x31, //     Usage (Y)        - left stick Y
+			0x09, 0x32, //     Usage (Z)        - right stick X
+			0x09, 0x35, //     Usage (Rz)       - right stick Y
+			0x09, 0x33, //     Usage (Rx)       - left trigger
+			0x09, 0x34, //     Usage (Ry)       - right trigger
+			0x15, 0x81, //     Logical Minimum (-127)
+			0x25, 0x7F, //     Logical Maximum (127)
+			0x75, 0x08, //     Report Size (8)
+			0x95, 0x06, //     Report Count (6)
+			0x81, 0x02, //     Input (Data, Variable, Absolute)
+			0xC0, //   End Collection
+			0xC0, // End Collection
+		]
+	}
+
+	const SIZE: usize = Gamepad::REPORT_SIZE;
 }
 
 pub(crate) fn map_button(key: &MouseButton) -> HidMouseButtons {

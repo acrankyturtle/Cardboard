@@ -117,7 +117,12 @@ public sealed class DeviceDetails
 			Version = info.Version,
 			LatestVersion = latestVersion,
 			UpdateAvailable = latestVersion is not null && latestVersion > info.Version,
-			Settings = new() { IsMouseEnabled = settings.MouseEnabled, DebounceTimeUs = settings.DebounceTimeUs },
+			Settings = new()
+			{
+				IsMouseEnabled = settings.MouseEnabled,
+				IsGamepadEnabled = settings.GamepadEnabled,
+				DebounceTimeUs = settings.DebounceTimeUs,
+			},
 			Status = DeviceStatusReport.From(status),
 			Commands = info.Commands,
 			KeyMap = typeInfo.KeyMap,
@@ -128,6 +133,7 @@ public sealed class DeviceDetails
 public sealed class DeviceSettingsReport
 {
 	public required bool IsMouseEnabled { get; init; }
+	public required bool IsGamepadEnabled { get; init; }
 	public required uint DebounceTimeUs { get; init; }
 }
 

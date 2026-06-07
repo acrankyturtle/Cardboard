@@ -1,7 +1,7 @@
 use cardboard_lib::{
 	device::DeviceInfo,
 	hid::HidDevice,
-	profile::{ConsumerControlEvent, KeyboardEvent, MouseEvent},
+	profile::{ConsumerControlEvent, GamepadEvent, KeyboardEvent, MouseEvent},
 };
 use defmt::info;
 use embassy_rp::{
@@ -25,6 +25,7 @@ use crate::StaticCell;
 pub const USB_HID_KEYBOARD_PACKET_SIZE: usize = 32;
 pub const USB_HID_MOUSE_PACKET_SIZE: usize = 32;
 pub const USB_HID_CONSUMER_PACKET_SIZE: usize = 32;
+pub const USB_HID_GAMEPAD_PACKET_SIZE: usize = 32;
 pub const USB_SERIAL_PACKET_SIZE: usize = 64;
 
 bind_interrupts!(struct Irqs {
@@ -41,10 +42,12 @@ pub struct UsbDevices<
 	const KEYBOARD_PACKET_SIZE: usize,
 	const MOUSE_PACKET_SIZE: usize,
 	const CONSUMER_PACKET_SIZE: usize,
+	const GAMEPAD_PACKET_SIZE: usize,
 > {
 	pub keyboard_writer: HidWriter<'static, Driver<'static, USB>, KEYBOARD_PACKET_SIZE>,
 	pub mouse_writer: Option<HidWriter<'static, Driver<'static, USB>, MOUSE_PACKET_SIZE>>,
 	pub consumer_writer: HidWriter<'static, Driver<'static, USB>, CONSUMER_PACKET_SIZE>,
+	pub gamepad_writer: Option<HidWriter<'static, Driver<'static, USB>, GAMEPAD_PACKET_SIZE>>,
 	pub serial_reader: Receiver<'static, Driver<'static, USB>>,
 	pub serial_writer: embassy_usb::class::cdc_acm::Sender<'static, Driver<'static, USB>>,
 	pub device: UsbDevice<'static, Driver<'static, USB>>,
@@ -68,13 +71,20 @@ pub fn init_usb<
 	KeyboardImpl: HidDevice<KeyboardEvent>,
 	MouseImpl: HidDevice<MouseEvent>,
 	ConsumerImpl: HidDevice<ConsumerControlEvent>,
+	GamepadImpl: HidDevice<GamepadEvent>,
 >(
 	usb: USB,
 	device_info: &DeviceInfo,
 	serial_number: &'static str,
 	model: &'static str,
 	mouse_enabled: bool,
-) -> UsbDevices<{ KeyboardImpl::SIZE }, { MouseImpl::SIZE }, { ConsumerImpl::SIZE }> {
+	gamepad_enabled: bool,
+) -> UsbDevices<
+	{ KeyboardImpl::SIZE },
+	{ MouseImpl::SIZE },
+	{ ConsumerImpl::SIZE },
+	{ GamepadImpl::SIZE },
+> {
 	let mut usb_builder = get_usb_builder(usb, device_info, serial_number, model);
 
 	let keyboard_writer = hid_writer!(
@@ -97,6 +107,15 @@ pub fn init_usb<
 		ConsumerControlEvent,
 		USB_HID_CONSUMER_PACKET_SIZE as u16
 	);
+	let gamepad_writer = gamepad_enabled.then(|| {
+		hid_writer!(
+			&mut usb_builder,
+			GamepadImpl,
+			GamepadEvent,
+			USB_HID_GAMEPAD_PACKET_SIZE as u16
+		)
+	});
+	
 	let serial_class = get_serial_class(&mut usb_builder);
 	let (serial_writer, serial_reader) = serial_class.split();
 
@@ -106,6 +125,7 @@ pub fn init_usb<
 		keyboard_writer,
 		mouse_writer,
 		consumer_writer,
+		gamepad_writer,
 		serial_reader,
 		serial_writer,
 		device: usb_device,

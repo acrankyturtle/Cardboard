@@ -1,6 +1,8 @@
 import {
   ActionEvent,
   ConsumerControlEvent,
+  GamepadAxis,
+  GamepadButton,
   KeyboardKey,
   MouseButton,
 } from "../api/devices.ts";
@@ -8,6 +10,7 @@ import clsx from "clsx";
 import {
   ConsumerControlIcon,
   DebugIcon,
+  GamepadIcon,
   KeyboardIcon,
   LayerIcon,
   MouseIcon,
@@ -111,6 +114,33 @@ export function ActionTypeMenuItems({
           {
             render: <div>Move</div>,
             actionEvent: { mouse: { move: { x: 0, y: 0 } } },
+          },
+        ]}
+        onSelect={onSelect}
+      />
+      <ActionTypeGroup
+        header={
+          <>
+            <ActionTypeGroupIcon>
+              <GamepadIcon />
+            </ActionTypeGroupIcon>
+            <div>Gamepad</div>
+          </>
+        }
+        items={[
+          {
+            render: <div>Button Down</div>,
+            actionEvent: { gamepad: { buttonDown: GamepadButton.Button1 } },
+          },
+          {
+            render: <div>Button Up</div>,
+            actionEvent: { gamepad: { buttonUp: GamepadButton.Button1 } },
+          },
+          {
+            render: <div>Axis</div>,
+            actionEvent: {
+              gamepad: { adjust: { axis: GamepadAxis.LeftX, value: 0 } },
+            },
           },
         ]}
         onSelect={onSelect}
