@@ -29,7 +29,7 @@ public interface IWindowsService
 
 file class WindowsService : IWindowsService, IDisposable
 {
-	private readonly HiddenWindow _window = new();
+	private readonly HiddenWindow _window;
 	private readonly Thread _windowThread;
 
 	public IntPtr Handle { get; }
@@ -38,12 +38,21 @@ file class WindowsService : IWindowsService, IDisposable
 
 	public WindowsService()
 	{
-		_windowThread = new(() => Application.Run(_window));
+		using var ready = new ManualResetEventSlim();
+		HiddenWindow? window = null;
+
+		_windowThread = new(() =>
+		{
+			window = new();
+			window.HandleCreated += (_, _) => ready.Set();
+			Application.Run(window);
+		});
 		_windowThread.SetApartmentState(ApartmentState.STA);
 		_windowThread.Start();
 
-		Thread.Sleep(50); // HACK: give the window time to initialize
+		ready.Wait();
 
+		_window = window!;
 		Handle = _window.Invoke(() => _window.Handle);
 	}
 
