@@ -5,6 +5,7 @@ import { NavLink, To } from "react-router";
 import { useControllerUpdate } from "../api/controller.ts";
 import { Tooltip } from "./Tooltip.tsx";
 import { Logo } from "./Logo.tsx";
+import UpdateLink from "./UpdateLink.tsx";
 
 export function NavBar({ className }: { className?: string }) {
   const showLogButton = false;
@@ -102,14 +103,14 @@ function VersionInfo() {
       <span className="font-mono">v{updateInfo?.currentVersion ?? "..."}</span>
       {updateInfo?.updateAvailable && updateInfo.downloadUrl && (
         <Tooltip content={`Update to v${updateInfo.latestVersion}`}>
-          <a
+          <UpdateLink
+            className="mt-1"
             href={updateInfo.downloadUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-1 text-amber-400 hover:text-amber-300"
           >
             Update
-          </a>
+          </UpdateLink>
         </Tooltip>
       )}
     </div>

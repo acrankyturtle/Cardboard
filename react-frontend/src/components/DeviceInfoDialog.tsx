@@ -71,7 +71,7 @@ export function DeviceInfoDialog({ deviceId }: { deviceId: string | null }) {
                 <StatValue>{device.version}</StatValue>
                 <StatName>Latest Version</StatName>
                 <StatValue>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2.5">
                     {device.updateAvailable ? (
                       <>
                         {device.latestVersion}

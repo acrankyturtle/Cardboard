@@ -1,8 +1,7 @@
-import clsx from "clsx";
 import { useFirmwareUpdate } from "../../hooks/useFirmwareUpdate";
-import { Button } from "../Button";
 import { FirmwareUpdateConfirmDialog } from "./FirmwareUpdateConfirmDialog";
 import { FirmwareUpdateDialog } from "./FirmwareUpdateDialog";
+import UpdateLink from "../UpdateLink";
 
 interface UpdateFirmwareButtonProps {
   deviceId: string;
@@ -26,16 +25,13 @@ export function UpdateFirmwareButton({
 
   return (
     <>
-      <Button
-        className={clsx("relative")}
-        buttonStyle={{
-          variant: "ghost",
-        }}
+      <UpdateLink
+        className="text-sm"
         disabled={isUpdating}
         onClick={showConfirmation}
       >
         Update Firmware
-      </Button>
+      </UpdateLink>
 
       <FirmwareUpdateConfirmDialog
         open={showConfirmDialog}
