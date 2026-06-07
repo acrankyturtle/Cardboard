@@ -8,6 +8,7 @@ interface UpdateFirmwareButtonProps {
   deviceName: string;
   currentVersion: string;
   targetVersion: string;
+  onUpdated?: () => void;
 }
 
 export function UpdateFirmwareButton({
@@ -15,9 +16,10 @@ export function UpdateFirmwareButton({
   deviceName,
   currentVersion,
   targetVersion,
+  onUpdated,
 }: UpdateFirmwareButtonProps) {
   const { state, showConfirmation, startUpdate, cancel, reset, isUpdating } =
-    useFirmwareUpdate({ deviceId });
+    useFirmwareUpdate({ deviceId, onSuccess: onUpdated });
 
   const showConfirmDialog = state.stage === "confirming";
   const showProgressDialog =

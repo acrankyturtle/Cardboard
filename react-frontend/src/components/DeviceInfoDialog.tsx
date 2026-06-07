@@ -31,7 +31,7 @@ export function DeviceInfoDialog({ deviceId }: { deviceId: string | null }) {
   return (
     latch && (
       <DataProvider deviceId={latch}>
-        {(device, profile) => (
+        {(device, profile, reload) => (
           <Dialog
             open={deviceId !== null}
             onClose={(show) => {
@@ -80,6 +80,7 @@ export function DeviceInfoDialog({ deviceId }: { deviceId: string | null }) {
                           deviceName={device.name}
                           currentVersion={device.version}
                           targetVersion={device.latestVersion!}
+                          onUpdated={reload}
                         />
                       </>
                     ) : (

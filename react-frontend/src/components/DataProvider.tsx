@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useCallback, useEffect, useState } from "react";
 import {
   DeviceDetails,
   DeviceProfile,
@@ -14,11 +14,18 @@ export function DataProvider({
 }: {
   deviceId: string;
   loadingHeader?: ReactNode;
-  children: (device: DeviceDetails, profile: DeviceProfile) => ReactNode;
+  children: (
+    device: DeviceDetails,
+    profile: DeviceProfile,
+    reload: () => void,
+  ) => ReactNode;
 }) {
   const [device, setDevice] = useState<DeviceDetails | undefined>(undefined);
   const [profile, setProfile] = useState<DeviceProfile | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const reload = useCallback(() => setReloadKey((k) => k + 1), []);
 
   useEffect(() => {
     const abortController = new AbortController();
@@ -49,7 +56,7 @@ export function DataProvider({
     return () => {
       abortController.abort();
     };
-  }, [deviceId]);
+  }, [deviceId, reloadKey]);
 
   if (error) {
     return (
@@ -73,5 +80,5 @@ export function DataProvider({
     );
   }
 
-  return <>{children(device, profile)}</>;
+  return <>{children(device, profile, reload)}</>;
 }
