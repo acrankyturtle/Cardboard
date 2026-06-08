@@ -872,13 +872,13 @@ impl Readable for LayerEvent {
 	where
 		Self: Sized,
 	{
-		let value = reader.read_bool().await.ok_or("Failed to read value")?;
+		let is_set = reader.read_bool().await.ok_or("Failed to read value")?;
 		let tag = LayerTag::read_from(reader).await?;
 
-		if value {
-			Ok(LayerEvent::Clear(tag))
-		} else {
+		if is_set {
 			Ok(LayerEvent::Set(tag))
+		} else {
+			Ok(LayerEvent::Clear(tag))
 		}
 	}
 }
