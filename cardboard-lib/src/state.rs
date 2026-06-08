@@ -1247,6 +1247,31 @@ mod tests {
 		}
 	}
 
+	fn new_test_layer_macro(id: MacroId, tag: LayerTag) -> Macro {
+		let set_tag = tag.clone();
+		let clear_tag = tag;
+		Macro {
+			start_sequence: Sequence {
+				actions: vec![Action {
+					predelay_ms: 0,
+					action_event: ActionEvent::Layer(LayerEvent::Set(set_tag)),
+				}],
+			},
+			loop_sequence: Sequence { actions: vec![] },
+			end_sequence: Sequence {
+				actions: vec![Action {
+					predelay_ms: 0,
+					action_event: ActionEvent::Layer(LayerEvent::Clear(clear_tag)),
+				}],
+			},
+			cut_channels: vec![],
+			macro_type: MacroType::Momentary,
+			id,
+			name: "Layer".to_string(),
+			play_channel: None,
+		}
+	}
+
 	// ------- TOGGLE MACRO TESTS --------
 
 	#[test]
@@ -1326,5 +1351,96 @@ mod tests {
 		// End sequence completes and macro is cleaned up
 		state.tick(300.millis(), |_| {});
 		assert_eq!(state.running.len(), 0);
+	}
+
+	// ------- LAYER EVENT EMISSION TESTS --------
+
+	#[test]
+	fn macro_emits_layer_set_on_start() {
+		let set_tag = LayerTag::new("layer1".to_string());
+		let _macro = new_test_layer_macro(MACRO_ID, set_tag.clone());
+		let device_key = new_test_device_key(KEY_ID, vec![MacroIndex::new(0)]);
+
+		let key_state = PhysicalKeyState::from(&device_key);
+		let mut macro_state = MacroState::from(&_macro, &key_state);
+
+		let mut events = vec![];
+		macro_state.tick(100.millis(), &mut |e| events.push(e));
+
+		assert_eq!(events.len(), 1);
+		match events[0] {
+			ActionEvent::Layer(LayerEvent::Set(tag)) => assert_eq!(*tag, set_tag),
+			_ => panic!("expected Set layer event, got {:?}", events[0]),
+		}
+	}
+
+	#[test]
+	fn macro_emits_layer_clear_on_end() {
+		let tag = LayerTag::new("layer1".to_string());
+		let _macro = new_test_layer_macro(MACRO_ID, tag.clone());
+		let device_key = new_test_device_key(KEY_ID, vec![MacroIndex::new(0)]);
+
+		let key_state = PhysicalKeyState::from(&device_key);
+		let mut macro_state = MacroState::from(&_macro, &key_state);
+
+		// run the start sequence (emits Set), leaving the macro looping
+		macro_state.tick(100.millis(), &mut |_| {});
+		macro_state.stop();
+
+		let mut events = vec![];
+		macro_state.tick(100.millis(), &mut |e| events.push(e));
+
+		assert_eq!(events.len(), 1);
+		match events[0] {
+			ActionEvent::Layer(LayerEvent::Clear(t)) => assert_eq!(*t, tag),
+			_ => panic!("expected Clear layer event, got {:?}", events[0]),
+		}
+	}
+
+	#[test]
+	fn pressing_a_key_emits_layer_set() {
+		let set_tag = LayerTag::new("layer1".to_string());
+		let _macro = new_test_layer_macro(MACRO_ID, set_tag.clone());
+		let profile = new_test_profile(
+			vec![new_test_device_key(KEY_ID, vec![MacroIndex::new(0)])],
+			vec![_macro],
+		);
+		let mut state = KeyboardState::from(&profile);
+
+		state.press_key(KEY_ID);
+
+		let mut events = vec![];
+		state.tick(100.millis(), |e| events.push(e));
+
+		assert_eq!(events.len(), 1);
+		match events[0] {
+			ActionEvent::Layer(LayerEvent::Set(tag)) => assert_eq!(*tag, set_tag),
+			_ => panic!("expected Set layer event, got {:?}", events[0]),
+		}
+	}
+
+	#[test]
+	fn releasing_a_key_emits_layer_clear() {
+		let tag = LayerTag::new("layer1".to_string());
+		let _macro = new_test_layer_macro(MACRO_ID, tag.clone());
+		let profile = new_test_profile(
+			vec![new_test_device_key(KEY_ID, vec![MacroIndex::new(0)])],
+			vec![_macro],
+		);
+		let mut state = KeyboardState::from(&profile);
+
+		state.press_key(KEY_ID);
+		state.tick(100.millis(), |_| {}); // run the start sequence (emits Set)
+
+		state.release_key(KEY_ID);
+
+		let mut events = vec![];
+		state.tick(100.millis(), |e| events.push(e));
+
+		assert_eq!(events.len(), 1);
+		match events[0] {
+			ActionEvent::Layer(LayerEvent::Clear(t)) => assert_eq!(*t, tag),
+			_ => panic!("expected Clear layer event, got {:?}", events[0]),
+		}
 	}
 }
