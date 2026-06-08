@@ -109,6 +109,20 @@ Update firmware on a specific connected device. Returns an SSE stream of progres
 
 **Response** `200 OK` (`text/event-stream`) — see [Firmware Update Events](#firmware-update-events)
 
+### POST /api/devices/{id}/custom-update
+
+Upload and flash a custom firmware binary to a specific connected device. The firmware is sent as a multipart form file. Returns an SSE stream of progress events.
+
+**Query parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `migrate` | bool | Whether to backup and restore profile/settings across the update |
+
+**Request body:** `multipart/form-data` with a `firmware` file field containing the firmware binary.
+
+**Response** `200 OK` (`text/event-stream`) — see [Firmware Update Events](#firmware-update-events)
+
 ### POST /api/devices/update
 
 Flash firmware to a device already in USB bootloader mode. Returns an SSE stream of progress events.

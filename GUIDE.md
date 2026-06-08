@@ -152,6 +152,10 @@ Imported and pasted macros are assigned a new identity, so they won't conflict w
 
 Layers let a single key behave differently depending on context. Each key has its own independent set of layers.
 
+![Diagram showing how key layers stack: each key has a default layer plus tagged layers that activate based on tags, with macros bound per layer.](docs/assets/key_layer_diagram.svg)
+
+In the diagram above, each key has its own stack of layers. Key 1 falls back to its `default` layer, but switches to its `gaming` layer when the `gaming` tag is active and to its `specific game` layer for an even more specific context. Key 2 only defines `default` and `gaming` layers. Unlike other devices, each key's layers and layer ordering is completely independent from other keys.
+
 ### The Default Layer
 
 Every key has exactly one **default layer**. This is the baseline — it's what the key does when no tagged layer matches. The default layer is always present and can't be removed.

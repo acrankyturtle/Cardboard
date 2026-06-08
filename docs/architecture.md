@@ -201,6 +201,7 @@ Macros support **channels** for coordination: when a macro begins, it will stop 
 | `hid` | NKRO keyboard, mouse, gamepad, consumer control report generation |
 | `input` | Key matrix scanning with debounce |
 | `storage` | Flash memory traits and partition management |
+| `settings` | Versioned device settings (`SettingsData`, `VersionedSettings`) and per-version round-tripping |
 | `serial` | Buffered serial packet reader/writer |
 | `stream` | Async read/write traits and primitive encoding |
 | `serialize` | `Readable` / `Writeable` traits for binary serialization |
@@ -231,7 +232,7 @@ The RP2040 USB bootloader can be entered via:
 ```
 react-frontend/src/
 ├── api/            	# API client functions (fetch wrappers per endpoint group)
-├── pages/          	# Route-level page components (Dashboard, Devices, Associations, Logs)
+├── pages/          	# Route-level page components (Dashboard, Devices, Associations, Logs, Guide)
 ├── components/     	# UI components (profile editor, firmware update dialogs, action views)
 │   ├── actionViews/    # Per-action-type renderers (keyboard, mouse, layer, etc.)
 │   ├── editProfile/    # Profile editing panels (bindings, layers, macros, tags)
